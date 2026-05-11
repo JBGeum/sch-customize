@@ -7,7 +7,7 @@ let privTalkIndex = 0;
 
 Hooks.once("setup", function () {
   const commands = game.chatCommands;
-  if (game.settings.get("sch-customize", "enableSpeakerBar")) {
+  if (game.settings.get("chat-tailor", "enableSpeakerBar")) {
     registerSpeakerBar();
   }
   lastPrivTalkMsg = null;
@@ -16,23 +16,23 @@ Hooks.once("setup", function () {
   commands.register({
     name: "/pt",
     module: "core",
-    aliases: [`${game.settings.get('sch-customize', 'customPrivTalkAlias')}`,"`", "!"],
+    aliases: [`${game.settings.get('chat-tailor', 'customPrivTalkAlias')}`,"`", "!"],
     icon: "<i class='fas fa-dice-d20'></i>",
     requiredRole: "NONE",
     callback: async function (chat, parameters, messageData){
-      if (!game.settings.get("sch-customize", "markdownDelUse"))
+      if (!game.settings.get("chat-tailor", "markdownDelUse"))
         parameters = parameters.replace(/<\s*\/?\s*del\s*>/g, '~');
 
       const speakUser = (messageData.user instanceof User ? messageData.user : game.users.get(messageData.user));
       messageData.speaker.actor = speakUser.id;
       messageData.speaker.token = null;
       messageData.speaker.alias = speakUser.name;
-      messageData.type = game.settings.get("sch-customize", "privTalkAsOOC") ? CONST.CHAT_MESSAGE_TYPES.OOC : CONST.CHAT_MESSAGE_TYPES.OTHER;
+      messageData.type = game.settings.get("chat-tailor", "privTalkAsOOC") ? CONST.CHAT_MESSAGE_TYPES.OOC : CONST.CHAT_MESSAGE_TYPES.OTHER;
 
       return {
         content: parameters,
         flags: {
-          'sch-customize':
+          'chat-tailor':
               {'priv_talk': true}
         }
       }
@@ -44,9 +44,9 @@ Hooks.once("setup", function () {
 
 
 Hooks.on("renderChatMessage", (message, html, messageData) => {
-  const privTalkMergeEnabled = game.settings.get("sch-customize", "privTalkMerge");
-  const baseMessageMergeEnabled = game.settings.get("sch-customize", "baseMessageMerge");
-  const privFlag = message.flags.priv_talk || message.getFlag('sch-customize', 'priv_talk');
+  const privTalkMergeEnabled = game.settings.get("chat-tailor", "privTalkMerge");
+  const baseMessageMergeEnabled = game.settings.get("chat-tailor", "baseMessageMerge");
+  const privFlag = message.flags.priv_talk || message.getFlag('chat-tailor', 'priv_talk');
   if (privFlag) {
     html.addClass('priv_talk');
     html.addClass(`user-${message.user.id}`);
@@ -67,7 +67,7 @@ Hooks.on("renderChatMessage", (message, html, messageData) => {
     privTalkIndex++;
     html.find('header').css("display", "none");
     html.find('.message-content').html(`<div class="pt priv_user">${message.speaker.alias}</div> <div class="pt">${message.content}</div>`);
-    if (!game.settings.get("sch-customize", "privTalkSpeakerLineChange"))
+    if (!game.settings.get("chat-tailor", "privTalkSpeakerLineChange"))
       html.addClass('line-change');
   }
   else {
@@ -96,9 +96,9 @@ Hooks.on("renderChatMessage", (message, html, messageData) => {
 
 Hooks.once('init', () => {
 
-  game.settings.register("sch-customize", "enableSpeakerBar", {
-    name: "sch-customize.settings.enableSpeakerBar.name",
-    hint: "sch-customize.settings.enableSpeakerBar.hint",
+  game.settings.register("chat-tailor", "enableSpeakerBar", {
+    name: "chat-tailor.settings.enableSpeakerBar.name",
+    hint: "chat-tailor.settings.enableSpeakerBar.hint",
     scope: "client",
     config: true,
     default: true,
@@ -106,40 +106,40 @@ Hooks.once('init', () => {
     onChange: _ => window.location.reload()
   });
 
-  game.settings.registerMenu("sch-customize", "downloadChatArchiveMenu", {
-    name: "sch-customize.settings.downloadChatArchiveMenu.name",
-    hint: "sch-customize.settings.downloadChatArchiveMenu.hint",
+  game.settings.registerMenu("chat-tailor", "downloadChatArchiveMenu", {
+    name: "chat-tailor.settings.downloadChatArchiveMenu.name",
+    hint: "chat-tailor.settings.downloadChatArchiveMenu.hint",
     icon: "fas fa-download",
     type: DownloadChatArchive
   });
 
-  game.settings.registerMenu("sch-customize", "openChatArchiveWindow", {
-    name: "sch-customize.settings.openChatArchiveWindow.name",
-    hint: "sch-customize.settings.openChatArchiveWindow.hint",
+  game.settings.registerMenu("chat-tailor", "openChatArchiveWindow", {
+    name: "chat-tailor.settings.openChatArchiveWindow.name",
+    hint: "chat-tailor.settings.openChatArchiveWindow.hint",
     icon: "fas fa-arrow-up-right-from-square",
     type: openChatArchiveWindow
   });
 
-  game.settings.register("sch-customize", "includeWhisper", {
-    name: "sch-customize.settings.includeWhisper.name",
-    hint: "sch-customize.settings.includeWhisper.hint",
+  game.settings.register("chat-tailor", "includeWhisper", {
+    name: "chat-tailor.settings.includeWhisper.name",
+    hint: "chat-tailor.settings.includeWhisper.hint",
     scope: "world",
     config: true,
     default: false,
     type: Boolean,
   });
 
-  game.settings.register("sch-customize", "hideWhisper", {
-    name: "sch-customize.settings.hideWhisper.name",
-    hint: "sch-customize.settings.hideWhisper.hint",
+  game.settings.register("chat-tailor", "hideWhisper", {
+    name: "chat-tailor.settings.hideWhisper.name",
+    hint: "chat-tailor.settings.hideWhisper.hint",
     scope: "client",
     config: true,
     default: false,
     type: Boolean,
   });
 
-  game.settings.register("sch-customize", "convertDFchatArchive", {
-    name: "sch-customize.settings.convertDFchatArchive.name",
+  game.settings.register("chat-tailor", "convertDFchatArchive", {
+    name: "chat-tailor.settings.convertDFchatArchive.name",
     restricted: true,
     config: true,
     type: String,
@@ -149,13 +149,13 @@ Hooks.once('init', () => {
       if (value.endsWith(".json"))
         getDFchatArchive(value);
       else if (value.length > 0)
-        alert(game.i18n.localize("sch-customize.settings.convertDFchatArchive.alert"));
+        alert(game.i18n.localize("chat-tailor.settings.convertDFchatArchive.alert"));
     }
   });
 
-  game.settings.register("sch-customize", "customPrivTalkAlias", {
-    name: "sch-customize.settings.customPrivTalkAlias.name",
-    hint: "sch-customize.settings.customPrivTalkAlias.hint",
+  game.settings.register("chat-tailor", "customPrivTalkAlias", {
+    name: "chat-tailor.settings.customPrivTalkAlias.name",
+    hint: "chat-tailor.settings.customPrivTalkAlias.hint",
     scope: "client",
     config: true,
     default: "/p",
@@ -163,9 +163,9 @@ Hooks.once('init', () => {
     onChange: _ => window.location.reload()
   });
 
-  game.settings.register("sch-customize", "markdownDelUse", {
-    name: "sch-customize.settings.markdownDelUse.name",
-    hint: "sch-customize.settings.markdownDelUse.hint",
+  game.settings.register("chat-tailor", "markdownDelUse", {
+    name: "chat-tailor.settings.markdownDelUse.name",
+    hint: "chat-tailor.settings.markdownDelUse.hint",
     scope: "client",
     config: true,
     default: false,
@@ -173,18 +173,18 @@ Hooks.once('init', () => {
     onChange: _ => window.location.reload()
   });
 
-  game.settings.register("sch-customize", "privTalkAsOOC", {
-    name: "sch-customize.settings.privTalkAsOOC.name",
-    hint: "sch-customize.settings.privTalkAsOOC.hint",
+  game.settings.register("chat-tailor", "privTalkAsOOC", {
+    name: "chat-tailor.settings.privTalkAsOOC.name",
+    hint: "chat-tailor.settings.privTalkAsOOC.hint",
     scope: "world",
     config: true,
     default: false,
     type: Boolean
   });
 
-  game.settings.register("sch-customize", "privTalkSpeakerLineChange", {
-    name: "sch-customize.settings.privTalkSpeakerLineChange.name",
-    hint: "sch-customize.settings.privTalkSpeakerLineChange.hint",
+  game.settings.register("chat-tailor", "privTalkSpeakerLineChange", {
+    name: "chat-tailor.settings.privTalkSpeakerLineChange.name",
+    hint: "chat-tailor.settings.privTalkSpeakerLineChange.hint",
     scope: "client",
     config: true,
     default: false,
@@ -192,9 +192,9 @@ Hooks.once('init', () => {
     onChange: _ => window.location.reload()
   });
 
-  game.settings.register("sch-customize", "baseMessageMerge", {
-    name: "sch-customize.settings.baseMessageMerge.name",
-    hint: "sch-customize.settings.baseMessageMerge.hint",
+  game.settings.register("chat-tailor", "baseMessageMerge", {
+    name: "chat-tailor.settings.baseMessageMerge.name",
+    hint: "chat-tailor.settings.baseMessageMerge.hint",
     scope: "client",
     config: true,
     default: true,
@@ -202,9 +202,9 @@ Hooks.once('init', () => {
     onChange: _ => window.location.reload()
   });
 
-  game.settings.register("sch-customize", "privTalkMerge", {
-    name: "sch-customize.settings.privTalkMerge.name",
-    hint: "sch-customize.settings.privTalkMerge.hint",
+  game.settings.register("chat-tailor", "privTalkMerge", {
+    name: "chat-tailor.settings.privTalkMerge.name",
+    hint: "chat-tailor.settings.privTalkMerge.hint",
     scope: "client",
     config: true,
     default: true,
@@ -212,9 +212,9 @@ Hooks.once('init', () => {
     onChange: _ => window.location.reload()
   });
 
-  game.settings.register("sch-customize", "setChatLogFontSize", {
-    name: "sch-customize.settings.setChatLogFontSize.name",
-    hint: "sch-customize.settings.setChatLogFontSize.hint",
+  game.settings.register("chat-tailor", "setChatLogFontSize", {
+    name: "chat-tailor.settings.setChatLogFontSize.name",
+    hint: "chat-tailor.settings.setChatLogFontSize.hint",
     config: true,
     type: Number,
     scope: 'client',
@@ -227,9 +227,9 @@ Hooks.once('init', () => {
     onChange: (value) => this.updateCssProperty('clFontSize', `${value}px`)
   });
 
-  game.settings.register("sch-customize", "setPrivTalkFontSize", {
-    name: "sch-customize.settings.setPrivTalkFontSize.name",
-    hint: "sch-customize.settings.setPrivTalkFontSize.hint",
+  game.settings.register("chat-tailor", "setPrivTalkFontSize", {
+    name: "chat-tailor.settings.setPrivTalkFontSize.name",
+    hint: "chat-tailor.settings.setPrivTalkFontSize.hint",
     config: true,
     type: Number,
     scope: 'client',
@@ -242,9 +242,9 @@ Hooks.once('init', () => {
     onChange: (value) => this.updateCssProperty('ptFontSize', `${value}px`)
   });
 
-  game.settings.register("sch-customize", "setPrivTalkFontOpacity", {
-    name: "sch-customize.settings.setPrivTalkFontOpacity.name",
-    hint: "sch-customize.settings.setPrivTalkFontOpacity.hint",
+  game.settings.register("chat-tailor", "setPrivTalkFontOpacity", {
+    name: "chat-tailor.settings.setPrivTalkFontOpacity.name",
+    hint: "chat-tailor.settings.setPrivTalkFontOpacity.hint",
     config: true,
     type: Number,
     scope: 'client',
@@ -257,9 +257,9 @@ Hooks.once('init', () => {
     onChange: (value) => this.updateCssProperty('fontColor', `rgba(0,0,0,${value})`)
   });
 
-  game.settings.register("sch-customize", "setPrivTalkMarginLeft", {
-    name: "sch-customize.settings.setPrivTalkMarginLeft.name",
-    hint: "sch-customize.settings.setPrivTalkMarginLeft.hint",
+  game.settings.register("chat-tailor", "setPrivTalkMarginLeft", {
+    name: "chat-tailor.settings.setPrivTalkMarginLeft.name",
+    hint: "chat-tailor.settings.setPrivTalkMarginLeft.hint",
     config: true,
     type: Number,
     scope: 'client',
@@ -272,9 +272,9 @@ Hooks.once('init', () => {
     onChange: (value) => updateCssProperty('marginLeft', `${value}px`)
   });
 
-  game.settings.register("sch-customize", "setPrivTalkBgBrightness", {
-    name: "sch-customize.settings.setPrivTalkBgBrightness.name",
-    hint: "sch-customize.settings.setPrivTalkBgBrightness.hint",
+  game.settings.register("chat-tailor", "setPrivTalkBgBrightness", {
+    name: "chat-tailor.settings.setPrivTalkBgBrightness.name",
+    hint: "chat-tailor.settings.setPrivTalkBgBrightness.hint",
     config: true,
     type: Number,
     scope: 'client',
@@ -288,11 +288,11 @@ Hooks.once('init', () => {
   });
 
 
-  updateCssProperty('fontColor', `rgba(0,0,0,${(game.settings.get("sch-customize", "setPrivTalkFontOpacity"))})` );
-  updateCssProperty('clFontSize',`${game.settings.get("sch-customize", "setChatLogFontSize")}px`);
-  updateCssProperty('ptFontSize',`${game.settings.get("sch-customize", "setPrivTalkFontSize")}px`);
-  updateCssProperty('marginLeft',`${game.settings.get("sch-customize", "setPrivTalkMarginLeft")}px`);
-  updateCssProperty('brightness',`${game.settings.get("sch-customize", "setPrivTalkBgBrightness")}`);
+  updateCssProperty('fontColor', `rgba(0,0,0,${(game.settings.get("chat-tailor", "setPrivTalkFontOpacity"))})` );
+  updateCssProperty('clFontSize',`${game.settings.get("chat-tailor", "setChatLogFontSize")}px`);
+  updateCssProperty('ptFontSize',`${game.settings.get("chat-tailor", "setPrivTalkFontSize")}px`);
+  updateCssProperty('marginLeft',`${game.settings.get("chat-tailor", "setPrivTalkMarginLeft")}px`);
+  updateCssProperty('brightness',`${game.settings.get("chat-tailor", "setPrivTalkBgBrightness")}`);
 });
 
 Hooks.once('ready', () => setUserColorBg());
@@ -302,7 +302,7 @@ const cssProperty = {
   fontColor : '--priv-talk-font-color',
   marginLeft : '--priv-talk-margin-left',
   brightness : '--priv-talk-bg-brightness',
-  clFontSize : '--sch-cus-chat-font-size'
+  clFontSize : '--ct-chat-font-size'
 }
 
 

@@ -1,4 +1,4 @@
-console.log('[sch-customize] chat-log.js: 평가 시작');
+console.log('[chat-tailor] chat-log.js: 평가 시작');
 
 function saveAs(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -36,7 +36,7 @@ async function generateSimpleHtmlFromChats(chats){
   console.time('[DEBUG] generateSimpleHtmlFromChats 전체');
   console.time('[DEBUG] 1. 템플릿 로드');
 
-  const response = await fetch('modules/sch-customize/template/chat-archive-template.html');
+  const response = await fetch('modules/chat-tailor/template/chat-archive-template.html');
   const templateHtml = await response.text();
 
   const parser = new DOMParser();
@@ -48,8 +48,8 @@ async function generateSimpleHtmlFromChats(chats){
   let prevSpeaker;
 
   // 설정값을 루프 밖에서 한 번만 가져옴 (성능 최적화)
-  const includeWhisperFlag = game.settings.get("sch-customize", "includeWhisper");
-  const hideWhisperSetting = game.settings.get("sch-customize", "hideWhisper");
+  const includeWhisperFlag = game.settings.get("chat-tailor", "includeWhisper");
+  const hideWhisperSetting = game.settings.get("chat-tailor", "hideWhisper");
 
   console.time('[DEBUG] 2. 채팅 처리 루프');
   let chatCount = 0;
@@ -64,7 +64,7 @@ async function generateSimpleHtmlFromChats(chats){
     }
     chatCount++;
     if (chat.rolls && chat.rolls.length > 0) rollCount++;
-    if (chat.flags?.priv_talk || chat.getFlag?.('sch-customize', 'priv_talk')) privTalkCount++;
+    if (chat.flags?.priv_talk || chat.getFlag?.('chat-tailor', 'priv_talk')) privTalkCount++;
     const chatMergeFlag = prevSpeaker === chat.alias;
     prevPtFlag = await appendChatContents(chat, chatMergeFlag, prevPtFlag, whisperFlag, container, hideWhisperSetting);
     prevSpeaker = chat.alias;
@@ -109,7 +109,7 @@ async function generateSimpleHtmlFromChats(chats){
   return [doc.documentElement.outerHTML];
 }
 async function generateHtmlFromChats(chats) {
-  const response = await fetch('modules/sch-customize/template/chat-archive-template.html');
+  const response = await fetch('modules/chat-tailor/template/chat-archive-template.html');
   const templateHtml = await response.text();
 
   const parser = new DOMParser();
@@ -120,8 +120,8 @@ async function generateHtmlFromChats(chats) {
   let prevSpeaker;
 
   // 설정값을 루프 밖에서 한 번만 가져옴 (성능 최적화)
-  const includeWhisperFlag = game.settings.get("sch-customize", "includeWhisper");
-  const hideWhisperSetting = game.settings.get("sch-customize", "hideWhisper");
+  const includeWhisperFlag = game.settings.get("chat-tailor", "includeWhisper");
+  const hideWhisperSetting = game.settings.get("chat-tailor", "hideWhisper");
 
   for (const chat of chats) {
     let whisperFlag = chat.whisper && chat.whisper.length > 0;
@@ -170,7 +170,7 @@ async function appendChatContents(chat, chatMergeFlag, prevPtFlag, whisperFlag, 
   let speaker = chat.alias;
 
   // Roll이 있거나 특별 처리가 필요한 경우만 getRollResultContent 사용
-  const privTalkFlag = flags?.priv_talk || chat.getFlag('sch-customize', 'priv_talk') || false;
+  const privTalkFlag = flags?.priv_talk || chat.getFlag('chat-tailor', 'priv_talk') || false;
   const hasRolls = chat.isRoll;
   const isItemCard = chat.flag?.item || false;
 
@@ -676,7 +676,7 @@ async function getRollResultContent(chat) {
   const startTime = performance.now();
   _debugRollCount++;
 
-  const isPrivTalk = chat.flags?.priv_talk || chat.getFlag?.('sch-customize', 'priv_talk') || false;
+  const isPrivTalk = chat.flags?.priv_talk || chat.getFlag?.('chat-tailor', 'priv_talk') || false;
 
 /*  // 화면에 이미 렌더링된 메시지가 있으면 직접 사용 (모듈 처리 완료 상태)
   const rendered = document.querySelector(`[data-message-id="${chat.id}"]`);
@@ -816,7 +816,7 @@ function cleanImageFilename(filename) {
   return filename;
 }
 
-console.log('[sch-customize] chat-log.js: 클래스 정의 직전');
+console.log('[chat-tailor] chat-log.js: 클래스 정의 직전');
 
 class DownloadChatArchive extends FormApplication {
   constructor() {
@@ -880,7 +880,7 @@ class openChatArchiveWindow extends FormApplication {
   }
 }
 
-console.log('[sch-customize] chat-log.js: 클래스 정의 완료, globalThis.DownloadChatArchive =', globalThis.DownloadChatArchive);
+console.log('[chat-tailor] chat-log.js: 클래스 정의 완료, globalThis.DownloadChatArchive =', globalThis.DownloadChatArchive);
 
 async function getDFchatArchive(filepath) {
   try {
@@ -896,7 +896,7 @@ async function getDFchatArchive(filepath) {
     console.error(`Failed to read JSON for archive ${filepath}\n${error}`);
     throw error;
   } finally {
-    game.settings.set("sch-customize", "convertDFchatArchive", "");
+    game.settings.set("chat-tailor", "convertDFchatArchive", "");
   }
 }
 

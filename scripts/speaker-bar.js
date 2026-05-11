@@ -3,7 +3,7 @@
  * Foundry VTT v12 ~ v14 호환
  */
 
-const MODULE_ID = "sch-customize";
+const MODULE_ID = "chat-tailor";
 const LOCKED_FLAG_KEY = "lockedSpeaker";
 const DEFAULT_IMG = "icons/svg/mystery-man.svg";
 
@@ -74,18 +74,18 @@ function resolveCurrentSpeaker() {
  */
 function createSpeakerBarElement() {
   const bar = document.createElement("div");
-  bar.className = "sch-speaker-bar";
+  bar.className = "ct-speaker-bar";
   bar.innerHTML = `
-    <img class="sch-speaker-portrait" src="${DEFAULT_IMG}" alt="" />
-    <span class="sch-speaker-name">—</span>
-    <i class="sch-speaker-lock fas fa-lock-open" title="발화자 고정 (클릭하여 토글)"></i>
+    <img class="ct-speaker-portrait" src="${DEFAULT_IMG}" alt="" />
+    <span class="ct-speaker-name">—</span>
+    <i class="ct-speaker-lock fas fa-lock-open" title="발화자 고정 (클릭하여 토글)"></i>
   `;
 
   // 잠금 토글
-  bar.querySelector(".sch-speaker-lock").addEventListener("click", onLockToggle);
+  bar.querySelector(".ct-speaker-lock").addEventListener("click", onLockToggle);
 
   // 초상화 클릭 시 해당 액터 시트 열기
-  bar.querySelector(".sch-speaker-portrait").addEventListener("click", () => {
+  bar.querySelector(".ct-speaker-portrait").addEventListener("click", () => {
     const { actor } = resolveCurrentSpeaker();
     actor?.sheet?.render(true);
   });
@@ -127,13 +127,13 @@ async function onLockToggle() {
  * 발화자 바 갱신
  */
 export function updateSpeakerBar() {
-  const bar = document.querySelector(".sch-speaker-bar");
+  const bar = document.querySelector(".ct-speaker-bar");
   if (!bar) return;
 
   const { img, name, locked } = resolveCurrentSpeaker();
-  const imgEl = bar.querySelector(".sch-speaker-portrait");
-  const nameEl = bar.querySelector(".sch-speaker-name");
-  const lockEl = bar.querySelector(".sch-speaker-lock");
+  const imgEl = bar.querySelector(".ct-speaker-portrait");
+  const nameEl = bar.querySelector(".ct-speaker-name");
+  const lockEl = bar.querySelector(".ct-speaker-lock");
 
   imgEl.src = img;
   nameEl.textContent = name;
@@ -154,7 +154,7 @@ export function updateSpeakerBar() {
  */
 function placeSpeakerBar(textarea) {
   // 기존 바 제거 후 새로 삽입 (재렌더 대응)
-  const existing = document.querySelector(".sch-speaker-bar");
+  const existing = document.querySelector(".ct-speaker-bar");
   if (existing) existing.remove();
 
   const bar = createSpeakerBarElement();
@@ -226,14 +226,14 @@ export function registerSpeakerBar() {
 
   // 폴백: 일반 채팅 메시지 렌더 시 바가 없으면 다시 삽입
   Hooks.on("renderChatMessage", () => {
-    if (!document.querySelector(".sch-speaker-bar")) {
+    if (!document.querySelector(".ct-speaker-bar")) {
       injectSpeakerBar(null);
     }
   });
 
   // 최후 폴백: ready 후 한 번 더 시도
   Hooks.once("ready", () => {
-    if (!document.querySelector(".sch-speaker-bar")) {
+    if (!document.querySelector(".ct-speaker-bar")) {
       injectSpeakerBar(null);
     }
   });
