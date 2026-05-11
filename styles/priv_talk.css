@@ -6,14 +6,18 @@
   --sch-cus-chat-font-size: 14px;
 }
 
-li.chat-message.message.flexcol.priv_talk {
+:is(.chat-popout, #chat-log, .chat-log)  li.chat-message.message.flexcol.priv_talk {
   border: none;
   margin-left: var(--priv-talk-margin-left);
   padding: 5px;
   position: relative;
 }
 
-li.chat-message.message.flexcol.priv_talk::before {
+:is(.chat-popout, #chat-log, .chat-log)  li.chat-message.message.flexcol.priv_talk:not(.top):not(.middle):not(.end) {
+  border-radius: 5px 0 0 5px;
+}
+
+:is(.chat-popout, #chat-log, .chat-log) li.chat-message.message.flexcol.priv_talk::before {
   content: "";
   position: absolute;
   top: 0;
@@ -24,22 +28,23 @@ li.chat-message.message.flexcol.priv_talk::before {
   opacity:var(--priv-talk-bg-brightness);
   pointer-events: none;
   z-index: 0;
+  border-radius: inherit;
 }
 
-li.chat-message.message.flexcol.priv_talk > * {
+:is(.chat-popout, #chat-log, .chat-log) li.chat-message.message.flexcol.priv_talk > * {
   position: relative;
   z-index: 1;
 }
-li.chat-message.message.flexcol.priv_talk > div.message-content>:not(div.pt) {
+:is(.chat-popout, #chat-log, .chat-log) li.chat-message.message.flexcol.priv_talk > div.message-content>:not(div.pt) {
   display:none;
 }
 
-li.chat-message.message.flexcol > div.message-content {
+:is(.chat-popout, #chat-log, .chat-log) li.chat-message.message.flexcol > div.message-content {
   font-size: var(--sch-cus-chat-font-size);
 }
 
 
-li.chat-message.message.flexcol.priv_talk > div.message-content {
+:is(.chat-popout, #chat-log, .chat-log) li.chat-message.message.flexcol.priv_talk > div.message-content {
   color: var(--priv-talk-font-color);
   font-size: var(--priv-talk-font-size);
   padding: 0;
@@ -54,10 +59,28 @@ li.chat-message.message.flexcol.priv_talk > div.message-content {
   grid-template-columns: 2fr 5fr;
 }
 
+:is(.chat-popout, #chat-log, .chat-log)  li.chat-message.message.flexcol.priv_talk.top {
+  margin-bottom: 0;
+  border-radius: 5px 5px 0 0;
+}
+
+
+:is(.chat-popout, #chat-log, .chat-log) li.chat-message.message.flexcol.priv_talk.middle {
+  margin-bottom: 0;
+  margin-top: 0;
+  border-radius: 0;
+}
+
+
+:is(.chat-popout, #chat-log, .chat-log) li.chat-message.message.flexcol.priv_talk.end {
+  margin-top: 0;
+  border-radius: 0 0 5px 5px;
+}
 li.chat-message.message.flexcol.priv_talk.top {
   margin-bottom: 0;
   border-radius: 5px 5px 0 0;
 }
+
 
 li.chat-message.message.flexcol.priv_talk.middle {
   margin-bottom: 0;
@@ -70,4 +93,95 @@ li.chat-message.message.flexcol.priv_talk.end {
   border-radius: 0 0 5px 5px;
 }
 
+:is(.chat-popout, #chat-log, .chat-log) li.chat-message.message.flexcol.middle>header {
+  display: none;
+}
 
+:is(.chat-popout, #chat-log, .chat-log) li.chat-message.message.flexcol.end>header {
+  display: none;
+}
+
+:is(.chat-popout, #chat-log, .chat-log)  li.chat-message.message.flexcol.top {
+  margin-bottom: 0;
+  border-radius: 5px 5px 0 0;
+}
+
+:is(.chat-popout, #chat-log, .chat-log) li.chat-message.message.flexcol.middle {
+  margin-bottom: 0;
+  margin-top: 0;
+  border-radius: 0;
+}
+
+:is(.chat-popout, #chat-log, .chat-log) li.chat-message.message.flexcol.end {
+  margin-top: 0;
+  border-radius: 0 0 5px 5px;
+}
+
+
+
+/*back*/
+:is(.chat-popout, #chat-log, .chat-log)  li.chat-message.message.flexcol.top {
+  margin-bottom: 0;
+  border-radius: 5px 5px 0 0;
+}
+
+:is(.chat-popout, #chat-log, .chat-log) li.chat-message.message.flexcol.middle {
+  margin-bottom: 0;
+  margin-top: 0;
+  border-radius: 0;
+}
+
+:is(.chat-popout, #chat-log, .chat-log) li.chat-message.message.flexcol.end {
+  margin-top: 0;
+  border-radius: 0 0 5px 5px;
+}
+
+:is(.chat-popout, #chat-log, .chat-log) .message {
+  border-width: 0;
+  border-left: 0;
+  border-color: var(--user-color);
+}
+
+:is(.chat-popout, #chat-log, .chat-log)  li.chat-message.message.flexcol.priv_talk.top {
+  margin-bottom: 0;
+  border-radius: 5px 5px 0 0;
+}
+
+li.chat-message.message.flexcol.priv_talk.top {
+  margin-bottom: 0;
+  border-radius: 5px 5px 0 0;
+}
+
+:is(.chat-popout, #chat-log, .chat-log) li.chat-message.message.flexcol.priv_talk.middle {
+  margin-bottom: 0;
+  margin-top: 0;
+  border-radius: 0;
+}
+li.chat-message.message.flexcol.priv_talk.middle {
+  margin-bottom: 0;
+  margin-top: 0;
+  border-radius: 0;
+}
+
+li.chat-message.message.flexcol.priv_talk.end {
+  margin-top: 0;
+  border-radius: 0 0 5px 5px;
+}
+
+:is(.chat-popout, #chat-log, .chat-log) li.chat-message.message.flexcol.priv_talk.end {
+  margin-top: 0;
+  border-radius: 0 0 5px 5px;
+}
+
+:is(.chat-popout, #chat-log, .chat-log)  li.chat-message.message.flexcol.priv_talk:not(.top):not(.middle):not(.end) {
+  border-radius: 5px 0 0 5px;
+}
+
+:is(.chat-popout, #chat-log, .chat-log)  li.chat-message.message.flexcol:not(.top):not(.middle):not(.end) {
+  border-radius: 5px 0 0 5px;
+}
+
+:is(.chat-popout, #chat-log, .chat-log) .message::before {
+  background: none;
+  border-radius: 0;
+}

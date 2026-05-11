@@ -3,12 +3,12 @@
   "name": "sch-customize",
   "title": "sch-customize",
   "description": "customizing",
-  "version": "1.0.4",
+  "version": "1.0.7",
   "minimumCoreVersion": "11",
-  "compatibleCoreVersion": "11",
+  "compatibleCoreVersion": "13",
   "compatibility": {
     "minimum": "11",
-    "verified": "11"
+    "verified": "13"
   },
   "author": "Scheree",
   "authors": [
@@ -25,7 +25,7 @@
       "type": "Macro"
     }
   ],
-  "styles": ["styles/priv_talk.css"],
+  "styles": [  "styles/priv_talk.css", "styles/speaker-bar.css"],
   "relationships": {
     "requires": [{
       "id": "_chatcommands",
@@ -34,10 +34,23 @@
       "compatibility": { "verified": "2.0.1" }
     }]
   },
-  "scripts": [
-    "./scripts/init.js",
-    "./scripts/chat-log.js",
-    "./lib/jszip.min.js"
+    "esmodules": [
+      "./scripts/init.js"
+    ],
+    "scripts": [
+      "./lib/jszip.min.js"
+    ],
+    "languages": [
+      {
+        "lang": "en",
+        "name": "English",
+        "path": "languages/en.json"
+      },
+      {
+        "lang": "ko",
+        "name": "한국어",
+        "path": "languages/ko.json"
+      }
   ],
   "url": "https://github.com/scheree125/sch-customize",
   "manifest": "https://github.com/scheree125/sch-customize/releases/latest/download/module.json",

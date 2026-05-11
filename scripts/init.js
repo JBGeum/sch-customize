@@ -1,10 +1,17 @@
+import { DownloadChatArchive, openChatArchiveWindow } from "./chat-log.js";
+import { registerSpeakerBar } from "./speaker-bar.js";
+
 let lastPrivTalkMsg;
+let lastBaseMsg;
 let privTalkIndex = 0;
 
 Hooks.once("setup", function () {
   const commands = game.chatCommands;
-
+  if (game.settings.get("sch-customize", "enableSpeakerBar")) {
+    registerSpeakerBar();
+  }
   lastPrivTalkMsg = null;
+  lastBaseMsg = null;
   privTalkIndex = 0;
   commands.register({
     name: "/pt",
@@ -37,31 +44,51 @@ Hooks.once("setup", function () {
 
 
 Hooks.on("renderChatMessage", (message, html, messageData) => {
+  const privTalkMergeEnabled = game.settings.get("sch-customize", "privTalkMerge");
+  const baseMessageMergeEnabled = game.settings.get("sch-customize", "baseMessageMerge");
   const privFlag = message.flags.priv_talk || message.getFlag('sch-customize', 'priv_talk');
   if (privFlag) {
     html.addClass('priv_talk');
     html.addClass(`user-${message.user.id}`);
-    if(privTalkIndex > 0){
-      if(lastPrivTalkMsg) {
+    if (privTalkMergeEnabled) {
+      if (privTalkIndex > 0 && lastPrivTalkMsg) {
         const prevHtml = lastPrivTalkMsg;
-        if (prevHtml.hasClass('end')){
+        if (prevHtml.hasClass('end')) {
           prevHtml.removeClass('end');
           prevHtml.addClass('middle');
           html.addClass('end');
-        } else{
+        } else {
           prevHtml.addClass('top');
           html.addClass('end');
         }
       }
+      lastPrivTalkMsg = html;
     }
     privTalkIndex++;
-    lastPrivTalkMsg = html;
     html.find('header').css("display", "none");
     html.find('.message-content').html(`<div class="pt priv_user">${message.speaker.alias}</div> <div class="pt">${message.content}</div>`);
     if (!game.settings.get("sch-customize", "privTalkSpeakerLineChange"))
       html.addClass('line-change');
   }
-  else{
+  else {
+    if (baseMessageMergeEnabled && lastBaseMsg) {
+      const lastMsgEl = lastBaseMsg.html;
+      const lastMessage = lastBaseMsg.msg;
+      const lastMsgPrivTalkFlag = privTalkIndex > 0;
+      const lastMsgTypeSame = lastMessage.style == message.style;
+      const sameAutherChat = lastMessage.author == message.author;
+      if (!sameAutherChat || lastMsgPrivTalkFlag || !lastMsgTypeSame) {
+
+      } else if (sameAutherChat && lastMsgEl.hasClass('end')) {
+        lastMsgEl.removeClass('end');
+        lastMsgEl.addClass('middle');
+        html.addClass('end');
+      } else {
+        lastMsgEl.addClass('top');
+        html.addClass('end');
+      }
+    }
+    lastBaseMsg = { msg: message, html: html };
     privTalkIndex = 0;
   }
 });
@@ -69,22 +96,33 @@ Hooks.on("renderChatMessage", (message, html, messageData) => {
 
 Hooks.once('init', () => {
 
+  game.settings.register("sch-customize", "enableSpeakerBar", {
+    name: "sch-customize.settings.enableSpeakerBar.name",
+    hint: "sch-customize.settings.enableSpeakerBar.hint",
+    scope: "client",
+    config: true,
+    default: true,
+    type: Boolean,
+    onChange: _ => window.location.reload()
+  });
+
   game.settings.registerMenu("sch-customize", "downloadChatArchiveMenu", {
-    name: `채팅 로그 다운로드`,
-    hint: `html형식의 채팅 로그와 이미지 파일을 다운로드 합니다.`,
+    name: "sch-customize.settings.downloadChatArchiveMenu.name",
+    hint: "sch-customize.settings.downloadChatArchiveMenu.hint",
     icon: "fas fa-download",
     type: DownloadChatArchive
   });
 
   game.settings.registerMenu("sch-customize", "openChatArchiveWindow", {
-    name: `채팅 로그 표시`,
-    hint: `현재까지의 채팅 로그를 새 창에 표시합니다.`,
+    name: "sch-customize.settings.openChatArchiveWindow.name",
+    hint: "sch-customize.settings.openChatArchiveWindow.hint",
     icon: "fas fa-arrow-up-right-from-square",
     type: openChatArchiveWindow
   });
+
   game.settings.register("sch-customize", "includeWhisper", {
-    name: "채팅 로그 귓속말을 포함",
-    hint: "채팅 로그에 귓속말을 포함합니다.",
+    name: "sch-customize.settings.includeWhisper.name",
+    hint: "sch-customize.settings.includeWhisper.hint",
     scope: "world",
     config: true,
     default: false,
@@ -92,8 +130,8 @@ Hooks.once('init', () => {
   });
 
   game.settings.register("sch-customize", "hideWhisper", {
-    name: "채팅 로그 귓속말 숨김",
-    hint: "채팅 로그의 귓속말을 가립니다. 회색 배경으로 표시되며 클릭 시 텍스트가 표시됩니다.",
+    name: "sch-customize.settings.hideWhisper.name",
+    hint: "sch-customize.settings.hideWhisper.hint",
     scope: "client",
     config: true,
     default: false,
@@ -101,7 +139,7 @@ Hooks.once('init', () => {
   });
 
   game.settings.register("sch-customize", "convertDFchatArchive", {
-    name: "DF Chat Archive 변환",
+    name: "sch-customize.settings.convertDFchatArchive.name",
     restricted: true,
     config: true,
     type: String,
@@ -111,13 +149,13 @@ Hooks.once('init', () => {
       if (value.endsWith(".json"))
         getDFchatArchive(value);
       else if (value.length > 0)
-        alert("json 파일을 선택해 주세요.")
+        alert(game.i18n.localize("sch-customize.settings.convertDFchatArchive.alert"));
     }
   });
 
   game.settings.register("sch-customize", "customPrivTalkAlias", {
-    name: "잡담 시작을 위한 문자 지정",
-    hint: "잡담으로 발언할 때 처음으로 타이핑 하는 커스텀 문자를 등록합니다. 입력한 문자는 다른 모듈과 중복, 마크다운 옵션 등의 이유로 사용이 불가능 할 수 있습니다. 기본 옵션인 '/pt', '!', '`'는 유지됩니다.",
+    name: "sch-customize.settings.customPrivTalkAlias.name",
+    hint: "sch-customize.settings.customPrivTalkAlias.hint",
     scope: "client",
     config: true,
     default: "/p",
@@ -125,10 +163,9 @@ Hooks.once('init', () => {
     onChange: _ => window.location.reload()
   });
 
-
   game.settings.register("sch-customize", "markdownDelUse", {
-    name: "잡담에 마크다운 취소선 적용 여부",
-    hint: "채팅에 마크다운을 적용 시, 잡담 중 ~로 감싸인 문자를 취소선으로 표시합니다.",
+    name: "sch-customize.settings.markdownDelUse.name",
+    hint: "sch-customize.settings.markdownDelUse.hint",
     scope: "client",
     config: true,
     default: false,
@@ -137,8 +174,8 @@ Hooks.once('init', () => {
   });
 
   game.settings.register("sch-customize", "privTalkAsOOC", {
-    name: "잡담을 OOC로 생성",
-    hint: "이후 생성되는 잡담은 OOC로 분류됩니다. 기본은 기타(Other)입니다.",
+    name: "sch-customize.settings.privTalkAsOOC.name",
+    hint: "sch-customize.settings.privTalkAsOOC.hint",
     scope: "world",
     config: true,
     default: false,
@@ -146,8 +183,8 @@ Hooks.once('init', () => {
   });
 
   game.settings.register("sch-customize", "privTalkSpeakerLineChange", {
-    name: "잡담 이름 표기 후 줄바꿈",
-    hint: "잡담에서 플레이어 닉네임 표시 후 줄바꿈하고 메세지 내용을 표시합니다.",
+    name: "sch-customize.settings.privTalkSpeakerLineChange.name",
+    hint: "sch-customize.settings.privTalkSpeakerLineChange.hint",
     scope: "client",
     config: true,
     default: false,
@@ -155,9 +192,29 @@ Hooks.once('init', () => {
     onChange: _ => window.location.reload()
   });
 
+  game.settings.register("sch-customize", "baseMessageMerge", {
+    name: "sch-customize.settings.baseMessageMerge.name",
+    hint: "sch-customize.settings.baseMessageMerge.hint",
+    scope: "client",
+    config: true,
+    default: true,
+    type: Boolean,
+    onChange: _ => window.location.reload()
+  });
+
+  game.settings.register("sch-customize", "privTalkMerge", {
+    name: "sch-customize.settings.privTalkMerge.name",
+    hint: "sch-customize.settings.privTalkMerge.hint",
+    scope: "client",
+    config: true,
+    default: true,
+    type: Boolean,
+    onChange: _ => window.location.reload()
+  });
+
   game.settings.register("sch-customize", "setChatLogFontSize", {
-    name: '기본 채팅 글자 크기',
-    hint: '기본 채팅 글자 크기 조절(기본 14px)',
+    name: "sch-customize.settings.setChatLogFontSize.name",
+    hint: "sch-customize.settings.setChatLogFontSize.hint",
     config: true,
     type: Number,
     scope: 'client',
@@ -170,10 +227,9 @@ Hooks.once('init', () => {
     onChange: (value) => this.updateCssProperty('clFontSize', `${value}px`)
   });
 
-
   game.settings.register("sch-customize", "setPrivTalkFontSize", {
-    name: '잡담 글자 크기',
-    hint: '잡담 글자 크기를 조절합니다.(기본 12px)',
+    name: "sch-customize.settings.setPrivTalkFontSize.name",
+    hint: "sch-customize.settings.setPrivTalkFontSize.hint",
     config: true,
     type: Number,
     scope: 'client',
@@ -187,8 +243,8 @@ Hooks.once('init', () => {
   });
 
   game.settings.register("sch-customize", "setPrivTalkFontOpacity", {
-    name: '잡담 글자 색상',
-    hint: '잡담 글자 색상인 검정색의 진하기를 조절합니다.(기본 0.8)',
+    name: "sch-customize.settings.setPrivTalkFontOpacity.name",
+    hint: "sch-customize.settings.setPrivTalkFontOpacity.hint",
     config: true,
     type: Number,
     scope: 'client',
@@ -202,8 +258,8 @@ Hooks.once('init', () => {
   });
 
   game.settings.register("sch-customize", "setPrivTalkMarginLeft", {
-    name: '잡담 여백 간격',
-    hint: '잡담 왼쪽으로 생기는 여백 간격을 조절합니다.(기본 10)',
+    name: "sch-customize.settings.setPrivTalkMarginLeft.name",
+    hint: "sch-customize.settings.setPrivTalkMarginLeft.hint",
     config: true,
     type: Number,
     scope: 'client',
@@ -213,12 +269,12 @@ Hooks.once('init', () => {
       step: 1
     },
     default: 10,
-    onChange: (value) => this.updateCssProperty('marginLeft', `${value}px`)
+    onChange: (value) => updateCssProperty('marginLeft', `${value}px`)
   });
 
   game.settings.register("sch-customize", "setPrivTalkBgBrightness", {
-    name: '잡담 밝기 조절',
-    hint: '잡담 배경색(유저 색상과 동일)을 밝게 표시합니다. 채팅의 배경색을 지정하는 다른 모듈의 옵션을 적용할 경우 알맞게 조절이 필요합니다.(기본 0.7)',
+    name: "sch-customize.settings.setPrivTalkBgBrightness.name",
+    hint: "sch-customize.settings.setPrivTalkBgBrightness.hint",
     config: true,
     type: Number,
     scope: 'client',
@@ -228,18 +284,18 @@ Hooks.once('init', () => {
       step: 0.05
     },
     default: 0.7,
-    onChange: (value) => this.updateCssProperty('brightness', `${value}`)
+    onChange: (value) => updateCssProperty('brightness', `${value}`)
   });
 
 
-  this.updateCssProperty('fontColor', `rgba(0,0,0,${(game.settings.get("sch-customize", "setPrivTalkFontOpacity"))})` );
-  this.updateCssProperty('clFontSize',`${game.settings.get("sch-customize", "setChatLogFontSize")}px`);
-  this.updateCssProperty('ptFontSize',`${game.settings.get("sch-customize", "setPrivTalkFontSize")}px`);
-  this.updateCssProperty('marginLeft',`${game.settings.get("sch-customize", "setPrivTalkMarginLeft")}px`);
-  this.updateCssProperty('brightness',`${game.settings.get("sch-customize", "setPrivTalkBgBrightness")}`);
+  updateCssProperty('fontColor', `rgba(0,0,0,${(game.settings.get("sch-customize", "setPrivTalkFontOpacity"))})` );
+  updateCssProperty('clFontSize',`${game.settings.get("sch-customize", "setChatLogFontSize")}px`);
+  updateCssProperty('ptFontSize',`${game.settings.get("sch-customize", "setPrivTalkFontSize")}px`);
+  updateCssProperty('marginLeft',`${game.settings.get("sch-customize", "setPrivTalkMarginLeft")}px`);
+  updateCssProperty('brightness',`${game.settings.get("sch-customize", "setPrivTalkBgBrightness")}`);
 });
 
-Hooks.once('ready', () => this.setUserColorBg());
+Hooks.once('ready', () => setUserColorBg());
 
 const cssProperty = {
   ptFontSize : '--priv-talk-font-size',
@@ -262,7 +318,7 @@ function setUserColorBg(){
   let cssText = '';
 
   game.users.forEach(user => {
-    cssText += `.user-${user.id} { background: ${user.color}; }`
+    cssText += `.user-${user.id} { background: ${user.color} !important;}`
   });
 
   if (style.styleSheet) {
