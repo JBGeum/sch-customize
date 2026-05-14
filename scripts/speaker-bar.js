@@ -3,6 +3,8 @@
  * Foundry VTT v12 ~ v14 호환
  */
 
+import { toElement, getRenderChatMessageHook } from "./compat/foundry.js";
+
 const MODULE_ID = "chat-tailor";
 const LOCKED_FLAG_KEY = "lockedSpeaker";
 const DEFAULT_IMG = "icons/svg/mystery-man.svg";
@@ -166,8 +168,8 @@ function placeSpeakerBar(textarea) {
  * 채팅 폼에 발화자 바 삽입 (DOM 준비 안 됐으면 대기)
  */
 function injectSpeakerBar(html) {
-  // v12: jQuery, v13+: HTMLElement 호환
-  const root = html instanceof HTMLElement ? html : html?.[0];
+  // v12: jQuery, v13+: HTMLElement — compat helper로 통일
+  const root = toElement(html);
 
   // root가 없거나(전체 문서 대상), 또는 root 안에 textarea가 있으면 즉시
   const search = root && root.querySelector ? root : document;
@@ -225,11 +227,7 @@ export function registerSpeakerBar() {
   Hooks.on("moveChatInput", () => injectSpeakerBar(null));
 
   // 폴백: 일반 채팅 메시지 렌더 시 바가 없으면 다시 삽입
-  // v13+: renderChatMessageHTML, v12: renderChatMessage
-  const renderMsgHook = (game?.release?.generation ?? 0) >= 13
-    ? "renderChatMessageHTML"
-    : "renderChatMessage";
-  Hooks.on(renderMsgHook, () => {
+  Hooks.on(getRenderChatMessageHook(), () => {
     if (!document.querySelector(".ct-speaker-bar")) {
       injectSpeakerBar(null);
     }
