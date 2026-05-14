@@ -2,7 +2,7 @@
 
 내러티브 중심의 TRPG 세션을 위해 Foundry VTT의 채팅 경험을 다듬는 모듈입니다. 잡담 스타일링, 채팅 로그 아카이브, 발화자 고정, 채팅 외관 세밀 조정 기능을 제공합니다.
 
-> Foundry VTT v11 – v13 호환 (v14 지원 작업 중).
+> Foundry VTT v12 – v13 호환 (v14 지원 작업 중).
 
 <!-- 📸 [대표 스크린샷] — 채팅 사이드바 전체를 한 장에 담은 인상적인 샷:
      - 여러 잡담이 그룹화된 모습 (서로 다른 유저, 다른 색상)
@@ -156,7 +156,7 @@ https://github.com/JBGeum/chat-tailor/releases/latest/download/module.json
 
 ## 호환성
 
-- **Foundry VTT**: v11, v12, v13 호환 (v14 작업 중)
+- **Foundry VTT**: v12, v13 검증. v14 지원 작업 중 — 코드 내부는 이미 v13+의 `renderChatMessageHTML` / `ChatMessage#renderHTML` / `CHAT_MESSAGE_STYLES` API를 사용하며, v12를 위한 폴백 분기를 함께 둡니다.
 - **시스템**: 시스템 비의존. 내러티브 중심 사용 목적으로 설계되었으며, 주로 DnD5e와 generic 시스템에서 테스트됨
 - **다른 모듈**: 대부분의 채팅 확장 모듈과 호환. 채팅 배경색을 변경하는 모듈을 함께 사용할 경우 잡담 밝기 설정값을 조절할 필요가 있을 수 있습니다.
 

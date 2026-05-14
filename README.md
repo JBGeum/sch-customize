@@ -2,7 +2,7 @@
 
 A Foundry VTT module that tailors the chat experience for narrative-heavy tabletop sessions. Add styled chitchat lines, archive chat logs, lock your speaker, and fine-tune chat appearance.
 
-> Compatible with Foundry VTT v11 – v13 (v14 support in progress).
+> Compatible with Foundry VTT v12 – v13 (v14 support in progress).
 
 <!-- 📸 [HERO SCREENSHOT] — A single overview shot showing the full chat sidebar with:
      - Several grouped chitchat messages (different users, different colors)
@@ -155,7 +155,7 @@ Open **Settings → Module Settings → Chat Tailor**:
 
 ## Compatibility
 
-- **Foundry VTT**: v11, v12, v13 (v14 in progress)
+- **Foundry VTT**: v12, v13 (verified). v14 support is in progress and the module already uses the v13+ `renderChatMessageHTML` / `ChatMessage#renderHTML` / `CHAT_MESSAGE_STYLES` APIs with graceful fallbacks for v12.
 - **Systems**: System-agnostic. Designed for narrative use, tested primarily on DnD5e and generic systems.
 - **Other modules**: Compatible with most chat-extension modules. If you use a module that overrides chat backgrounds, you may need to tune the chitchat brightness setting.
 

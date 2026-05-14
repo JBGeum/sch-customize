@@ -6,18 +6,24 @@
   --ct-chat-font-size: 14px;
 }
 
-:is(.chat-popout, #chat-log, .chat-log)  li.chat-message.message.flexcol.priv_talk {
+/*
+ * Foundry v12/v13/v14 호환을 위한 채팅 컨테이너·메시지 셀렉터 표준화
+ * - 컨테이너: v12 #chat-log / v13+ .chat-log / popout 모두 :is(...)로 매칭
+ * - 메시지 노드: v12 li.chat-message / v13+ .chat-message[data-message-id] —
+ *   :is(li, [data-message-id]).chat-message.message 형태로 둘 다 매칭
+ */
+:is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message.priv_talk {
   border: none;
   margin-left: var(--priv-talk-margin-left);
   padding: 5px;
   position: relative;
 }
 
-:is(.chat-popout, #chat-log, .chat-log)  li.chat-message.message.flexcol.priv_talk:not(.top):not(.middle):not(.end) {
+:is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message.priv_talk:not(.top):not(.middle):not(.end) {
   border-radius: 5px 0 0 5px;
 }
 
-:is(.chat-popout, #chat-log, .chat-log) li.chat-message.message.flexcol.priv_talk::before {
+:is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message.priv_talk::before {
   content: "";
   position: absolute;
   top: 0;
@@ -31,20 +37,20 @@
   border-radius: inherit;
 }
 
-:is(.chat-popout, #chat-log, .chat-log) li.chat-message.message.flexcol.priv_talk > * {
+:is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message.priv_talk > * {
   position: relative;
   z-index: 1;
 }
-:is(.chat-popout, #chat-log, .chat-log) li.chat-message.message.flexcol.priv_talk > div.message-content>:not(div.pt) {
+:is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message.priv_talk > div.message-content>:not(div.pt) {
   display:none;
 }
 
-:is(.chat-popout, #chat-log, .chat-log) li.chat-message.message.flexcol > div.message-content {
+:is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message > div.message-content {
   font-size: var(--ct-chat-font-size);
 }
 
 
-:is(.chat-popout, #chat-log, .chat-log) li.chat-message.message.flexcol.priv_talk > div.message-content {
+:is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message.priv_talk > div.message-content {
   color: var(--priv-talk-font-color);
   font-size: var(--priv-talk-font-size);
   padding: 0;
@@ -59,79 +65,42 @@
   grid-template-columns: 2fr 5fr;
 }
 
-:is(.chat-popout, #chat-log, .chat-log)  li.chat-message.message.flexcol.priv_talk.top {
+:is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message.priv_talk.top {
   margin-bottom: 0;
   border-radius: 5px 5px 0 0;
 }
 
-
-:is(.chat-popout, #chat-log, .chat-log) li.chat-message.message.flexcol.priv_talk.middle {
+:is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message.priv_talk.middle {
   margin-bottom: 0;
   margin-top: 0;
   border-radius: 0;
 }
 
-
-:is(.chat-popout, #chat-log, .chat-log) li.chat-message.message.flexcol.priv_talk.end {
-  margin-top: 0;
-  border-radius: 0 0 5px 5px;
-}
-li.chat-message.message.flexcol.priv_talk.top {
-  margin-bottom: 0;
-  border-radius: 5px 5px 0 0;
-}
-
-
-li.chat-message.message.flexcol.priv_talk.middle {
-  margin-bottom: 0;
-  margin-top: 0;
-  border-radius: 0;
-}
-
-li.chat-message.message.flexcol.priv_talk.end {
+:is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message.priv_talk.end {
   margin-top: 0;
   border-radius: 0 0 5px 5px;
 }
 
-:is(.chat-popout, #chat-log, .chat-log) li.chat-message.message.flexcol.middle>header {
+:is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message.middle>header {
   display: none;
 }
 
-:is(.chat-popout, #chat-log, .chat-log) li.chat-message.message.flexcol.end>header {
+:is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message.end>header {
   display: none;
 }
 
-:is(.chat-popout, #chat-log, .chat-log)  li.chat-message.message.flexcol.top {
+:is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message.top {
   margin-bottom: 0;
   border-radius: 5px 5px 0 0;
 }
 
-:is(.chat-popout, #chat-log, .chat-log) li.chat-message.message.flexcol.middle {
+:is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message.middle {
   margin-bottom: 0;
   margin-top: 0;
   border-radius: 0;
 }
 
-:is(.chat-popout, #chat-log, .chat-log) li.chat-message.message.flexcol.end {
-  margin-top: 0;
-  border-radius: 0 0 5px 5px;
-}
-
-
-
-/*back*/
-:is(.chat-popout, #chat-log, .chat-log)  li.chat-message.message.flexcol.top {
-  margin-bottom: 0;
-  border-radius: 5px 5px 0 0;
-}
-
-:is(.chat-popout, #chat-log, .chat-log) li.chat-message.message.flexcol.middle {
-  margin-bottom: 0;
-  margin-top: 0;
-  border-radius: 0;
-}
-
-:is(.chat-popout, #chat-log, .chat-log) li.chat-message.message.flexcol.end {
+:is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message.end {
   margin-top: 0;
   border-radius: 0 0 5px 5px;
 }
@@ -142,42 +111,7 @@ li.chat-message.message.flexcol.priv_talk.end {
   border-color: var(--user-color);
 }
 
-:is(.chat-popout, #chat-log, .chat-log)  li.chat-message.message.flexcol.priv_talk.top {
-  margin-bottom: 0;
-  border-radius: 5px 5px 0 0;
-}
-
-li.chat-message.message.flexcol.priv_talk.top {
-  margin-bottom: 0;
-  border-radius: 5px 5px 0 0;
-}
-
-:is(.chat-popout, #chat-log, .chat-log) li.chat-message.message.flexcol.priv_talk.middle {
-  margin-bottom: 0;
-  margin-top: 0;
-  border-radius: 0;
-}
-li.chat-message.message.flexcol.priv_talk.middle {
-  margin-bottom: 0;
-  margin-top: 0;
-  border-radius: 0;
-}
-
-li.chat-message.message.flexcol.priv_talk.end {
-  margin-top: 0;
-  border-radius: 0 0 5px 5px;
-}
-
-:is(.chat-popout, #chat-log, .chat-log) li.chat-message.message.flexcol.priv_talk.end {
-  margin-top: 0;
-  border-radius: 0 0 5px 5px;
-}
-
-:is(.chat-popout, #chat-log, .chat-log)  li.chat-message.message.flexcol.priv_talk:not(.top):not(.middle):not(.end) {
-  border-radius: 5px 0 0 5px;
-}
-
-:is(.chat-popout, #chat-log, .chat-log)  li.chat-message.message.flexcol:not(.top):not(.middle):not(.end) {
+:is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message:not(.top):not(.middle):not(.end) {
   border-radius: 5px 0 0 5px;
 }
 
