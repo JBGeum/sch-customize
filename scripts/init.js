@@ -5,6 +5,24 @@ let lastPrivTalkMsg;
 let lastBaseMsg;
 let privTalkIndex = 0;
 
+// v12: jQuery, v13+: HTMLElement — 둘 다 받아 HTMLElement로 통일
+function toElement(htmlOrEl) {
+  if (!htmlOrEl) return null;
+  if (htmlOrEl instanceof HTMLElement) return htmlOrEl;
+  return htmlOrEl[0] ?? null;
+}
+
+// hook 등록 시점에 안전하게 평가 (모듈 import 시점에는 game이 아직 없음)
+function getRenderChatMessageHook() {
+  return (game?.release?.generation ?? 0) >= 13
+    ? "renderChatMessageHTML"
+    : "renderChatMessage";
+}
+
+function getChatStyles() {
+  return CONST.CHAT_MESSAGE_STYLES ?? CONST.CHAT_MESSAGE_TYPES;
+}
+
 Hooks.once("setup", function () {
   const commands = game.chatCommands;
   if (game.settings.get("chat-tailor", "enableSpeakerBar")) {
@@ -27,7 +45,11 @@ Hooks.once("setup", function () {
       messageData.speaker.actor = speakUser.id;
       messageData.speaker.token = null;
       messageData.speaker.alias = speakUser.name;
-      messageData.type = game.settings.get("chat-tailor", "privTalkAsOOC") ? CONST.CHAT_MESSAGE_TYPES.OOC : CONST.CHAT_MESSAGE_TYPES.OTHER;
+      const styles = getChatStyles();
+      const styleValue = game.settings.get("chat-tailor", "privTalkAsOOC") ? styles.OOC : styles.OTHER;
+      // v13+: .style 사용, v12: .type 사용 — 둘 다 세팅해 호환
+      messageData.style = styleValue;
+      messageData.type  = styleValue;
 
       return {
         content: parameters,
@@ -43,58 +65,79 @@ Hooks.once("setup", function () {
 });
 
 
-Hooks.on("renderChatMessage", (message, html, messageData) => {
+function onRenderChatMessage(message, htmlOrEl /*, messageData */) {
+  const el = toElement(htmlOrEl);
+  if (!el) return;
+
   const privTalkMergeEnabled = game.settings.get("chat-tailor", "privTalkMerge");
   const baseMessageMergeEnabled = game.settings.get("chat-tailor", "baseMessageMerge");
-  const privFlag = message.flags.priv_talk || message.getFlag('chat-tailor', 'priv_talk');
+  const privFlag = message.flags?.priv_talk || message.getFlag("chat-tailor", "priv_talk");
+
   if (privFlag) {
-    html.addClass('priv_talk');
-    html.addClass(`user-${message.user.id}`);
+    el.classList.add("priv_talk");
+    el.classList.add(`user-${message.user?.id ?? message.author?.id}`);
+
     if (privTalkMergeEnabled) {
       if (privTalkIndex > 0 && lastPrivTalkMsg) {
-        const prevHtml = lastPrivTalkMsg;
-        if (prevHtml.hasClass('end')) {
-          prevHtml.removeClass('end');
-          prevHtml.addClass('middle');
-          html.addClass('end');
+        const prevEl = lastPrivTalkMsg;
+        if (prevEl.classList.contains("end")) {
+          prevEl.classList.remove("end");
+          prevEl.classList.add("middle");
+          el.classList.add("end");
         } else {
-          prevHtml.addClass('top');
-          html.addClass('end');
+          prevEl.classList.add("top");
+          el.classList.add("end");
         }
       }
-      lastPrivTalkMsg = html;
+      lastPrivTalkMsg = el;
     }
     privTalkIndex++;
-    html.find('header').css("display", "none");
-    html.find('.message-content').html(`<div class="pt priv_user">${message.speaker.alias}</div> <div class="pt">${message.content}</div>`);
-    if (!game.settings.get("chat-tailor", "privTalkSpeakerLineChange"))
-      html.addClass('line-change');
-  }
-  else {
-    if (baseMessageMergeEnabled && lastBaseMsg) {
-      const lastMsgEl = lastBaseMsg.html;
-      const lastMessage = lastBaseMsg.msg;
-      const lastMsgPrivTalkFlag = privTalkIndex > 0;
-      const lastMsgTypeSame = lastMessage.style == message.style;
-      const sameAutherChat = lastMessage.author == message.author;
-      if (!sameAutherChat || lastMsgPrivTalkFlag || !lastMsgTypeSame) {
 
-      } else if (sameAutherChat && lastMsgEl.hasClass('end')) {
-        lastMsgEl.removeClass('end');
-        lastMsgEl.addClass('middle');
-        html.addClass('end');
+    const header = el.querySelector("header");
+    if (header) header.style.display = "none";
+
+    const content = el.querySelector(".message-content");
+    if (content) {
+      content.innerHTML = `<div class="pt priv_user">${message.speaker.alias}</div> <div class="pt">${message.content}</div>`;
+    }
+
+    if (!game.settings.get("chat-tailor", "privTalkSpeakerLineChange"))
+      el.classList.add("line-change");
+    return;
+  }
+
+  if (baseMessageMergeEnabled && lastBaseMsg) {
+    const lastMsgEl = lastBaseMsg.el;
+    const lastMessage = lastBaseMsg.msg;
+    const lastMsgPrivTalkFlag = privTalkIndex > 0;
+    // v13+: .style, v12: .type — 어느 쪽이든 비교
+    const lastStyle = lastMessage.style ?? lastMessage.type;
+    const currStyle = message.style ?? message.type;
+    const lastMsgTypeSame = lastStyle === currStyle;
+    // v13+: .author, v12: .user — 어느 쪽이든 비교
+    const lastAuthor = lastMessage.author?.id ?? lastMessage.user?.id ?? lastMessage.author ?? lastMessage.user;
+    const currAuthor = message.author?.id ?? message.user?.id ?? message.author ?? message.user;
+    const sameAuthorChat = lastAuthor === currAuthor;
+
+    if (sameAuthorChat && !lastMsgPrivTalkFlag && lastMsgTypeSame) {
+      if (lastMsgEl.classList.contains("end")) {
+        lastMsgEl.classList.remove("end");
+        lastMsgEl.classList.add("middle");
+        el.classList.add("end");
       } else {
-        lastMsgEl.addClass('top');
-        html.addClass('end');
+        lastMsgEl.classList.add("top");
+        el.classList.add("end");
       }
     }
-    lastBaseMsg = { msg: message, html: html };
-    privTalkIndex = 0;
   }
-});
+  lastBaseMsg = { msg: message, el };
+  privTalkIndex = 0;
+}
 
 
 Hooks.once('init', () => {
+
+  Hooks.on(getRenderChatMessageHook(), onRenderChatMessage);
 
   game.settings.register("chat-tailor", "enableSpeakerBar", {
     name: "chat-tailor.settings.enableSpeakerBar.name",
@@ -224,7 +267,7 @@ Hooks.once('init', () => {
       step: 0.5
     },
     default: 14,
-    onChange: (value) => this.updateCssProperty('clFontSize', `${value}px`)
+    onChange: (value) => updateCssProperty('clFontSize', `${value}px`)
   });
 
   game.settings.register("chat-tailor", "setPrivTalkFontSize", {
@@ -239,7 +282,7 @@ Hooks.once('init', () => {
       step: 0.5
     },
     default: 12,
-    onChange: (value) => this.updateCssProperty('ptFontSize', `${value}px`)
+    onChange: (value) => updateCssProperty('ptFontSize', `${value}px`)
   });
 
   game.settings.register("chat-tailor", "setPrivTalkFontOpacity", {
@@ -254,7 +297,7 @@ Hooks.once('init', () => {
       step: 0.05
     },
     default: 0.8,
-    onChange: (value) => this.updateCssProperty('fontColor', `rgba(0,0,0,${value})`)
+    onChange: (value) => updateCssProperty('fontColor', `rgba(0,0,0,${value})`)
   });
 
   game.settings.register("chat-tailor", "setPrivTalkMarginLeft", {

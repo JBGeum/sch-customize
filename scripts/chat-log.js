@@ -1,5 +1,24 @@
 console.log('[chat-tailor] chat-log.js: 평가 시작');
 
+// v13+: renderHTML(HTMLElement) / v12: getHTML(jQuery)
+async function renderChatMessageElement(chat) {
+  if (typeof chat.renderHTML === "function") {
+    return await chat.renderHTML();
+  }
+  const $html = await chat.getHTML();
+  return $html?.[0] ?? null;
+}
+
+// v12: renderChatMessage / v13+: renderChatMessageHTML — 두 훅 모두 호출해 다른 모듈 호환
+function callRenderChatMessageHooks(chat, element, data) {
+  const isV13Plus = (game?.release?.generation ?? 0) >= 13;
+  if (isV13Plus) {
+    Hooks.callAll("renderChatMessageHTML", chat, element, data);
+  } else {
+    Hooks.callAll("renderChatMessage", chat, window.jQuery ? window.jQuery(element) : element, data);
+  }
+}
+
 function saveAs(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -166,13 +185,14 @@ async function generateHtmlFromChats(chats) {
 }
 
 async function appendChatContents(chat, chatMergeFlag, prevPtFlag, whisperFlag, container, hideWhisperSetting) {
-  const {type, rolls, flags, author } = chat;
+  const { flags, author } = chat;
   let speaker = chat.alias;
 
   // Roll이 있거나 특별 처리가 필요한 경우만 getRollResultContent 사용
   const privTalkFlag = flags?.priv_talk || chat.getFlag('chat-tailor', 'priv_talk') || false;
   const hasRolls = chat.isRoll;
-  const isItemCard = chat.flag?.item || false;
+  // 기존 코드의 chat.flag?.item 오타 수정 — flags 복수형이 정상
+  const isItemCard = flags?.item || false;
 
   let text;
   if (hasRolls || isItemCard) {
@@ -685,21 +705,18 @@ async function getRollResultContent(chat) {
   }*/
 
   // 화면에 없으면 임시 컨테이너에 렌더링
-  const html = await chat.getHTML();
+  const element = await renderChatMessageElement(chat);
+  if (!element) return '';
+
   const tempContainer = document.createElement('div');
   tempContainer.style.display = 'none';
   document.body.appendChild(tempContainer);
-  tempContainer.appendChild(html[0]);
+  tempContainer.appendChild(element);
 
-  Hooks.callAll("renderChatMessage", chat, $(html[0]), chat.toObject());
+  // 다른 모듈이 후처리할 수 있도록 버전에 맞춰 hook 호출
+  callRenderChatMessageHooks(chat, element, chat.toObject());
 
-/*
-  if(chat.roll.length){
-
-  }
-*/
-
-  const result = extractMessageContent(html[0], isPrivTalk);
+  const result = extractMessageContent(element, isPrivTalk);
   tempContainer.remove();
 
   const elapsed = performance.now() - startTime;
@@ -818,66 +835,75 @@ function cleanImageFilename(filename) {
 
 console.log('[chat-tailor] chat-log.js: 클래스 정의 직전');
 
+// v13+ DialogV2 우선, 없으면 v12 Dialog V1로 폴백
+async function showConfirmDialog({ title, content, confirmLabel, confirmIcon = "fas fa-check", onConfirm }) {
+  const DialogV2 = foundry.applications?.api?.DialogV2;
+  if (DialogV2) {
+    try {
+      const ok = await DialogV2.confirm({
+        window: { title },
+        content: `<p>${content}</p>`,
+        yes: { label: confirmLabel, icon: confirmIcon },
+        no:  { label: game.i18n.localize("chat-tailor.dialog.download.button.cancel") }
+      });
+      if (ok) await onConfirm();
+    } catch (e) {
+      // 사용자가 닫음 등 — 조용히 무시
+    }
+    return;
+  }
+  // v12 폴백
+  new Dialog({
+    title,
+    content,
+    buttons: {
+      confirm: {
+        icon: `<i class="${confirmIcon}"></i>`,
+        label: confirmLabel,
+        callback: async () => { await onConfirm(); },
+      },
+      cancel: {
+        icon: '<i class="fas fa-times"></i>',
+        label: game.i18n.localize("chat-tailor.dialog.download.button.cancel"),
+      },
+    },
+    default: "cancel",
+  }).render(true);
+}
+
+// settings.registerMenu가 클래스를 요구하므로 클래스 래퍼는 유지하되 내부에서 DialogV2 사용
 class DownloadChatArchive extends FormApplication {
   constructor() {
     super();
-    return new Dialog({
-      //title: game.i18n.localize(`${CONSTANTS.MODULE_NAME}.dialogs.resetsettings.title`),
-      title: `채팅 로그 다운로드`,
-      content:
-          `채팅 로그를 다운로드 합니다.`,
-      buttons: {
-        confirm: {
-          icon: '<i class="fas fa-check"></i>',
-          label: `다운로드`,
-          callback: async () => {
-            const chats = [...(game.messages.contents)];
-            await downloadArchiveFile(chats);
-          },
-        },
-        cancel: {
-          icon: '<i class="fas fa-times"></i>',
-          label: `취소`,
-        },
+    showConfirmDialog({
+      title: game.i18n.localize("chat-tailor.dialog.download.title"),
+      content: game.i18n.localize("chat-tailor.dialog.download.content"),
+      confirmLabel: game.i18n.localize("chat-tailor.dialog.download.button.download"),
+      onConfirm: async () => {
+        const chats = [...(game.messages.contents)];
+        await downloadArchiveFile(chats);
       },
-      default: "cancel",
     });
   }
-  getData() {
-  }
-  async _updateObject(event, formData) {
-  }
+  getData() {}
+  async _updateObject(event, formData) {}
 }
-
 
 class openChatArchiveWindow extends FormApplication {
   constructor() {
     super();
-    return new Dialog({
-      title: `채팅 로그 표시`,
-      content:
-          `채팅 로그를 새 창에 표시합니다.`,
-      buttons: {
-        confirm: {
-          icon: '<i class="fas fa-check"></i>',
-          label: `열기`,
-          callback: async () => {
-            const chats = [...(ui.chat.collection.values())];
-            await openChatArchive(chats);
-          },
-        },
-        cancel: {
-          icon: '<i class="fas fa-times"></i>',
-          label: `취소`,
-        },
+    showConfirmDialog({
+      title: game.i18n.localize("chat-tailor.dialog.open.title"),
+      content: game.i18n.localize("chat-tailor.dialog.open.content"),
+      confirmLabel: game.i18n.localize("chat-tailor.dialog.open.button.open"),
+      onConfirm: async () => {
+        const chats = [...(game.messages.contents)];
+        await openChatArchive(chats);
       },
-      default: "cancel",
     });
   }
-  getData() {
-  }
-  async _updateObject(event, formData) {
-  }
+  getData() {}
+  async _updateObject(event, formData) {}
 }
 
 console.log('[chat-tailor] chat-log.js: 클래스 정의 완료, globalThis.DownloadChatArchive =', globalThis.DownloadChatArchive);

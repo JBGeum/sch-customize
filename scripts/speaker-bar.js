@@ -225,7 +225,11 @@ export function registerSpeakerBar() {
   Hooks.on("moveChatInput", () => injectSpeakerBar(null));
 
   // 폴백: 일반 채팅 메시지 렌더 시 바가 없으면 다시 삽입
-  Hooks.on("renderChatMessage", () => {
+  // v13+: renderChatMessageHTML, v12: renderChatMessage
+  const renderMsgHook = (game?.release?.generation ?? 0) >= 13
+    ? "renderChatMessageHTML"
+    : "renderChatMessage";
+  Hooks.on(renderMsgHook, () => {
     if (!document.querySelector(".ct-speaker-bar")) {
       injectSpeakerBar(null);
     }
