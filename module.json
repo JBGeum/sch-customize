@@ -4,10 +4,8 @@
   "title": "Chat Tailor",
   "description": "Tailors the Foundry VTT chat for narrative play: styled chitchat (side-talk), a speaker bar with lockable speaker, HTML chat log archiving, and appearance tuning.",
   "version": "1.0.7",
-  "minimumCoreVersion": "11",
-  "compatibleCoreVersion": "13",
   "compatibility": {
-    "minimum": "11",
+    "minimum": "12",
     "verified": "13"
   },
   "author": "Scheree",
@@ -20,8 +18,7 @@
     {
       "name": "macros",
       "label": "chat-tailor",
-      "path": "/packs/macros.db",
-      "entity": "Macro",
+      "path": "packs/macros",
       "type": "Macro"
     }
   ],
