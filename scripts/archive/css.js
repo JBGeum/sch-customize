@@ -12,6 +12,7 @@
  */
 
 import { hexToRgba } from "./util.js";
+import { mergeCss } from "./css-merge.js";
 
 /**
  * `var(--foo)` 사용을 추적하고, :root 등 정의부에서 발견된 `--foo: 값`을 매핑한다.
@@ -62,12 +63,21 @@ export class CssVariableTracker {
     }
   }
 
-  generateRootCss() {
+  /**
+   * @param {boolean} includeAll - true면 사용 여부와 무관하게 정의된 모든 변수를 출력
+   */
+  generateRootCss(includeAll = false) {
     this.resolveTransitiveDependencies();
     const vars = [];
-    for (const varName of this.usages) {
-      if (this.definitions.has(varName)) {
-        vars.push(`${varName}: ${this.definitions.get(varName)}`);
+    if (includeAll) {
+      for (const [varName, value] of this.definitions) {
+        vars.push(`${varName}: ${value}`);
+      }
+    } else {
+      for (const varName of this.usages) {
+        if (this.definitions.has(varName)) {
+          vars.push(`${varName}: ${this.definitions.get(varName)}`);
+        }
       }
     }
     return vars.length ? `:root { ${vars.join("; ")}; }` : "";
@@ -103,13 +113,23 @@ export class StructuredCssCollector {
     }
   }
 
-  generateCss(domSelectors, variableTracker) {
-    let output = variableTracker.generateRootCss() + "\n";
+  /**
+   * @param {Set<string>} domSelectors
+   * @param {CssVariableTracker} variableTracker
+   * @param {{ mode?: 'filtered' | 'full' }} [options]
+   *   - 'filtered' (기본): selectorMatchesDom 통과한 룰만 출력
+   *   - 'full': 필터 우회, 수집된 모든 룰 출력
+   */
+  generateCss(domSelectors, variableTracker, options = {}) {
+    const includeAll = options.mode === "full";
+    const matches = (r) => includeAll ? true : selectorMatchesDom(r.selector, domSelectors);
+
+    let output = variableTracker.generateRootCss(includeAll) + "\n";
     this.fontFaceRules.forEach(r => output += r + "\n");
     this.keyframeRules.forEach(r => output += r + "\n");
 
     for (const [name, rules] of this.layerRules) {
-      const matched = rules.filter(r => selectorMatchesDom(r.selector, domSelectors));
+      const matched = rules.filter(matches);
       if (matched.length) {
         output += `@layer ${name} {\n`;
         matched.forEach(r => output += `  ${r.selector} { ${r.styles} }\n`);
@@ -118,11 +138,11 @@ export class StructuredCssCollector {
     }
 
     this.rootRules
-      .filter(r => selectorMatchesDom(r.selector, domSelectors))
+      .filter(matches)
       .forEach(r => output += `${r.selector} { ${r.styles} }\n`);
 
     for (const [condition, rules] of this.mediaRules) {
-      const matched = rules.filter(r => selectorMatchesDom(r.selector, domSelectors));
+      const matched = rules.filter(matches);
       if (matched.length) {
         output += `@media ${condition} {\n`;
         matched.forEach(r => output += `  ${r.selector} { ${r.styles} }\n`);
@@ -137,14 +157,33 @@ export class StructuredCssCollector {
 /**
  * 항상 포함시킬 selector 패턴. dnd5e 카드, midi 표시, fa* 아이콘 등 채팅에서 자주 쓰이는 셀렉터를
  * DOM 매칭이 불확실해도 강제로 포함시킨다.
+ *
+ * 누적(incremental) 모드의 하이브리드 baseline 안전 마진 확보를 위해, 채팅에 영향을 줄 가능성이
+ * 있는 주요 시스템·모듈 prefix를 넉넉히 포함한다.
  */
 const ALWAYS_INCLUDE_PATTERNS = [
-  /\.chat-/, /\.message/, /\.dice-/, /\.roll/, /\.midi-/,
-  /\.card-/, /\.dnd5e/, /\.activation/, /\.tooltip/,
-  /\.flexrow/, /\.flexcol/, /\.pill/, /\.gold-icon/,
-  /\.name-stacked/, /\.roboto/, /\.fa-/, /\.fas\b/, /\.far\b/,
-  /\.collapsible/, /\.wrapper/, /\.summary/, /\.details/,
-  /\.evaluation/, /\.targets/, /\.effects/, /\.apply/,
+  // chat-tailor 자체
+  /\.chat-/, /\.message/, /\.priv[-_]?talk/, /\.pt\b/, /\.chitchat/, /\.speaker-/,
+  // 주사위 / 롤 / 인라인
+  /\.dice-/, /\.roll/, /\.inline-roll/,
+  // midi-qol
+  /\.midi-/, /\.midi-qol/,
+  // 카드 / 액션
+  /\.card-/, /\.activation/, /\.tooltip/, /\.evaluation/,
+  /\.targets/, /\.effects/, /\.apply/, /\.collapsible/,
+  /\.wrapper/, /\.summary/, /\.details/, /\.pill/, /\.gold-icon/,
+  /\.name-stacked/, /\.flavor-text/,
+  // 시스템 prefix (DnD5e, PF2e 등)
+  /\.dnd5e/, /\.pf2e/, /\.pf1/, /\.swade/, /\.cof/, /\.coc7/,
+  // Foundry 코어 / app shell
+  /\.app\b/, /\.window-/, /\.foundryvtt-/, /\.flexrow/, /\.flexcol/,
+  // 폰트 / 아이콘
+  /\.fa-/, /\.fas\b/, /\.far\b/, /\.fab\b/, /\.fal\b/, /\.fad\b/,
+  /\.roboto/, /font-awesome/,
+  // chat-portrait 등 채팅 보조 모듈
+  /\.chat-portrait/, /\.module-/,
+  // 메시지 식별
+  /\[data-message-id\]/, /\[data-actor-id\]/,
 ];
 
 export function selectorMatchesDom(cssSelector, domSelectors) {
@@ -325,8 +364,19 @@ function processStyleSheetStructured(sheet, collector, variableTracker, processe
 /**
  * 메인 진입점. 대상 doc에서 사용된 selector만 추려 모든 styleSheet 룰을 직렬화하고,
  * 사용자 색상 기반 메시지 배경 룰도 함께 덧붙인다.
+ *
+ * @param {Iterable<string>|null} selectors - targetDoc가 없을 때 사용할 selector 집합
+ * @param {Document|null} targetDoc - 매칭할 대상 doc (있으면 selector 자동 추출)
+ * @param {object} [options]
+ * @param {'filtered'|'full'} [options.mode='filtered']
+ *   - 'filtered': DOM 매칭 + ALWAYS_INCLUDE_PATTERNS 기반 (기본)
+ *   - 'full': selectorMatchesDom 우회, 활성 styleSheet 전체 덤프
+ * @param {string|null} [options.existingCss=null] - 머지할 기존 CSS 텍스트 (선택)
+ * @returns {string} 직렬화된 CSS
  */
-export function createCssList(selectors, _includeAll = false, targetDoc = null) {
+export function createCssList(selectors, targetDoc = null, options = {}) {
+  const { mode = "filtered", existingCss = null } = options;
+
   const collector = new StructuredCssCollector();
   const variableTracker = new CssVariableTracker();
   const processedSheets = new Set();
@@ -345,12 +395,16 @@ export function createCssList(selectors, _includeAll = false, targetDoc = null) 
     }
   }
 
-  let css = collector.generateCss(domSelectors, variableTracker);
+  let css = collector.generateCss(domSelectors, variableTracker, { mode });
 
   // 사용자 색상 → 메시지 배경 룰 자동 추가
   for (const user of game.users) {
     const bgColor = hexToRgba(user.color.toString(), 0.3);
     css += `div.chat-box.user-${user._id} { background-color: ${bgColor} !important; }\n`;
+  }
+
+  if (existingCss) {
+    css = mergeCss(existingCss, css);
   }
 
   return css;

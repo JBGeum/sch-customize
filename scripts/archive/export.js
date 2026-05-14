@@ -1,11 +1,14 @@
 /**
  * Chat 메시지 컬렉션을 HTML 문서로 변환하는 메인 파이프라인.
  *
- *  - `downloadArchiveFile(chats)`  → 이미지까지 포함한 zip 파일 저장
- *  - `openChatArchive(chats)`      → 새 브라우저 창에 단독 HTML로 열기
+ *  - `downloadArchiveFile(chats)`        → 단독 zip (CSS 인라인, 자기완결)
+ *  - `downloadIncrementalArchive(chats)` → 누적 zip (외부 CSS 링크, 기존 chat-styles.css와 union 머지 가능)
+ *  - `openChatArchive(chats)`            → 새 브라우저 창에 단독 HTML로 열기
  *
- * 두 진입점 모두 내부적으로 `template/chat-archive-template.html`을 로드한 뒤
- * 메시지를 순회하며 `appendChatContents`로 채워 넣고, 마지막에 인라인 CSS를 박는다.
+ * 단독/창열기 모드는 `template/chat-archive-template.html`(인라인 `<style>` 포함)을,
+ * 누적 모드는 `template/chat-archive-template-incremental.html`(`<link>`만 포함)을 로드한다.
+ * 누적 모드의 chat-styles.css는 단독 템플릿의 baseline + `createCssList`로 수집된 동적 CSS를
+ * 합친 뒤, `existingCssText`가 제공되면 `mergeCss`로 union 머지한 결과를 사용한다.
  */
 
 import { renderChatMessageElement, callRenderChatMessageHooks, isPrivTalkMessage } from "../compat/foundry.js";
@@ -22,8 +25,28 @@ import {
   updateImageSources,
 } from "./util.js";
 import { createCssList } from "./css.js";
+import { mergeCss } from "./css-merge.js";
 
 const TEMPLATE_PATH = "modules/chat-tailor/template/chat-archive-template.html";
+const INCREMENTAL_TEMPLATE_PATH = "modules/chat-tailor/template/chat-archive-template-incremental.html";
+const SHARED_CSS_FILENAME = "chat-styles.css";
+
+/**
+ * 기존(단독) 템플릿의 `<style>` 블록 내용을 그대로 추출해 baseline CSS로 사용한다.
+ */
+async function getBaselineCss() {
+  try {
+    const response = await fetch(TEMPLATE_PATH);
+    const html = await response.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
+    const styleEl = doc.querySelector("style");
+    return styleEl ? styleEl.textContent || "" : "";
+  } catch (e) {
+    console.warn("[chat-tailor] baseline CSS 추출 실패:", e);
+    return "";
+  }
+}
 
 /**
  * 채팅 메시지들을 zip(HTML + images/ + portraits/)으로 패키징한 Blob을 반환.
@@ -51,6 +74,39 @@ async function packageChatsToZipBlob(chats) {
 export async function downloadArchiveFile(chats) {
   const blob = await packageChatsToZipBlob(chats);
   const filename = buildArchiveFilename("chat-log", "zip");
+  await saveAs(blob, filename);
+}
+
+/**
+ * 누적 export — 외부 CSS 링크 방식 zip.
+ *
+ * zip 구성:
+ *   chat-styles.css                          ← (선택) 기존 CSS와 union 머지된 결과
+ *   chat-log-yyyyMMdd-{world}.html           ← 외부 CSS 링크
+ *   images/...
+ *   portraits/...
+ *
+ * 같은 폴더에 챕터별 zip을 차례로 풀면 HTML은 챕터별 보존, CSS와 이미지는 폴더 단위 덮어쓰기로 갱신된다.
+ *
+ * @param {Array} chats
+ * @param {object} [opts]
+ * @param {'filtered'|'full'} [opts.mode='filtered']
+ * @param {string|null} [opts.existingCssText=null] - 머지 대상 기존 chat-styles.css 텍스트
+ */
+export async function downloadIncrementalArchive(chats, opts = {}) {
+  const { mode = "filtered", existingCssText = null } = opts;
+
+  const [htmlContent, contentImg, portraitImg, cssText] =
+    await generateIncrementalHtmlFromChats(chats, { mode, existingCssText });
+
+  const zip = new JSZip();
+  await zipInsideFolder(zip, contentImg, "images");
+  await zipInsideFolder(zip, portraitImg, "portraits");
+  zip.file(SHARED_CSS_FILENAME, cssText);
+  zip.file(buildArchiveFilename("chat-log", "html"), htmlContent);
+
+  const blob = await zip.generateAsync({ type: "blob" });
+  const filename = buildArchiveFilename("chat-log-incremental", "zip");
   await saveAs(blob, filename);
 }
 
@@ -120,6 +176,57 @@ async function generateSimpleHtmlFromChats(chats) {
 }
 
 /**
+ * 누적(외부 CSS) 모드 — 단독 모드와 같은 본문을 만들되 CSS는 doc에 인라인하지 않고 별도 텍스트로 반환한다.
+ *
+ * 반환: [htmlContent, contentImg, portraitImg, cssText]
+ *   - cssText는 단독 템플릿의 baseline + `createCssList(mode)` 결과를 합친 뒤,
+ *     `existingCssText`가 있으면 union 머지한 결과.
+ */
+async function generateIncrementalHtmlFromChats(chats, opts = {}) {
+  const { mode = "filtered", existingCssText = null } = opts;
+
+  const response = await fetch(INCREMENTAL_TEMPLATE_PATH);
+  const templateHtml = await response.text();
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(templateHtml, "text/html");
+
+  const container = doc.querySelector(".foundry-chat-container");
+  let prevPtFlag;
+  let prevSpeaker;
+
+  const includeWhisperFlag = game.settings.get("chat-tailor", "includeWhisper");
+  const hideWhisperSetting = game.settings.get("chat-tailor", "hideWhisper");
+
+  for (const chat of chats) {
+    const whisperFlag = chat.whisper && chat.whisper.length > 0;
+    if (whisperFlag && (!includeWhisperFlag || !chat.isContentVisible)) continue;
+
+    const chatMergeFlag = prevSpeaker === chat.alias;
+    prevPtFlag = await appendChatContents(chat, chatMergeFlag, prevPtFlag, whisperFlag, container, hideWhisperSetting);
+    prevSpeaker = chat.alias;
+  }
+
+  rewriteInlineRolls(doc);
+
+  const contentImg = new Set([...doc.querySelectorAll(".chat-text img")]
+    .map(img => img.src ? img.src
+      : window.location.href.replace("game", "") + img?.getAttribute("src")));
+
+  const portraitImg = new Set([...doc.querySelectorAll(".chat-image img")]
+    .map(img => img.src ? img.src
+      : window.location.href.replace("game", "") + img?.getAttribute("src")));
+
+  const baselineCss = await getBaselineCss();
+  const dynamicCss = createCssList(null, doc, { mode });
+  const freshCss = `${baselineCss}\n${dynamicCss}`;
+  const cssText = existingCssText ? mergeCss(existingCssText, freshCss) : freshCss;
+
+  updateImageSources(doc);
+  return [doc.documentElement.outerHTML, contentImg, portraitImg, cssText];
+}
+
+/**
  * 다운로드용 — 이미지 src를 zip 상대경로로 매핑하고, 이미지 URL 집합을 함께 반환한다.
  */
 async function generateHtmlFromChats(chats) {
@@ -178,11 +285,14 @@ function rewriteInlineRolls(doc) {
 
 /**
  * 페이지의 현재 styleSheets를 수집해 doc의 `<head>`에 인라인 `<style>`로 추가한다.
+ *
+ * @param {Document} doc
+ * @param {{ mode?: 'filtered'|'full' }} [options]
  */
-function injectInlineCss(doc) {
+function injectInlineCss(doc, options = {}) {
   const styleElement = doc.createElement("style");
   styleElement.type = "text/css";
-  styleElement.appendChild(doc.createTextNode(createCssList(null, false, doc)));
+  styleElement.appendChild(doc.createTextNode(createCssList(null, doc, { mode: options.mode ?? "filtered" })));
 
   const headElement = doc.head || doc.getElementsByTagName("head")[0];
   headElement.appendChild(styleElement);

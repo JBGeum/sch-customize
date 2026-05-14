@@ -11,7 +11,7 @@
  * `applyAllCssSettings()`는 모든 설정 등록이 끝난 뒤 호출해야 한다(init 마지막).
  */
 
-import { DownloadChatArchive, openChatArchiveWindow } from "../archive/dialog.js";
+import { ExportChatArchiveMenu, openChatArchiveWindow } from "../archive/dialog.js";
 import { getDFchatArchive } from "../archive/df.js";
 import { updateCssProperty } from "../appearance.js";
 
@@ -30,11 +30,12 @@ export function registerAllSettings() {
   });
 
   // ─── Chat Archive 메뉴 ───
+  // 단일 진입점에서 단독 / 누적+머지 / 누적+전체덤프 3 모드를 선택한다.
   game.settings.registerMenu(MODULE_ID, "downloadChatArchiveMenu", {
     name: `${MODULE_ID}.settings.downloadChatArchiveMenu.name`,
     hint: `${MODULE_ID}.settings.downloadChatArchiveMenu.hint`,
     icon: "fas fa-download",
-    type: DownloadChatArchive,
+    type: ExportChatArchiveMenu,
   });
 
   game.settings.registerMenu(MODULE_ID, "openChatArchiveWindow", {
