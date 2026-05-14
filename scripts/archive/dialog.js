@@ -64,8 +64,15 @@ export class DownloadChatArchive extends FormApplication {
       content: game.i18n.localize("chat-tailor.dialog.download.content"),
       confirmLabel: game.i18n.localize("chat-tailor.dialog.download.button.download"),
       onConfirm: async () => {
-        const chats = [...(game.messages.contents)];
-        await downloadArchiveFile(chats);
+        try {
+          const chats = [...(game.messages.contents)];
+          await downloadArchiveFile(chats);
+        } catch (error) {
+          console.error("[chat-tailor] Failed to download chat archive:", error);
+          ui.notifications?.error(
+            game.i18n.localize("chat-tailor.dialog.download.error") || "Failed to download chat archive."
+          );
+        }
       },
     });
   }

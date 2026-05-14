@@ -11,6 +11,7 @@
 import { renderChatMessageElement, callRenderChatMessageHooks, isPrivTalkMessage } from "../compat/foundry.js";
 import {
   saveAs,
+  buildArchiveFilename,
   zipInsideFolder,
   createDivWithClasses,
   appendChildren,
@@ -25,9 +26,10 @@ import { createCssList } from "./css.js";
 const TEMPLATE_PATH = "modules/chat-tailor/template/chat-archive-template.html";
 
 /**
- * 채팅 로그를 zip(HTML + images/ + portraits/)으로 저장.
+ * 채팅 메시지들을 zip(HTML + images/ + portraits/)으로 패키징한 Blob을 반환.
+ * 저장 동작과 분리되어 있어 테스트/재사용이 용이하다.
  */
-export async function downloadArchiveFile(chats) {
+async function packageChatsToZipBlob(chats) {
   const [htmlContent, contentImg, portraitImg] = await generateHtmlFromChats(chats);
 
   const zip = new JSZip();
@@ -35,9 +37,21 @@ export async function downloadArchiveFile(chats) {
   await zipInsideFolder(zip, portraitImg, "portraits");
   zip.file("chat.html", htmlContent);
 
-  zip.generateAsync({ type: "blob" })
-    .then(content => saveAs(content, "chat.zip"));
-  // TODO: 파일명을 world명_날짜_chatlog.zip 등으로 바꿀 것
+  return zip.generateAsync({ type: "blob" });
+}
+
+/**
+ * 채팅 로그를 zip 파일로 저장한다.
+ *
+ * 책임이 세 단계로 분리되어 있다.
+ *   1. `packageChatsToZipBlob`  — 메시지 → Blob 변환
+ *   2. `buildArchiveFilename`   — `chat-log-yyyyMMdd-worldName.zip` 파일명 생성
+ *   3. `saveAs`                 — 저장 전략 (FilePicker → data URI fallback)
+ */
+export async function downloadArchiveFile(chats) {
+  const blob = await packageChatsToZipBlob(chats);
+  const filename = buildArchiveFilename("chat-log", "zip");
+  await saveAs(blob, filename);
 }
 
 /**

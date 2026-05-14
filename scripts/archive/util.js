@@ -12,15 +12,87 @@
 
 /* eslint-disable no-empty */
 
-export function saveAs(blob, filename) {
-  const url = URL.createObjectURL(blob);
+/**
+ * 아카이브 다운로드용 파일명을 빌드한다.
+ * 형식: `{prefix}-yyyyMMdd-{worldName}.{ext}`
+ *
+ * - 날짜는 로컬 타임존 기준 yyyyMMdd
+ * - 월드명은 `game.world.title` → `game.world.id` → `"world"` 순으로 폴백
+ * - 파일시스템 금지 문자(`\ / : * ? " < > |`)는 `_`로 치환
+ */
+export function buildArchiveFilename(prefix, ext) {
+  const date = new Date();
+  const yyyyMMdd = date.getFullYear().toString()
+    + (date.getMonth() + 1).toString().padStart(2, "0")
+    + date.getDate().toString().padStart(2, "0");
+  const worldName = (game.world?.title ?? game.world?.id ?? "world")
+    .replace(/[\\/:*?"<>|]/g, "_");
+  return `${prefix}-${yyyyMMdd}-${worldName}.${ext}`;
+}
+
+/**
+ * File System Access API(`showSaveFilePicker`)로 blob을 저장.
+ * 사용자가 취소(AbortError)하면 `false`를 반환하고,
+ * API 미지원/오류 시 throw하여 호출 측이 fallback할 수 있게 한다.
+ *
+ * @returns {Promise<boolean>} 저장 완료 여부 (취소 시 false)
+ */
+async function trySaveWithFilePicker(blob, filename) {
+  if (!window.showSaveFilePicker) {
+    throw new Error("showSaveFilePicker is not supported");
+  }
+  const ext = filename.split(".").pop().toLowerCase();
+  const handle = await window.showSaveFilePicker({
+    suggestedName: filename,
+    types: [{ description: "ZIP Archive", accept: { "application/zip": [`.${ext}`] } }],
+  });
+  const writable = await handle.createWritable();
+  await writable.write(blob);
+  await writable.close();
+  return true;
+}
+
+/**
+ * data URI 앵커 클릭 방식으로 blob을 저장.
+ *
+ * blob URL을 쓰면 Foundry VTT 서비스 워커가 요청을 가로채면서 `download` 속성이
+ * 무시되고 blob URL의 UUID가 파일명이 되는 문제가 있다.
+ * `data:` 스킴은 서비스 워커 인터셉트 대상이 아니므로 `download` 속성이 정상 동작한다.
+ */
+async function saveWithDataUriAnchor(blob, filename) {
+  const dataUri = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+
   const a = document.createElement("a");
-  a.href = url;
+  a.href = dataUri;
   a.download = filename;
+  a.style.display = "none";
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+}
+
+/**
+ * Blob을 지정한 파일명으로 저장한다.
+ *
+ * 저장 전략 (위에서 아래로 시도):
+ *  1. `showSaveFilePicker` — 네이티브 저장 대화상자, 가장 사용자 친화적
+ *  2. data URI 앵커 클릭 — 모든 모던 브라우저 fallback
+ */
+export async function saveAs(blob, filename) {
+  try {
+    await trySaveWithFilePicker(blob, filename);
+    return;
+  } catch (e) {
+    // 사용자가 저장 대화상자를 취소한 경우 — 저장하지 않고 종료
+    if (e.name === "AbortError") return;
+    // 그 외(미지원 환경, 권한 거부 등)는 fallback으로 진행
+  }
+  await saveWithDataUriAnchor(blob, filename);
 }
 
 /**
@@ -36,7 +108,29 @@ export function hexToRgba(hex, opacity) {
 }
 
 /**
+ * URL(절대·상대 모두)에서 파일명 부분만 추출하고 퍼센트 인코딩을 디코딩해 반환한다.
+ *
+ * 문제 배경:
+ *  - Foundry DB에 공백 포함 경로(`my image.jpg`)가 저장되어 있으면
+ *    `img.src`(property)는 `my%20image.jpg`로, `getAttribute("src")`는 원본 그대로 반환.
+ *  - 두 경로에서 추출한 파일명이 달라 zip 내 파일명과 HTML 참조가 불일치.
+ *  - decodeURIComponent로 항상 디코딩된 형태로 통일해 이 불일치를 해소한다.
+ */
+export function filenameFromUrl(url) {
+  if (!url) return "";
+  try {
+    // 상대 URL도 파싱 가능하도록 현재 origin을 base로 사용
+    const pathname = new URL(url, window.location.href).pathname;
+    return decodeURIComponent(pathname.split("/").pop());
+  } catch {
+    // URL 파싱 실패 시(예: data URI) 마지막 슬래시 이후만 디코딩
+    return decodeURIComponent(url.split("/").pop());
+  }
+}
+
+/**
  * 파일명에 붙은 트랜스폼 인자나 쿼리스트링을 자르고 확장자까지만 남긴다.
+ * 입력은 이미 디코딩된 파일명이어야 한다(`filenameFromUrl` 통과 후 사용).
  */
 export function cleanImageFilename(filename) {
   const extensions = [".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg", ".tiff", ".tif", ".ico"];
@@ -162,16 +256,14 @@ export function updateImageSources(targetDoc) {
   images.forEach(img => {
     const src = img.getAttribute("src");
     if (!src) return;
-    const filename = src.split("/").pop();
-    img.src = "images/" + cleanImageFilename(filename);
+    img.src = "images/" + cleanImageFilename(filenameFromUrl(src));
   });
 
   const portraits = targetDoc.querySelectorAll("img.chat-image");
   portraits.forEach(img => {
     const src = img.getAttribute("src");
     if (!src) return;
-    const filename = src.split("/").pop();
-    img.src = "portraits/" + cleanImageFilename(filename);
+    img.src = "portraits/" + cleanImageFilename(filenameFromUrl(src));
   });
 }
 
@@ -184,8 +276,7 @@ export async function zipInsideFolder(zip, imgSet, folderName) {
     try {
       const response = await fetch(url);
       const blob = await response.blob();
-      const imageName = url.split("/").pop();
-      imgFolder.file(cleanImageFilename(imageName), blob);
+      imgFolder.file(cleanImageFilename(filenameFromUrl(url)), blob);
     } catch (e) {
       console.error(`Failed to fetch or process the image from URL: ${url}. Error: ${e.message}`);
     }
