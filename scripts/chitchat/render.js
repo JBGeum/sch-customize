@@ -94,7 +94,12 @@ function handleBaseMessageRender(el, message, mergeEnabled) {
     const currAuthor = message.author?.id ?? message.user?.id ?? message.author ?? message.user;
     const sameAuthor = lastAuthor === currAuthor;
 
-    if (sameAuthor && !lastMsgPrivTalkFlag && sameStyle) {
+    // GM이 동일 유저로 NPC1 → NPC2 발화 전환 같은 경우, author는 같아도 발화 캐릭터가 다르므로
+    // merge를 끊는다. actor/token이 비어 있는 OOC 메시지는 alias로 대체 비교.
+    const speakerKey = (s) => s?.actor ?? s?.token ?? s?.alias ?? "";
+    const sameSpeaker = speakerKey(lastMessage.speaker) === speakerKey(message.speaker);
+
+    if (sameAuthor && sameSpeaker && !lastMsgPrivTalkFlag && sameStyle) {
       if (lastMsgEl.classList.contains("end")) {
         lastMsgEl.classList.remove("end");
         lastMsgEl.classList.add("middle");

@@ -10,6 +10,104 @@ const LOCKED_FLAG_KEY = "lockedSpeaker";
 const DEFAULT_IMG = "icons/svg/mystery-man.svg";
 
 /**
+ * Cautious Gamemaster's Pack (CGMP) 호환 상수.
+ *
+ * 외부 모듈에 대한 *소프트* 의존: 모듈이 미설치/비활성이면 모든 호환 로직이 no-op이 된다.
+ * CGMP는 `preCreateChatMessage`에서 GM/Player의 speaker를 강제로 변경하는데,
+ * 그 결과 Speaker Bar UI에 표시된 발화자(보통 선택된 토큰)와 실제 chat log의
+ * 발신자가 어긋나는 문제가 있어 표시를 CGMP 설정에 맞춰 보정한다.
+ *
+ * 참조 (CGMP 1.12.x): scripts/settings.js / scripts/chat-resolver.js
+ */
+const CGMP_MODULE_ID = "CautiousGamemastersPack";
+const CGMP_OPTIONS = {
+  GM_SPEAKER_MODE: "gmSpeakerMode",
+  PLAYER_SPEAKER_MODE: "playerSpeakerMode",
+};
+const CGMP_SPEAKER_MODE = {
+  DEFAULT: 0,
+  DISABLE_GM_AS_PC: 1,
+  FORCE_IN_CHARACTER: 2,
+  ALWAYS_OOC: 3,
+  IN_CHARACTER_ALWAYS_ASSIGNED: 4,
+};
+
+/**
+ * 현재 사용자에게 적용되는 CGMP speaker mode. CGMP가 비활성이면 null.
+ *
+ * GM/Player 각각 다른 설정 키를 사용한다. Player 모드는 DISABLE_GM_AS_PC를 제외한
+ * 모든 값을 가질 수 있다 (CGMP가 UI에서 그 옵션만 GM 전용으로 제한).
+ */
+function getCgmpSpeakerMode() {
+  if (!game.modules?.get?.(CGMP_MODULE_ID)?.active) return null;
+  try {
+    const key = game.user.isGM ? CGMP_OPTIONS.GM_SPEAKER_MODE : CGMP_OPTIONS.PLAYER_SPEAKER_MODE;
+    const mode = game.settings.get(CGMP_MODULE_ID, key);
+    return typeof mode === "number" ? mode : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+/**
+ * 현재 사용자 자체를 발화자로 표시할 때 쓰는 OOC fallback. CGMP가 OOC로 강제하는
+ * 경우(DISABLE_GM_AS_PC/ALWAYS_OOC)에 사용한다.
+ */
+function userSpeakerInfo() {
+  return {
+    img: game.user.avatar || DEFAULT_IMG,
+    name: game.user.name,
+    locked: false,
+    actor: null,
+    token: null,
+  };
+}
+
+/**
+ * 사용자에게 할당된 캐릭터를 발화자로 표시. CGMP가 in-character로 강제하는
+ * 경우(FORCE_IN_CHARACTER/IN_CHARACTER_ALWAYS_ASSIGNED)에 사용. 할당이 없으면
+ * user OOC로 폴백.
+ */
+function assignedCharacterSpeakerInfo() {
+  const character = game.user.character;
+  if (!character) return userSpeakerInfo();
+  return {
+    img: character.img ?? DEFAULT_IMG,
+    name: character.name,
+    locked: false,
+    actor: character,
+    token: null,
+  };
+}
+
+/**
+ * CGMP가 메시지의 speaker를 강제로 바꾸는 모드라면, 그 결과에 해당하는 발화자
+ * 정보를 반환한다. 강제 변경 없는 모드(DEFAULT) 또는 CGMP가 미적용인 케이스
+ * (예: DISABLE_GM_AS_PC인데 NPC 토큰 선택)에서는 null 반환 → 기존 우선순위로 폴백.
+ */
+function resolveCgmpForcedSpeaker() {
+  const mode = getCgmpSpeakerMode();
+  if (mode === null || mode === CGMP_SPEAKER_MODE.DEFAULT) return null;
+
+  switch (mode) {
+    case CGMP_SPEAKER_MODE.DISABLE_GM_AS_PC: {
+      // GM에게만 의미가 있고, *PC 토큰* 선택 시에만 발동. NPC 토큰이면 CGMP가 그대로 둠
+      if (!game.user.isGM) return null;
+      const controlled = canvas?.tokens?.controlled?.[0];
+      const isPc = !!controlled?.actor?.hasPlayerOwner;
+      return isPc ? userSpeakerInfo() : null;
+    }
+    case CGMP_SPEAKER_MODE.FORCE_IN_CHARACTER:
+    case CGMP_SPEAKER_MODE.IN_CHARACTER_ALWAYS_ASSIGNED:
+      return assignedCharacterSpeakerInfo();
+    case CGMP_SPEAKER_MODE.ALWAYS_OOC:
+      return userSpeakerInfo();
+    default:
+      return null;
+  }
+}
+
+/**
  * 현재 사용자의 고정 발화자 정보 가져오기
  * @returns {object|null} { sceneId, actorId, tokenId, alias } or null
  */
@@ -30,8 +128,16 @@ async function setLockedSpeaker(speaker) {
 }
 
 /**
- * 현재 표시될 발화자 정보 결정
- * 우선순위: 고정 발화자 → 선택된 토큰 → 할당된 캐릭터 → 사용자명
+ * 현재 표시될 발화자 정보 결정.
+ *
+ * 우선순위:
+ *  1. chat-tailor Lock 발화자       — 사용자 명시적 의사이므로 무조건 우선
+ *  2. CGMP 강제 발화자 (있을 때)    — CGMP가 실제 메시지의 speaker를 바꿔버리므로
+ *                                     Speaker Bar UI와 chat log 발신자의 정합성을 위해
+ *                                     선택된 토큰보다 먼저 평가
+ *  3. 선택된 토큰
+ *  4. 사용자 할당 캐릭터
+ *  5. 사용자 자신 (기본 portrait)
  */
 function resolveCurrentSpeaker() {
   const locked = getLockedSpeaker();
@@ -43,6 +149,9 @@ function resolveCurrentSpeaker() {
     const name = locked.alias ?? token?.name ?? actor?.name ?? game.user.name;
     return { img, name, locked: true, actor, token };
   }
+
+  const cgmpForced = resolveCgmpForcedSpeaker();
+  if (cgmpForced) return cgmpForced;
 
   const controlled = canvas?.tokens?.controlled?.[0];
   if (controlled) {
@@ -198,22 +307,34 @@ function injectSpeakerBar(html) {
 }
 
 /**
- * pre-create 단계에서 메시지의 speaker를 고정 발화자로 덮어쓰기
+ * pre-create 단계에서 메시지의 speaker를 고정 발화자로 덮어쓰기.
+ *
+ * Lock이 활성일 때만 `message`와 `data` 양쪽에 speaker를 박는다. Lock이 없으면
+ * **아무것도 하지 않는다** — 특히 `message.updateSource`도 호출하지 말 것.
+ *
+ * 이유: CGMP 등 다른 모듈이 같은 훅에서 `message.updateSource({ speaker })`로 OOC
+ * 변환을 적용하더라도, 그 변경은 *`message` 인스턴스*에만 반영되고 *`data` 객체*는
+ * 변경되지 않는다. 우리가 lock 없는 상태에서도 `data.speaker`를 message에 다시 박으면
+ * CGMP의 변환이 원본 PC speaker로 원복되어 chat log에 PC portrait이 그대로 표시된다.
+ *
+ * @returns {boolean} lock이 적용되어 message가 변경되었는지 여부
  */
-function overrideSpeaker(messageData) {
+function overrideSpeaker(message, data) {
   const locked = getLockedSpeaker();
-  if (!locked) return;
+  if (!locked) return false;
 
-  // 시스템 메시지나 다른 사용자가 만든 메시지는 건드리지 않음
-  // 또한 잡담(priv_talk)은 자체 speaker 처리가 있으므로 제외
-  if (messageData.flags?.[MODULE_ID]?.priv_talk) return;
+  // 잡담(priv_talk)은 자체 speaker 처리가 있으므로 제외
+  if (data.flags?.[MODULE_ID]?.priv_talk) return false;
 
-  messageData.speaker = {
+  const speaker = {
     scene: locked.sceneId ?? null,
     actor: locked.actorId ?? null,
     token: locked.tokenId ?? null,
-    alias: locked.alias ?? messageData.speaker?.alias,
+    alias: locked.alias ?? data.speaker?.alias,
   };
+  data.speaker = speaker;
+  message.updateSource({ speaker });
+  return true;
 }
 
 /**
@@ -262,10 +383,20 @@ export function registerSpeakerBar() {
     if (user.id === game.user.id) updateSpeakerBar();
   });
 
-  // 발화자 오버라이드 (잡담 외 일반 채팅에 적용)
-  Hooks.on("preCreateChatMessage", (message, data) => {
-    overrideSpeaker(data);
-    message.updateSource({ speaker: data.speaker });
+  // 발화자 오버라이드 — Lock이 활성일 때만 동작.
+  //
+  // `preCreateChatMessage` 등록을 `ready` 단계로 *늦춰* 등록한다. CGMP 등 다른 모듈이
+  // 보통 `init`/`setup` 단계에서 같은 훅을 등록해 speaker를 강제 변경하는데, 같은
+  // 훅에서는 *나중에 등록된 콜백이 나중에 실행*되어 마지막 결과로 남는다. Lock 발화자는
+  // 사용자가 명시적으로 지정한 의사이므로, CGMP의 speaker 변환이 끝난 *뒤* 우리 값으로
+  // 덮어써야 한다.
+  //
+  // Lock이 *없을 때*는 의도적으로 아무 일도 하지 않는다 — CGMP의 OOC 변환을 유지해야
+  // chat log의 portrait도 OOC 결과(시스템 기본 / user.avatar)로 표시된다.
+  Hooks.once("ready", () => {
+    Hooks.on("preCreateChatMessage", (message, data) => {
+      overrideSpeaker(message, data);
+    });
   });
 
   // 캔버스 준비 후 갱신

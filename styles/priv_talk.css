@@ -12,6 +12,18 @@
  * - 메시지 노드: v12 li.chat-message / v13+ .chat-message[data-message-id] —
  *   :is(li, [data-message-id]).chat-message.message 형태로 둘 다 매칭
  */
+
+/*
+ * priv_talk 메시지에 한해 시스템 기본 ::before 텍스처/배경을 비활성화한다.
+ * 일반 메시지는 Foundry/시스템 기본 장식을 유지한다.
+ * 아래 흰색 오버레이 룰(content/background-color)이 같은 셀렉터로 다시 등장하므로,
+ * 캐스케이드 순서상 이 리셋 룰이 먼저 와야 흰색 오버레이가 그대로 살아남는다.
+ */
+:is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message.priv_talk::before {
+  background: none;
+  border-radius: 0;
+}
+
 :is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message.priv_talk {
   border: none;
   margin-left: var(--priv-talk-margin-left);
@@ -113,9 +125,4 @@
 
 :is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message:not(.top):not(.middle):not(.end) {
   border-radius: 5px 0 0 5px;
-}
-
-:is(.chat-popout, #chat-log, .chat-log) .message::before {
-  background: none;
-  border-radius: 0;
 }

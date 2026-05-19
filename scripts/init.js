@@ -26,11 +26,43 @@ import { registerChitchatCommand } from "./chitchat/command.js";
 import { registerChitchatRender, resetRenderState } from "./chitchat/render.js";
 import { registerSpeakerBar } from "./speaker-bar.js";
 import { applyAllCssSettings, applyUserColorBackgrounds } from "./appearance.js";
+import {
+  openChatArchive,
+  downloadArchiveFile,
+  downloadIncrementalArchive,
+} from "./archive/export.js";
+
+const MODULE_ID = "chat-tailor";
+
+/**
+ * 외부(매크로/타 모듈)에서 호출 가능한 공개 API를 module.api에 노출한다.
+ *
+ * - `openChatArchive(chats?)`            → 새 창에 채팅 로그 표시
+ * - `downloadArchiveFile(chats?)`        → 단독 zip 다운로드
+ * - `downloadIncrementalArchive(chats?, opts?)` → 누적 zip 다운로드
+ *
+ * 인자를 생략하면 현재 월드의 모든 메시지(game.messages.contents)를 사용한다.
+ * 매크로 호환성을 위해 wrapper에서 기본값을 채워주는 형태로 둔다.
+ */
+function registerModuleApi() {
+  const mod = game.modules.get(MODULE_ID);
+  if (!mod) return;
+
+  const allChats = () => [...(game.messages?.contents ?? [])];
+
+  mod.api = {
+    openChatArchive: (chats) => openChatArchive(chats ?? allChats()),
+    downloadArchiveFile: (chats) => downloadArchiveFile(chats ?? allChats()),
+    downloadIncrementalArchive: (chats, opts) =>
+      downloadIncrementalArchive(chats ?? allChats(), opts),
+  };
+}
 
 Hooks.once("init", () => {
   registerAllSettings();
   registerChitchatRender();
   applyAllCssSettings();
+  registerModuleApi();
 });
 
 Hooks.once("setup", () => {
