@@ -176,57 +176,53 @@ export async function openChatArchive(chats: any[]): Promise<void> {
   newWindow.document.close();
 }
 
+/** 템플릿 doc의 .foundry-chat-container에 chats를 필터·머지 처리해 채운다. 3개 generate*가 공유. */
+export async function populateChatDoc(doc: Document, chats: any[], settings: { includeWhisper: boolean; hideWhisper: boolean }): Promise<void> {
+  const container = doc.querySelector(".foundry-chat-container")!;
+  let prevPtFlag: boolean | undefined;
+  let prevSpeaker: string | undefined;
+
+  for (const chat of chats) {
+    const whisperFlag = isWhisper(chat);
+    if (shouldExcludeWhisper(chat, settings.includeWhisper)) continue;
+
+    const chatMergeFlag = prevSpeaker === chat.alias;
+    prevPtFlag = await appendChatContents(chat, chatMergeFlag, prevPtFlag, whisperFlag, container, settings.hideWhisper);
+    prevSpeaker = chat.alias;
+  }
+
+  rewriteInlineRolls(doc);
+}
+
+/** Download/Incremental 공통: 본문/초상화 이미지 src 집합 수집. */
+export function extractImageSets(doc: Document): { contentImg: Set<string>; portraitImg: Set<string> } {
+  const contentImg = new Set([...doc.querySelectorAll<HTMLImageElement>(".chat-text img")]
+    .map(img => img.src ? img.src
+      : window.location.href.replace("game", "") + img?.getAttribute("src")));
+
+  const portraitImg = new Set([...doc.querySelectorAll<HTMLImageElement>(".chat-image img")]
+    .map(img => img.src ? img.src
+      : window.location.href.replace("game", "") + img?.getAttribute("src")));
+
+  return { contentImg, portraitImg };
+}
+
 /**
  * 별도 창 표시용 — 이미지 src를 재매핑하지 않는다.
  * `extractImageSets`가 빠진 경량 버전.
  */
 async function generateSimpleHtmlFromChats(chats: any[]): Promise<[string]> {
-  console.time("[DEBUG] generateSimpleHtmlFromChats 전체");
-  console.time("[DEBUG] 1. 템플릿 로드");
-
   const response = await fetch(TEMPLATE_PATH);
   const templateHtml = await response.text();
-
   const parser = new DOMParser();
   const doc = parser.parseFromString(templateHtml, "text/html");
-  console.timeEnd("[DEBUG] 1. 템플릿 로드");
 
-  const container = doc.querySelector(".foundry-chat-container")!;
-  let prevPtFlag: boolean | undefined;
-  let prevSpeaker: string | undefined;
+  await populateChatDoc(doc, chats, {
+    includeWhisper: (game.settings as any).get(MODULE_ID, "includeWhisper"),
+    hideWhisper: (game.settings as any).get(MODULE_ID, "hideWhisper"),
+  });
 
-  // 설정값을 루프 밖에서 한 번만 가져옴 (성능 최적화)
-  const includeWhisperFlag = (game.settings as any).get(MODULE_ID, "includeWhisper");
-  const hideWhisperSetting = (game.settings as any).get(MODULE_ID, "hideWhisper");
-
-  console.time("[DEBUG] 2. 채팅 처리 루프");
-  let chatCount = 0;
-  let rollCount = 0;
-  let privTalkCount = 0;
-  for (const chat of chats) {
-    const whisperFlag = isWhisper(chat);
-    if (shouldExcludeWhisper(chat, includeWhisperFlag)) continue;
-
-    chatCount++;
-    if (chat.rolls && chat.rolls.length > 0) rollCount++;
-    if (isPrivTalkMessage(chat)) privTalkCount++;
-
-    const chatMergeFlag = prevSpeaker === chat.alias;
-    prevPtFlag = await appendChatContents(chat, chatMergeFlag, prevPtFlag, whisperFlag, container, hideWhisperSetting);
-    prevSpeaker = chat.alias;
-  }
-  console.timeEnd("[DEBUG] 2. 채팅 처리 루프");
-  console.log(`[DEBUG] 처리된 채팅: ${chatCount}개, Roll: ${rollCount}개, PrivTalk: ${privTalkCount}개`);
-
-  console.time("[DEBUG] 3. 인라인 롤 처리");
-  rewriteInlineRolls(doc);
-  console.timeEnd("[DEBUG] 3. 인라인 롤 처리");
-
-  console.time("[DEBUG] 4. CSS 처리");
   injectInlineCss(doc);
-  console.timeEnd("[DEBUG] 4. CSS 처리");
-
-  console.timeEnd("[DEBUG] generateSimpleHtmlFromChats 전체");
   return [doc.documentElement.outerHTML];
 }
 
@@ -242,35 +238,15 @@ async function generateIncrementalHtmlFromChats(chats: any[], opts: { mode?: "fi
 
   const response = await fetch(INCREMENTAL_TEMPLATE_PATH);
   const templateHtml = await response.text();
-
   const parser = new DOMParser();
   const doc = parser.parseFromString(templateHtml, "text/html");
 
-  const container = doc.querySelector(".foundry-chat-container")!;
-  let prevPtFlag: boolean | undefined;
-  let prevSpeaker: string | undefined;
+  await populateChatDoc(doc, chats, {
+    includeWhisper: (game.settings as any).get(MODULE_ID, "includeWhisper"),
+    hideWhisper: (game.settings as any).get(MODULE_ID, "hideWhisper"),
+  });
 
-  const includeWhisperFlag = (game.settings as any).get(MODULE_ID, "includeWhisper");
-  const hideWhisperSetting = (game.settings as any).get(MODULE_ID, "hideWhisper");
-
-  for (const chat of chats) {
-    const whisperFlag = isWhisper(chat);
-    if (shouldExcludeWhisper(chat, includeWhisperFlag)) continue;
-
-    const chatMergeFlag = prevSpeaker === chat.alias;
-    prevPtFlag = await appendChatContents(chat, chatMergeFlag, prevPtFlag, whisperFlag, container, hideWhisperSetting);
-    prevSpeaker = chat.alias;
-  }
-
-  rewriteInlineRolls(doc);
-
-  const contentImg = new Set([...doc.querySelectorAll<HTMLImageElement>(".chat-text img")]
-    .map(img => img.src ? img.src
-      : window.location.href.replace("game", "") + img?.getAttribute("src")));
-
-  const portraitImg = new Set([...doc.querySelectorAll<HTMLImageElement>(".chat-image img")]
-    .map(img => img.src ? img.src
-      : window.location.href.replace("game", "") + img?.getAttribute("src")));
+  const { contentImg, portraitImg } = extractImageSets(doc);
 
   const baselineCss = await getBaselineCss();
   const dynamicCss = createCssList(null, doc, { mode });
@@ -287,38 +263,17 @@ async function generateIncrementalHtmlFromChats(chats: any[], opts: { mode?: "fi
 async function generateHtmlFromChats(chats: any[]): Promise<[string, Set<string>, Set<string>]> {
   const response = await fetch(TEMPLATE_PATH);
   const templateHtml = await response.text();
-
   const parser = new DOMParser();
   const doc = parser.parseFromString(templateHtml, "text/html");
 
-  const container = doc.querySelector(".foundry-chat-container")!;
-  let prevPtFlag: boolean | undefined;
-  let prevSpeaker: string | undefined;
+  await populateChatDoc(doc, chats, {
+    includeWhisper: (game.settings as any).get(MODULE_ID, "includeWhisper"),
+    hideWhisper: (game.settings as any).get(MODULE_ID, "hideWhisper"),
+  });
 
-  const includeWhisperFlag = (game.settings as any).get(MODULE_ID, "includeWhisper");
-  const hideWhisperSetting = (game.settings as any).get(MODULE_ID, "hideWhisper");
-
-  for (const chat of chats) {
-    const whisperFlag = isWhisper(chat);
-    if (shouldExcludeWhisper(chat, includeWhisperFlag)) continue;
-
-    const chatMergeFlag = prevSpeaker === chat.alias;
-    prevPtFlag = await appendChatContents(chat, chatMergeFlag, prevPtFlag, whisperFlag, container, hideWhisperSetting);
-    prevSpeaker = chat.alias;
-  }
-
-  rewriteInlineRolls(doc);
-
-  const contentImg = new Set([...doc.querySelectorAll<HTMLImageElement>(".chat-text img")]
-    .map(img => img.src ? img.src
-      : window.location.href.replace("game", "") + img?.getAttribute("src")));
-
-  const portraitImg = new Set([...doc.querySelectorAll<HTMLImageElement>(".chat-image img")]
-    .map(img => img.src ? img.src
-      : window.location.href.replace("game", "") + img?.getAttribute("src")));
+  const { contentImg, portraitImg } = extractImageSets(doc);
 
   injectInlineCss(doc);
-
   updateImageSources(doc);
   return [doc.documentElement.outerHTML, contentImg, portraitImg];
 }

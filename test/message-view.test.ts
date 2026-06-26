@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { appendChatContents } from "../src/archive/export";
+import { appendChatContents, populateChatDoc, extractImageSets } from "../src/archive/export";
 import { isWhisper, shouldExcludeWhisper, resolveChatMergeFlag, selectBodySource, buildMessageClasses, maskWhisperSpeaker } from "../src/archive/message-view";
 
 // Foundry 전역 스텁 — whisper 수신자명 / actor 조회(초상화 없음 경로)
@@ -126,4 +126,48 @@ describe("buildMessageClasses", () => {
 describe("maskWhisperSpeaker", () => {
   it("단일 수신자", () => expect(maskWhisperSpeaker("Bob", ["Carol"])).toBe("Bob\n→[Carol]"));
   it("복수 수신자(쉼표결합)", () => expect(maskWhisperSpeaker("Bob", ["Carol", "Dave"])).toBe("Bob\n→[Carol,Dave]"));
+});
+
+function chatDoc() {
+  const doc = document.implementation.createHTMLDocument("t");
+  const c = doc.createElement("div");
+  c.className = "foundry-chat-container";
+  doc.body.appendChild(c);
+  return doc;
+}
+
+describe("populateChatDoc", () => {
+  it("같은 alias 연속 → 2번째 chat-merge, 속삭임은 필터 제외", async () => {
+    const doc = chatDoc();
+    const chats = [
+      plain({ content: "a" }),
+      plain({ content: "b" }), // 같은 alias "Alice" → merge
+      plain({ alias: "Eve", speaker: { alias: "Eve" }, whisper: ["u1"], content: "w" }), // 속삭임 → include off 제외
+    ];
+    await populateChatDoc(doc, chats, { includeWhisper: false, hideWhisper: false });
+    const boxes = doc.querySelectorAll(".chat-box");
+    expect(boxes.length).toBe(2); // 속삭임 1건 제외
+    expect(boxes[0].querySelector(".chat-text")!.classList.contains("chat-merge")).toBe(false);
+    expect(boxes[1].querySelector(".chat-text")!.classList.contains("chat-merge")).toBe(true);
+  });
+
+  it("잡담↔일반 전환 시 merge 끊김", async () => {
+    const doc = chatDoc();
+    await populateChatDoc(doc, [privtalk(), plain({ content: "x" })], { includeWhisper: false, hideWhisper: false });
+    const boxes = doc.querySelectorAll(".chat-box");
+    // 2번째(일반)는 직전이 잡담이라 prevPtFlag(true) !== privTalkFlag(false) → merge 안 됨
+    expect(boxes[1].querySelector(".chat-text")!.classList.contains("chat-merge")).toBe(false);
+  });
+});
+
+describe("extractImageSets", () => {
+  it(".chat-text img → contentImg, .chat-image img → portraitImg", () => {
+    const doc = document.implementation.createHTMLDocument("t");
+    doc.body.innerHTML =
+      '<div class="chat-text"><img src="http://x/a.png"></div>' +
+      '<div class="chat-image"><img src="http://x/p.png"></div>';
+    const { contentImg, portraitImg } = extractImageSets(doc);
+    expect([...contentImg]).toEqual(["http://x/a.png"]);
+    expect([...portraitImg]).toEqual(["http://x/p.png"]);
+  });
 });
