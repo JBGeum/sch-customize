@@ -30,7 +30,7 @@ export async function showConfirmDialog({ title, content, confirmLabel, confirmI
         window: { title },
         content: `<p>${content}</p>`,
         yes: { label: confirmLabel, icon: confirmIcon },
-        no:  { label: game.i18n!.localize("chat-tailor.dialog.download.button.cancel") },
+        no:  { label: game.i18n!.localize("sch-customize.dialog.download.button.cancel") },
       });
       if (ok) await onConfirm();
     } catch (_e) {
@@ -51,7 +51,7 @@ export async function showConfirmDialog({ title, content, confirmLabel, confirmI
       },
       cancel: {
         icon: '<i class="fas fa-times"></i>',
-        label: game.i18n!.localize("chat-tailor.dialog.download.button.cancel"),
+        label: game.i18n!.localize("sch-customize.dialog.download.button.cancel"),
       },
     },
     default: "cancel",
@@ -66,9 +66,9 @@ export async function showConfirmDialog({ title, content, confirmLabel, confirmI
 export class DownloadChatArchive extends FormApplication {
   override render(_force?: boolean, _options?: any): this {
     showConfirmDialog({
-      title: game.i18n!.localize("chat-tailor.dialog.download.title"),
-      content: game.i18n!.localize("chat-tailor.dialog.download.content"),
-      confirmLabel: game.i18n!.localize("chat-tailor.dialog.download.button.download"),
+      title: game.i18n!.localize("sch-customize.dialog.download.title"),
+      content: game.i18n!.localize("sch-customize.dialog.download.content"),
+      confirmLabel: game.i18n!.localize("sch-customize.dialog.download.button.download"),
       onConfirm: async () => {
         try {
           const chats = [...(game.messages!.contents)];
@@ -76,7 +76,7 @@ export class DownloadChatArchive extends FormApplication {
         } catch (error) {
           console.error("[chat-tailor] Failed to download chat archive:", error);
           ui.notifications?.error(
-            game.i18n!.localize("chat-tailor.dialog.download.error") || "Failed to download chat archive."
+            game.i18n!.localize("sch-customize.dialog.download.error") || "Failed to download chat archive."
           );
         }
       },
@@ -90,9 +90,9 @@ export class DownloadChatArchive extends FormApplication {
 export class openChatArchiveWindow extends FormApplication {
   override render(_force?: boolean, _options?: any): this {
     showConfirmDialog({
-      title: game.i18n!.localize("chat-tailor.dialog.open.title"),
-      content: game.i18n!.localize("chat-tailor.dialog.open.content"),
-      confirmLabel: game.i18n!.localize("chat-tailor.dialog.open.button.open"),
+      title: game.i18n!.localize("sch-customize.dialog.open.title"),
+      content: game.i18n!.localize("sch-customize.dialog.open.content"),
+      confirmLabel: game.i18n!.localize("sch-customize.dialog.open.button.open"),
       onConfirm: async () => {
         const chats = [...(game.messages!.contents)];
         await openChatArchive(chats);
@@ -110,7 +110,7 @@ export class openChatArchiveWindow extends FormApplication {
  * <form>이 아닌 <div>로 감싼다 — DialogV2의 submit 버튼이 의도치 않게 form submit을 트리거할 가능성 제거.
  */
 function buildExportModeFormHtml(): string {
-  const t = (key: string) => game.i18n!.localize(`chat-tailor.dialog.export.${key}`);
+  const t = (key: string) => game.i18n!.localize(`sch-customize.dialog.export.${key}`);
   return `
     <div class="chat-tailor-export-form" style="display:flex;flex-direction:column;gap:0.6rem;">
       <fieldset style="display:flex;flex-direction:column;gap:0.4rem;padding:0.5rem;">
@@ -216,7 +216,7 @@ async function dispatchExport({ mode, existingCssText }: { mode: string; existin
   } catch (error) {
     console.error("[chat-tailor] Failed to export chat archive:", error);
     ui.notifications?.error(
-      game.i18n!.localize("chat-tailor.dialog.export.error") || "Failed to export chat archive."
+      game.i18n!.localize("sch-customize.dialog.export.error") || "Failed to export chat archive."
     );
   }
 }
@@ -234,10 +234,10 @@ async function dispatchExport({ mode, existingCssText }: { mode: string; existin
  *  - `default`는 dialog 옵션 top-level의 action 이름이며, 버튼 객체에 `default: true`를 두지 않는다.
  */
 async function showExportModeDialog(): Promise<void> {
-  const title = game.i18n!.localize("chat-tailor.dialog.export.title");
+  const title = game.i18n!.localize("sch-customize.dialog.export.title");
   const contentHtml = buildExportModeFormHtml();
-  const confirmLabel = game.i18n!.localize("chat-tailor.dialog.download.button.download");
-  const cancelLabel = game.i18n!.localize("chat-tailor.dialog.download.button.cancel");
+  const confirmLabel = game.i18n!.localize("sch-customize.dialog.download.button.download");
+  const cancelLabel = game.i18n!.localize("sch-customize.dialog.download.button.cancel");
 
   // 렌더된 dialog의 root element를 closure로 보관 — 콜백 시점에 안정적으로 접근하기 위함
   let dialogRoot: any = null;

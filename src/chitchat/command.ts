@@ -53,7 +53,7 @@ export function registerChitchatCommand() {
       };
     },
     autocompleteCallback: (_menu: any, _alias: any, _parameters: any) =>
-      [(game as any).chatCommands.createInfoElement(game.i18n!.localize("chat-tailor.chat.privTalkAutocomplete"))],
+      [(game as any).chatCommands.createInfoElement(game.i18n!.localize("sch-customize.chat.privTalkAutocomplete"))],
     closeOnComplete: true,
   });
 }
