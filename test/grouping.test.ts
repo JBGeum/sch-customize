@@ -120,6 +120,44 @@ describe("일반 메시지 그룹화", () => {
   });
 });
 
+describe("merge 비활성 경로 & 리셋", () => {
+  it("privTalkMerge=false → 잡담 연속에도 그룹 클래스 미부착", () => {
+    settings.privTalkMerge = false;
+    const e1 = render(priv("1"));
+    const e2 = render(priv("1"));
+    expect(e1.classList.contains("top")).toBe(false);
+    expect(e2.classList.contains("end")).toBe(false);
+    expect(e2.classList.contains("middle")).toBe(false);
+  });
+
+  it("privTalkMerge=false 라도 privTalkIndex 증가는 유지되어 잡담이 일반 그룹을 끊는다", () => {
+    settings.privTalkMerge = false;
+    render(base(0, "A", { actor: "a" })); // lastBaseMsg=base1, privTalkIndex=0
+    render(priv("1"));                     // merge off: 라운딩 없음, 그러나 privTalkIndex++ → 1
+    const b2 = render(base(0, "A", { actor: "a" })); // prevWasPrivTalk=true → 머지 안 됨
+    expect(b2.classList.contains("end")).toBe(false);
+  });
+
+  it("baseMessageMerge=false → 일반 메시지 연속에도 그룹 클래스 미부착", () => {
+    settings.baseMessageMerge = false;
+    const e1 = render(base(0, "A", { actor: "a" }));
+    const e2 = render(base(0, "A", { actor: "a" }));
+    expect(e1.classList.contains("top")).toBe(false);
+    expect(e2.classList.contains("end")).toBe(false);
+  });
+
+  it("resetRenderState()는 그룹 상태를 초기화한다", () => {
+    render(priv("1"));
+    const e2 = render(priv("1"));
+    expect(e2.classList.contains("end")).toBe(true); // 리셋 전: 그룹 형성
+    resetRenderState();
+    const e3 = render(priv("1")); // 리셋 후 첫 메시지 → 그룹 없음
+    expect(e3.classList.contains("end")).toBe(false);
+    expect(e3.classList.contains("top")).toBe(false);
+    expect(e3.classList.contains("middle")).toBe(false);
+  });
+});
+
 describe("speaker-inline 부착 방향", () => {
   it("privTalkSpeakerLineChange=false → speaker-inline 부착", () => {
     settings.privTalkSpeakerLineChange = false;
