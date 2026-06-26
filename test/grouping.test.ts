@@ -54,6 +54,21 @@ describe("잡담 연속 그룹화", () => {
     expect(e3.classList.contains("end")).toBe(true);
     expect(e1.classList.contains("priv_talk")).toBe(true);
     expect(e1.classList.contains("user-1")).toBe(true);
+    // M1, M2 — e2는 end를 잃고, e3은 top/middle 없이 end만 가짐
+    expect(e2.classList.contains("end")).toBe(false);
+    expect(e3.classList.contains("top")).toBe(false);
+    expect(e3.classList.contains("middle")).toBe(false);
+  });
+
+  it("4연속 잡담은 top / middle / middle / end", () => {
+    const e1 = render(priv("1"));
+    const e2 = render(priv("1"));
+    const e3 = render(priv("1"));
+    const e4 = render(priv("1"));
+    expect(e1.classList.contains("top")).toBe(true);
+    expect(e2.classList.contains("middle")).toBe(true);
+    expect(e3.classList.contains("middle")).toBe(true);
+    expect(e4.classList.contains("end")).toBe(true);
   });
 });
 
@@ -77,6 +92,17 @@ describe("일반 메시지 그룹화", () => {
     render(base(0, "A", { actor: "npc1" }));
     const e2 = render(base(0, "A", { actor: "npc2" }));
     expect(e2.classList.contains("end")).toBe(false);
+  });
+
+  it("연속 그룹 도중 author가 바뀌면 직전 end가 middle로 승격되지 않음", () => {
+    const e1 = render(base(0, "A", { actor: "a" }));
+    const e2 = render(base(0, "A", { actor: "a" }));
+    const e3 = render(base(0, "B", { actor: "b" }));
+    expect(e1.classList.contains("top")).toBe(true);
+    expect(e2.classList.contains("end")).toBe(true);
+    expect(e2.classList.contains("middle")).toBe(false);
+    expect(e3.classList.contains("end")).toBe(false);
+    expect(e3.classList.contains("top")).toBe(false);
   });
 
   it("중간에 잡담이 끼면 privTalkIndex 리셋으로 그룹 끊김", () => {
