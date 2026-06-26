@@ -47,7 +47,7 @@ beforeEach(() => {
   resetRenderState();
   settings.privTalkMerge = true;
   settings.baseMessageMerge = true;
-  settings.privTalkSpeakerLineChange = false; // false → line-change 부착
+  settings.privTalkSpeakerLineChange = false; // false → speaker-inline 부착
 });
 
 describe("잡담 연속 그룹화", () => {
@@ -120,14 +120,14 @@ describe("일반 메시지 그룹화", () => {
   });
 });
 
-describe("line-change 부착 방향", () => {
-  it("privTalkSpeakerLineChange=false → line-change 부착", () => {
+describe("speaker-inline 부착 방향", () => {
+  it("privTalkSpeakerLineChange=false → speaker-inline 부착", () => {
     settings.privTalkSpeakerLineChange = false;
-    expect(render(priv("1")).classList.contains("line-change")).toBe(true);
+    expect(render(priv("1")).classList.contains("speaker-inline")).toBe(true);
   });
   it("privTalkSpeakerLineChange=true → 미부착", () => {
     settings.privTalkSpeakerLineChange = true;
-    expect(render(priv("1")).classList.contains("line-change")).toBe(false);
+    expect(render(priv("1")).classList.contains("speaker-inline")).toBe(false);
   });
 });
 

@@ -75,7 +75,7 @@ function handlePrivTalkRender(el: HTMLElement, message: ChatMessage, mergeEnable
   }
 
   if (!(game.settings as any).get(MODULE_ID, "privTalkSpeakerLineChange")) {
-    el.classList.add("line-change");
+    el.classList.add("speaker-inline");
   }
 }
 
