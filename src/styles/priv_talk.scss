@@ -3,7 +3,7 @@
   --priv-talk-font-size: ;
   --priv-talk-margin-left: ;
   --priv-talk-bg-brightness: ;
-  --ct-chat-font-size: 14px;
+  --sch-chat-font-size: 14px;
 }
 
 /*
@@ -58,7 +58,7 @@
 }
 
 :is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message > div.message-content {
-  font-size: var(--ct-chat-font-size);
+  font-size: var(--sch-chat-font-size);
 }
 
 

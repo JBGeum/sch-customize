@@ -112,32 +112,32 @@ export class openChatArchiveWindow extends FormApplication {
 function buildExportModeFormHtml(): string {
   const t = (key: string) => game.i18n!.localize(`sch-customize.dialog.export.${key}`);
   return `
-    <div class="chat-tailor-export-form" style="display:flex;flex-direction:column;gap:0.6rem;">
+    <div class="sch-customize-export-form" style="display:flex;flex-direction:column;gap:0.6rem;">
       <fieldset style="display:flex;flex-direction:column;gap:0.4rem;padding:0.5rem;">
         <legend>${t("legend")}</legend>
         <label style="display:flex;align-items:flex-start;gap:0.4rem;">
-          <input type="radio" name="ct-export-mode" value="solo" checked>
+          <input type="radio" name="sch-export-mode" value="solo" checked>
           <span><strong>${t("mode.solo.label")}</strong><br>
             <small style="opacity:0.8">${t("mode.solo.hint")}</small>
           </span>
         </label>
         <label style="display:flex;align-items:flex-start;gap:0.4rem;">
-          <input type="radio" name="ct-export-mode" value="merge">
+          <input type="radio" name="sch-export-mode" value="merge">
           <span><strong>${t("mode.merge.label")}</strong><br>
             <small style="opacity:0.8">${t("mode.merge.hint")}</small>
           </span>
         </label>
         <label style="display:flex;align-items:flex-start;gap:0.4rem;">
-          <input type="radio" name="ct-export-mode" value="full">
+          <input type="radio" name="sch-export-mode" value="full">
           <span><strong>${t("mode.full.label")}</strong><br>
             <small style="opacity:0.8">${t("mode.full.hint")}</small>
           </span>
         </label>
       </fieldset>
-      <div class="ct-existing-css-section" style="display:none;padding:0.4rem 0.6rem;border-top:1px dashed rgba(0,0,0,0.2);">
+      <div class="sch-existing-css-section" style="display:none;padding:0.4rem 0.6rem;border-top:1px dashed rgba(0,0,0,0.2);">
         <label style="display:flex;flex-direction:column;gap:0.3rem;">
           <span><strong>${t("existing.label")}</strong></span>
-          <input type="file" name="ct-existing-css" accept=".css,text/css">
+          <input type="file" name="sch-existing-css" accept=".css,text/css">
           <small style="opacity:0.8">${t("existing.hint")}</small>
         </label>
       </div>
@@ -150,11 +150,11 @@ function buildExportModeFormHtml(): string {
  * 최후 수단으로 document 전체에서 검색.
  */
 function findExportForm(rootEl: any): Element | null {
-  const tryEl = (el: any) => el?.querySelector?.(".chat-tailor-export-form") ?? null;
+  const tryEl = (el: any) => el?.querySelector?.(".sch-customize-export-form") ?? null;
   return tryEl(rootEl)
     ?? tryEl(rootEl?.element)
     ?? tryEl(rootEl?.[0])
-    ?? document.querySelector(".chat-tailor-export-form");
+    ?? document.querySelector(".sch-customize-export-form");
 }
 
 /**
@@ -166,10 +166,10 @@ function attachExportFormHandlers(rootEl: any): void {
     console.warn("[chat-tailor] export form not found in render");
     return;
   }
-  const radios = form.querySelectorAll("input[name='ct-export-mode']");
-  const section = form.querySelector(".ct-existing-css-section");
+  const radios = form.querySelectorAll("input[name='sch-export-mode']");
+  const section = form.querySelector(".sch-existing-css-section");
   const update = () => {
-    const value = (form.querySelector("input[name='ct-export-mode']:checked") as HTMLInputElement | null)?.value;
+    const value = (form.querySelector("input[name='sch-export-mode']:checked") as HTMLInputElement | null)?.value;
     if (section) (section as HTMLElement).style.display = (value === "merge" || value === "full") ? "" : "none";
   };
   radios.forEach(r => r.addEventListener("change", update));
@@ -185,8 +185,8 @@ async function readExportFormValues(rootEl: any): Promise<{ mode: string; existi
     console.error("[chat-tailor] export form not found at submit");
     return null;
   }
-  const mode = (form.querySelector("input[name='ct-export-mode']:checked") as HTMLInputElement | null)?.value ?? "solo";
-  const fileInput = form.querySelector("input[name='ct-existing-css']") as HTMLInputElement | null;
+  const mode = (form.querySelector("input[name='sch-export-mode']:checked") as HTMLInputElement | null)?.value ?? "solo";
+  const fileInput = form.querySelector("input[name='sch-existing-css']") as HTMLInputElement | null;
   const file = fileInput?.files?.[0] ?? null;
   let existingCssText: string | null = null;
   if (file && (mode === "merge" || mode === "full")) {

@@ -20,7 +20,7 @@ const CSS_PROPERTY = {
   fontColor:   "--priv-talk-font-color",
   marginLeft:  "--priv-talk-margin-left",
   brightness:  "--priv-talk-bg-brightness",
-  clFontSize:  "--ct-chat-font-size",
+  clFontSize:  "--sch-chat-font-size",
 };
 
 /**
