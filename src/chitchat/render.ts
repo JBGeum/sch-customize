@@ -28,7 +28,7 @@ export function resetRenderState() {
 /**
  * 단일 chat message 렌더 후처리.
  */
-function onRenderChatMessage(message: ChatMessage, htmlOrEl: HTMLElement | JQuery /*, messageData */): void {
+export function onRenderChatMessage(message: ChatMessage, htmlOrEl: HTMLElement | JQuery /*, messageData */): void {
   const el = toElement(htmlOrEl);
   if (!el) return;
 
