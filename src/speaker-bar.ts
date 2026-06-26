@@ -47,7 +47,7 @@ const CGMP_SPEAKER_MODE = {
  * 모든 값을 가질 수 있다 (CGMP가 UI에서 그 옵션만 GM 전용으로 제한).
  */
 function getCgmpSpeakerMode(): number | null {
-  if (!(game.modules as any)?.get(CGMP_MODULE_ID)?.active) return null;
+  if (!(game.modules as any)?.get?.(CGMP_MODULE_ID)?.active) return null;
   try {
     const key = game.user!.isGM ? CGMP_OPTIONS.GM_SPEAKER_MODE : CGMP_OPTIONS.PLAYER_SPEAKER_MODE;
     const mode = (game.settings as any).get(CGMP_MODULE_ID, key);
@@ -289,6 +289,8 @@ function injectSpeakerBar(html: HTMLElement | JQuery | null): void {
   const root = toElement(html);
 
   // root가 없거나(전체 문서 대상), 또는 root 안에 textarea가 있으면 즉시
+  // toElement() 는 HTMLElement | null 만 반환하므로(jQuery 는 [0] 로 언래핑됨) root 가
+  // non-null 이면 항상 querySelector 가능한 HTMLElement 다 → root ?? document 로 충분.
   const search: Element | Document = root ?? document;
   const textarea = search.querySelector("#chat-message")
                 ?? search.querySelector("textarea[name='message']")
