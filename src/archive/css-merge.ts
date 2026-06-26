@@ -11,7 +11,28 @@
  * 파싱은 브라우저 CSSOM(`<style>` 임시 부착 후 sheet.cssRules)을 이용한다.
  */
 
-function normalizeText(text) {
+interface ChildStyleRule {
+  selectorText?: string;
+  body?: string;
+  raw?: string;
+}
+
+interface StyleRuleEntry {
+  selectorText: string;
+  body: string;
+}
+
+interface CategorizedRules {
+  styleRules: StyleRuleEntry[];
+  mediaRules: Map<string, ChildStyleRule[]>;
+  layerRules: Map<string, ChildStyleRule[]>;
+  layerOrder: string[];
+  fontFaceRules: Array<{text: string}>;
+  keyframeRules: Array<{name: string, text: string}>;
+  otherRules: Array<{text: string}>;
+}
+
+function normalizeText(text: string | null | undefined): string {
   if (!text) return "";
   return text
     .replace(/\s+/g, " ")
@@ -20,7 +41,7 @@ function normalizeText(text) {
     .trim();
 }
 
-function ruleKey(selectorText, bodyText) {
+function ruleKey(selectorText: string, bodyText: string): string {
   return `${normalizeText(selectorText)}|${normalizeText(bodyText)}`;
 }
 
@@ -28,7 +49,7 @@ function ruleKey(selectorText, bodyText) {
  * 임시 `<style>` 요소를 head에 부착해 cssRules를 얻은 뒤 제거한다.
  * 입력이 빈 문자열이거나 파싱 실패면 빈 배열 반환.
  */
-function parseCssToRules(cssText) {
+function parseCssToRules(cssText: string | null | undefined): CSSRule[] {
   if (!cssText || !cssText.trim()) return [];
   const styleEl = document.createElement("style");
   styleEl.textContent = cssText;
@@ -41,7 +62,7 @@ function parseCssToRules(cssText) {
   }
 }
 
-function extractBody(styleRule) {
+function extractBody(styleRule: CSSRule): string {
   const text = styleRule.cssText || "";
   const open = text.indexOf("{");
   const close = text.lastIndexOf("}");
@@ -49,11 +70,11 @@ function extractBody(styleRule) {
   return text.substring(open + 1, close).trim();
 }
 
-function extractChildStyleRules(groupRule) {
-  const children = [];
-  for (const child of groupRule.cssRules || []) {
+function extractChildStyleRules(groupRule: CSSGroupingRule): ChildStyleRule[] {
+  const children: ChildStyleRule[] = [];
+  for (const child of Array.from(groupRule.cssRules)) {
     if (child.type === CSSRule.STYLE_RULE) {
-      children.push({ selectorText: child.selectorText, body: extractBody(child) });
+      children.push({ selectorText: (child as CSSStyleRule).selectorText, body: extractBody(child) });
     } else {
       children.push({ raw: child.cssText });
     }
@@ -64,8 +85,8 @@ function extractChildStyleRules(groupRule) {
 /**
  * 룰들을 카테고리별로 분류한다. 출력 순서를 보존하기 위해 배열로 저장.
  */
-function categorize(rules) {
-  const out = {
+function categorize(rules: CSSRule[]): CategorizedRules {
+  const out: CategorizedRules = {
     styleRules: [],
     mediaRules: new Map(),
     layerRules: new Map(),
@@ -79,29 +100,29 @@ function categorize(rules) {
     try {
       switch (rule.type) {
         case CSSRule.STYLE_RULE:
-          out.styleRules.push({ selectorText: rule.selectorText, body: extractBody(rule) });
+          out.styleRules.push({ selectorText: (rule as CSSStyleRule).selectorText, body: extractBody(rule) });
           break;
         case CSSRule.MEDIA_RULE: {
-          const cond = rule.conditionText || rule.media?.mediaText || "";
+          const cond = (rule as CSSMediaRule).conditionText || (rule as CSSMediaRule).media?.mediaText || "";
           if (!out.mediaRules.has(cond)) out.mediaRules.set(cond, []);
-          out.mediaRules.get(cond).push(...extractChildStyleRules(rule));
+          out.mediaRules.get(cond)!.push(...extractChildStyleRules(rule as CSSGroupingRule));
           break;
         }
         case CSSRule.FONT_FACE_RULE:
           out.fontFaceRules.push({ text: rule.cssText });
           break;
         case CSSRule.KEYFRAMES_RULE:
-          out.keyframeRules.push({ name: rule.name, text: rule.cssText });
+          out.keyframeRules.push({ name: (rule as CSSKeyframesRule).name, text: rule.cssText });
           break;
         case 12:
         case 13: {
-          const name = rule.name || "anonymous";
+          const name = (rule as any).name || "anonymous";
           if (!out.layerRules.has(name)) {
             out.layerRules.set(name, []);
             out.layerOrder.push(name);
           }
-          if (rule.cssRules) {
-            out.layerRules.get(name).push(...extractChildStyleRules(rule));
+          if ((rule as any).cssRules) {
+            out.layerRules.get(name)!.push(...extractChildStyleRules(rule as unknown as CSSGroupingRule));
           }
           break;
         }
@@ -119,13 +140,13 @@ function categorize(rules) {
   return out;
 }
 
-function unionChildren(existing, fresh) {
-  const seen = new Set();
-  const out = [];
+function unionChildren(existing: ChildStyleRule[], fresh: ChildStyleRule[]): ChildStyleRule[] {
+  const seen = new Set<string>();
+  const out: ChildStyleRule[] = [];
   for (const child of existing) {
     const key = child.raw
       ? `raw:${normalizeText(child.raw)}`
-      : ruleKey(child.selectorText, child.body);
+      : ruleKey(child.selectorText!, child.body!);
     if (!seen.has(key)) {
       seen.add(key);
       out.push(child);
@@ -134,7 +155,7 @@ function unionChildren(existing, fresh) {
   for (const child of fresh) {
     const key = child.raw
       ? `raw:${normalizeText(child.raw)}`
-      : ruleKey(child.selectorText, child.body);
+      : ruleKey(child.selectorText!, child.body!);
     if (!seen.has(key)) {
       seen.add(key);
       out.push(child);
@@ -143,12 +164,12 @@ function unionChildren(existing, fresh) {
   return out;
 }
 
-function serializeStyleRule(child) {
+function serializeStyleRule(child: ChildStyleRule): string {
   if (child.raw) return child.raw;
-  return `${child.selectorText} { ${child.body} }`;
+  return `${child.selectorText!} { ${child.body!} }`;
 }
 
-function serializeCategorized(cat) {
+function serializeCategorized(cat: CategorizedRules): string {
   let out = "";
 
   for (const ff of cat.fontFaceRules) out += `${ff.text}\n`;
@@ -191,15 +212,15 @@ function serializeCategorized(cat) {
  * @param {string} freshCssText
  * @returns {string} 머지된 CSS
  */
-export function mergeCss(existingCssText, freshCssText) {
+export function mergeCss(existingCssText: string | null, freshCssText: string): string {
   const existingRules = parseCssToRules(existingCssText);
   const freshRules = parseCssToRules(freshCssText);
 
   const eCat = categorize(existingRules);
   const fCat = categorize(freshRules);
 
-  const styleSeen = new Set();
-  const mergedStyle = [];
+  const styleSeen = new Set<string>();
+  const mergedStyle: StyleRuleEntry[] = [];
   for (const r of eCat.styleRules) {
     const key = ruleKey(r.selectorText, r.body);
     if (!styleSeen.has(key)) {
@@ -217,7 +238,7 @@ export function mergeCss(existingCssText, freshCssText) {
 
   // 사용자 색상 룰: 같은 user-id면 신규본만 남기고 기존본은 제거 (신규본은 이미 후미 위치)
   const userColorRegex = /^\s*div\.chat-box\.user-([A-Za-z0-9_-]+)\s*$/;
-  const freshUserColorIds = new Set();
+  const freshUserColorIds = new Set<string>();
   for (const r of fCat.styleRules) {
     const m = r.selectorText.match(userColorRegex);
     if (m) freshUserColorIds.add(m[1]);
@@ -238,35 +259,35 @@ export function mergeCss(existingCssText, freshCssText) {
     }
   }
 
-  const mergedMedia = new Map();
+  const mergedMedia = new Map<string, ChildStyleRule[]>();
   for (const [cond, children] of eCat.mediaRules) {
     mergedMedia.set(cond, [...children]);
   }
   for (const [cond, children] of fCat.mediaRules) {
     if (mergedMedia.has(cond)) {
-      mergedMedia.set(cond, unionChildren(mergedMedia.get(cond), children));
+      mergedMedia.set(cond, unionChildren(mergedMedia.get(cond)!, children));
     } else {
       mergedMedia.set(cond, [...children]);
     }
   }
 
-  const mergedLayer = new Map();
-  const mergedLayerOrder = [];
+  const mergedLayer = new Map<string, ChildStyleRule[]>();
+  const mergedLayerOrder: string[] = [];
   for (const name of eCat.layerOrder) {
     mergedLayer.set(name, [...(eCat.layerRules.get(name) || [])]);
     mergedLayerOrder.push(name);
   }
   for (const name of fCat.layerOrder) {
     if (mergedLayer.has(name)) {
-      mergedLayer.set(name, unionChildren(mergedLayer.get(name), fCat.layerRules.get(name) || []));
+      mergedLayer.set(name, unionChildren(mergedLayer.get(name)!, fCat.layerRules.get(name) || []));
     } else {
       mergedLayer.set(name, [...(fCat.layerRules.get(name) || [])]);
       mergedLayerOrder.push(name);
     }
   }
 
-  const ffSeen = new Set();
-  const mergedFontFace = [];
+  const ffSeen = new Set<string>();
+  const mergedFontFace: Array<{text: string}> = [];
   for (const ff of [...eCat.fontFaceRules, ...fCat.fontFaceRules]) {
     const key = normalizeText(ff.text);
     if (!ffSeen.has(key)) {
@@ -274,8 +295,8 @@ export function mergeCss(existingCssText, freshCssText) {
       mergedFontFace.push(ff);
     }
   }
-  const kfSeen = new Set();
-  const mergedKeyframes = [];
+  const kfSeen = new Set<string>();
+  const mergedKeyframes: Array<{name: string, text: string}> = [];
   for (const kf of [...eCat.keyframeRules, ...fCat.keyframeRules]) {
     const key = normalizeText(kf.text);
     if (!kfSeen.has(key)) {
@@ -284,8 +305,8 @@ export function mergeCss(existingCssText, freshCssText) {
     }
   }
 
-  const otherSeen = new Set();
-  const mergedOther = [];
+  const otherSeen = new Set<string>();
+  const mergedOther: Array<{text: string}> = [];
   for (const o of [...eCat.otherRules, ...fCat.otherRules]) {
     const key = normalizeText(o.text);
     if (!otherSeen.has(key)) {
@@ -294,7 +315,7 @@ export function mergeCss(existingCssText, freshCssText) {
     }
   }
 
-  const merged = {
+  const merged: CategorizedRules = {
     styleRules: mergedStyle,
     mediaRules: mergedMedia,
     layerRules: mergedLayer,

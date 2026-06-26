@@ -20,7 +20,7 @@
  * - 월드명은 `game.world.title` → `game.world.id` → `"world"` 순으로 폴백
  * - 파일시스템 금지 문자(`\ / : * ? " < > |`)는 `_`로 치환
  */
-export function buildArchiveFilename(prefix, ext) {
+export function buildArchiveFilename(prefix: string, ext: string): string {
   const date = new Date();
   const yyyyMMdd = date.getFullYear().toString()
     + (date.getMonth() + 1).toString().padStart(2, "0")
@@ -37,10 +37,10 @@ export function buildArchiveFilename(prefix, ext) {
  * 무시되고 blob URL의 UUID가 파일명이 되는 문제가 있다.
  * `data:` 스킴은 서비스 워커 인터셉트 대상이 아니므로 `download` 속성이 정상 동작한다.
  */
-async function saveWithDataUriAnchor(blob, filename) {
-  const dataUri = await new Promise((resolve, reject) => {
+async function saveWithDataUriAnchor(blob: Blob, filename: string): Promise<void> {
+  const dataUri = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result);
+    reader.onloadend = () => resolve(reader.result as string);
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(blob);
   });
@@ -70,19 +70,19 @@ async function saveWithDataUriAnchor(blob, filename) {
  * @param {string} filename
  * @returns {Promise<{kind: "file-handle", handle: any}|{kind: "data-uri", filename: string}|null>}
  */
-export async function requestSaveTarget(filename) {
-  if (!window.showSaveFilePicker) {
+export async function requestSaveTarget(filename: string): Promise<{kind: "file-handle", handle: any}|{kind: "data-uri", filename: string}|null> {
+  if (!(window as any).showSaveFilePicker) {
     return { kind: "data-uri", filename };
   }
-  const ext = filename.split(".").pop().toLowerCase();
+  const ext = filename.split(".").pop()!.toLowerCase();
   try {
-    const handle = await window.showSaveFilePicker({
+    const handle = await (window as any).showSaveFilePicker({
       suggestedName: filename,
       types: [{ description: "ZIP Archive", accept: { "application/zip": [`.${ext}`] } }],
     });
     return { kind: "file-handle", handle };
   } catch (e) {
-    if (e.name === "AbortError") return null;
+    if ((e as any).name === "AbortError") return null;
     // 미지원/권한 거부 등 — data URI fallback으로 진행
     return { kind: "data-uri", filename };
   }
@@ -100,7 +100,7 @@ export async function requestSaveTarget(filename) {
  * @param {Blob} blob
  * @returns {Promise<boolean>} 실제로 기록되었는지
  */
-export async function writeToSaveTarget(target, blob) {
+export async function writeToSaveTarget(target: {kind: "file-handle", handle: any}|{kind: "data-uri", filename: string}|null, blob: Blob): Promise<boolean> {
   if (!target) return false;
   if (target.kind === "file-handle") {
     const writable = await target.handle.createWritable();
@@ -121,7 +121,7 @@ export async function writeToSaveTarget(target, blob) {
  * 무거운 export 파이프라인에서는 두 단계 API(`requestSaveTarget`/`writeToSaveTarget`)
  * 를 직접 사용해 picker 호출을 사용자 클릭 직후로 끌어올려야 한다.
  */
-export async function saveAs(blob, filename) {
+export async function saveAs(blob: Blob, filename: string): Promise<void> {
   const target = await requestSaveTarget(filename);
   if (!target) return;
   await writeToSaveTarget(target, blob);
@@ -130,7 +130,7 @@ export async function saveAs(blob, filename) {
 /**
  * `#rrggbb` 혹은 `rrggbb` 형식의 hex 문자열을 `rgba(...)` 표현으로 변환.
  */
-export function hexToRgba(hex, opacity) {
+export function hexToRgba(hex: string, opacity: number): string {
   hex = hex.toString().replace(/^#/, "");
   const r = parseInt(hex.substring(0, 2), 16);
   const g = parseInt(hex.substring(2, 4), 16);
@@ -148,15 +148,15 @@ export function hexToRgba(hex, opacity) {
  *  - 두 경로에서 추출한 파일명이 달라 zip 내 파일명과 HTML 참조가 불일치.
  *  - decodeURIComponent로 항상 디코딩된 형태로 통일해 이 불일치를 해소한다.
  */
-export function filenameFromUrl(url) {
+export function filenameFromUrl(url: string): string {
   if (!url) return "";
   try {
     // 상대 URL도 파싱 가능하도록 현재 origin을 base로 사용
     const pathname = new URL(url, window.location.href).pathname;
-    return decodeURIComponent(pathname.split("/").pop());
+    return decodeURIComponent(pathname.split("/").pop()!);
   } catch {
     // URL 파싱 실패 시(예: data URI) 마지막 슬래시 이후만 디코딩
-    return decodeURIComponent(url.split("/").pop());
+    return decodeURIComponent(url.split("/").pop()!);
   }
 }
 
@@ -164,7 +164,7 @@ export function filenameFromUrl(url) {
  * 파일명에 붙은 트랜스폼 인자나 쿼리스트링을 자르고 확장자까지만 남긴다.
  * 입력은 이미 디코딩된 파일명이어야 한다(`filenameFromUrl` 통과 후 사용).
  */
-export function cleanImageFilename(filename) {
+export function cleanImageFilename(filename: string): string {
   const extensions = [".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg", ".tiff", ".tif", ".ico"];
   for (const ext of extensions) {
     if (filename.includes(ext)) {
@@ -179,7 +179,7 @@ export function cleanImageFilename(filename) {
  * `isHtml`가 true이면 `.container > <div>` 구조로 감싸고 `innerHTML`로 콘텐츠 주입,
  * false면 `textContent`로 안전하게 주입한다.
  */
-export function createDivWithClasses(classes, content, isHtml) {
+export function createDivWithClasses(classes: string | string[], content: string | null | undefined, isHtml: boolean): HTMLElement {
   const div = document.createElement("div");
   (Array.isArray(classes) ? classes : [classes]).forEach(cls => cls && div.classList.add(cls));
 
@@ -197,7 +197,7 @@ export function createDivWithClasses(classes, content, isHtml) {
   return div;
 }
 
-export function appendChildren(parent, children) {
+export function appendChildren(parent: Element, children: Element[]): void {
   children.forEach(child => parent.appendChild(child));
 }
 
@@ -209,12 +209,12 @@ export function appendChildren(parent, children) {
  *
  * NOTE: 다른 모듈(`chat-portrait`)의 flag 데이터 구조에 의존한다.
  */
-export function getChatImageUrl(chat) {
-  const portraitFlag = chat.flags?.["chat-portrait"];
-  if (portraitFlag && chat.speaker?.actor) {
-    return game.actors.get(chat.speaker.actor)?.img ?? portraitFlag.src ?? null;
+export function getChatImageUrl(chat: any): string | null {
+  const portraitFlag = (chat as any).flags?.["chat-portrait"];
+  if (portraitFlag && (chat as any).speaker?.actor) {
+    return game.actors!.get((chat as any).speaker.actor)?.img ?? portraitFlag.src ?? null;
   }
-  const named = game.actors.getName(chat.speaker?.alias);
+  const named = game.actors!.getName((chat as any).speaker?.alias);
   if (named?.img) return named.img;
   if (portraitFlag?.src) return portraitFlag.src;
   return null;
@@ -223,7 +223,7 @@ export function getChatImageUrl(chat) {
 /**
  * 합쳐진(merge) 메시지나 잡담은 초상화를 표시하지 않는다.
  */
-export function getChatImageElement(imageUrl, chatMergeFlag, privTalkFlag) {
+export function getChatImageElement(imageUrl: string | null, chatMergeFlag: any, privTalkFlag: any): HTMLImageElement | null {
   if (imageUrl && !chatMergeFlag && !privTalkFlag) {
     const img = document.createElement("img");
     img.classList.add("chat-image");
@@ -238,7 +238,7 @@ export function getChatImageElement(imageUrl, chatMergeFlag, privTalkFlag) {
  * 잡담 메시지는 본 모듈이 `<div class="pt priv_user">이름</div> <div class="pt">본문</div>`로 가공해 두므로,
  * priv_user가 아닌 `.pt`만 골라낸다.
  */
-export function extractPrivTalkFromContent(htmlContent) {
+export function extractPrivTalkFromContent(htmlContent: string): string {
   const temp = document.createElement("div");
   temp.innerHTML = htmlContent;
   const ptContent = temp.querySelector("div.pt:not(.priv_user)");
@@ -249,11 +249,11 @@ export function extractPrivTalkFromContent(htmlContent) {
  * 임시 렌더된 메시지 element에서 아카이브용 콘텐츠 영역을 추출한다.
  * priv_talk인 경우 본문 div만, 일반 메시지인 경우 .flavor-text + .message-content를 복사한다.
  */
-export function extractMessageContent(messageElement, isPrivTalk) {
+export function extractMessageContent(messageElement: Element, isPrivTalk: boolean): string {
   if (isPrivTalk) {
     const ptContent = messageElement.querySelector(".message-content div.pt:not(.priv_user)");
     if (ptContent) {
-      return ptContent.cloneNode(true).innerHTML;
+      return (ptContent.cloneNode(true) as Element).innerHTML;
     }
   }
 
@@ -266,7 +266,7 @@ export function extractMessageContent(messageElement, isPrivTalk) {
 
   const content = messageElement.querySelector(".message-content");
   if (content) {
-    const clone = content.cloneNode(true);
+    const clone = content.cloneNode(true) as Element;
     // 아카이브에서 제외할 요소 — 필요 시 여기에 추가
     const excludeSelectors = [
       "h4.chat-portrait-text-content-name-generic.chat-portrait-flexrow",
@@ -277,32 +277,32 @@ export function extractMessageContent(messageElement, isPrivTalk) {
     result += clone.innerHTML;
   }
 
-  return result || messageElement.cloneNode(true).outerHTML;
+  return result || (messageElement.cloneNode(true) as Element).outerHTML;
 }
 
 /**
  * 인라인 이미지 src를 아카이브 zip의 상대 경로(`images/`, `portraits/`)로 다시 매핑한다.
  */
-export function updateImageSources(targetDoc) {
+export function updateImageSources(targetDoc: Document): void {
   const images = targetDoc.querySelectorAll(".chat-text img");
   images.forEach(img => {
     const src = img.getAttribute("src");
     if (!src) return;
-    img.src = "images/" + cleanImageFilename(filenameFromUrl(src));
+    (img as HTMLImageElement).src = "images/" + cleanImageFilename(filenameFromUrl(src));
   });
 
   const portraits = targetDoc.querySelectorAll("img.chat-image");
   portraits.forEach(img => {
     const src = img.getAttribute("src");
     if (!src) return;
-    img.src = "portraits/" + cleanImageFilename(filenameFromUrl(src));
+    (img as HTMLImageElement).src = "portraits/" + cleanImageFilename(filenameFromUrl(src));
   });
 }
 
 /**
  * JSZip 인스턴스의 폴더에 fetch한 이미지를 채워 넣는다.
  */
-export async function zipInsideFolder(zip, imgSet, folderName) {
+export async function zipInsideFolder(zip: any, imgSet: Iterable<string>, folderName: string): Promise<void> {
   const imgFolder = zip.folder(folderName);
   for (const url of imgSet) {
     try {
@@ -310,7 +310,7 @@ export async function zipInsideFolder(zip, imgSet, folderName) {
       const blob = await response.blob();
       imgFolder.file(cleanImageFilename(filenameFromUrl(url)), blob);
     } catch (e) {
-      console.error(`Failed to fetch or process the image from URL: ${url}. Error: ${e.message}`);
+      console.error(`Failed to fetch or process the image from URL: ${url}. Error: ${(e as any).message}`);
     }
   }
 }

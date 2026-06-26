@@ -29,19 +29,22 @@ const MAX_VAR_LENGTH = 2000;
  * 결과적으로 실제 사용되는 변수만 :root에 다시 박아낸다.
  */
 export class CssVariableTracker {
+  definitions: Map<string, string>;
+  usages: Set<string>;
+
   constructor() {
     this.definitions = new Map();
     this.usages = new Set();
   }
 
-  extractUsages(styleText) {
+  extractUsages(styleText: string): void {
     const matches = styleText.matchAll(/var\(\s*(--[a-zA-Z0-9-_]+)/g);
     for (const match of matches) {
       this.usages.add(match[1]);
     }
   }
 
-  collectDefinitions(styleText) {
+  collectDefinitions(styleText: string): void {
     const matches = styleText.matchAll(/(--[a-zA-Z0-9-_]+)\s*:\s*([^;]+)/g);
     for (const match of matches) {
       this.definitions.set(match[1], match[2].trim());
@@ -52,7 +55,7 @@ export class CssVariableTracker {
    * `--a`가 사용되었고 그 정의값에 `var(--b)`가 포함되어 있다면 `--b`도 사용된 것으로 간주.
    * 의존성이 안정될 때까지 최대 10회 반복.
    */
-  resolveTransitiveDependencies() {
+  resolveTransitiveDependencies(): void {
     let changed = true;
     let iteration = 0;
     while (changed && iteration < 10) {
@@ -80,12 +83,12 @@ export class CssVariableTracker {
    *  - 값 길이가 `MAX_VAR_LENGTH`를 초과하는 변수는 export에서 제외 (예: base64 data URL)
    *  - 각 변수는 별도 줄로 직렬화하여 한 줄짜리 거대 :root로 인한 잘림을 방지
    */
-  generateRootCss(includeAll = false) {
+  generateRootCss(includeAll = false): string {
     this.resolveTransitiveDependencies();
-    const vars = [];
-    const skipped = [];
+    const vars: string[] = [];
+    const skipped: Array<{varName: string, length: number}> = [];
 
-    const pushVar = (varName, value) => {
+    const pushVar = (varName: string, value: string | undefined): void => {
       if (typeof value !== "string") return;
       if (value.length > MAX_VAR_LENGTH) {
         skipped.push({ varName, length: value.length });
@@ -119,10 +122,27 @@ export class CssVariableTracker {
   }
 }
 
+interface CssRule {
+  selector: string;
+  styles: string;
+}
+
+interface CssContext {
+  type: "media" | "layer";
+  condition?: string;
+  name?: string;
+}
+
 /**
  * 룰을 컨텍스트(@media, @layer)별로 분류해 모은 다음, DOM에 실제 매칭되는 것만 직렬화한다.
  */
 export class StructuredCssCollector {
+  rootRules: CssRule[];
+  mediaRules: Map<string, CssRule[]>;
+  layerRules: Map<string, CssRule[]>;
+  keyframeRules: string[];
+  fontFaceRules: string[];
+
   constructor() {
     this.rootRules = [];
     this.mediaRules = new Map();
@@ -131,20 +151,20 @@ export class StructuredCssCollector {
     this.fontFaceRules = [];
   }
 
-  addRule(selector, styles, context = null) {
-    const rule = { selector, styles };
+  addRule(selector: string, styles: string, context: CssContext | null = null): void {
+    const rule: CssRule = { selector, styles };
     if (!context) {
       this.rootRules.push(rule);
     } else if (context.type === "media") {
-      if (!this.mediaRules.has(context.condition)) {
-        this.mediaRules.set(context.condition, []);
+      if (!this.mediaRules.has(context.condition!)) {
+        this.mediaRules.set(context.condition!, []);
       }
-      this.mediaRules.get(context.condition).push(rule);
+      this.mediaRules.get(context.condition!)!.push(rule);
     } else if (context.type === "layer") {
-      if (!this.layerRules.has(context.name)) {
-        this.layerRules.set(context.name, []);
+      if (!this.layerRules.has(context.name!)) {
+        this.layerRules.set(context.name!, []);
       }
-      this.layerRules.get(context.name).push(rule);
+      this.layerRules.get(context.name!)!.push(rule);
     }
   }
 
@@ -160,17 +180,17 @@ export class StructuredCssCollector {
    * 문제를 막기 위함. (filtered 모드에서만 의미가 있으며, full 모드에서는 모든
    * 룰이 출력 대상이므로 결과적으로 모든 변수가 추적된다.)
    */
-  generateCss(domSelectors, variableTracker, options = {}) {
+  generateCss(domSelectors: Set<string>, variableTracker: CssVariableTracker, options: { mode?: "filtered" | "full" } = {}): string {
     const includeAll = options.mode === "full";
-    const matches = (r) => includeAll ? true : selectorMatchesDom(r.selector, domSelectors);
+    const matches = (r: CssRule) => includeAll ? true : selectorMatchesDom(r.selector, domSelectors);
 
     const matchedRoot = this.rootRules.filter(matches);
-    const matchedLayer = new Map();
+    const matchedLayer = new Map<string, CssRule[]>();
     for (const [name, rules] of this.layerRules) {
       const m = rules.filter(matches);
       if (m.length) matchedLayer.set(name, m);
     }
-    const matchedMedia = new Map();
+    const matchedMedia = new Map<string, CssRule[]>();
     for (const [condition, rules] of this.mediaRules) {
       const m = rules.filter(matches);
       if (m.length) matchedMedia.set(condition, m);
@@ -238,7 +258,7 @@ const ALWAYS_INCLUDE_PATTERNS = [
   /\[data-message-id\]/, /\[data-actor-id\]/,
 ];
 
-export function selectorMatchesDom(cssSelector, domSelectors) {
+export function selectorMatchesDom(cssSelector: string, domSelectors: Set<string>): boolean {
   if (ALWAYS_INCLUDE_PATTERNS.some(pattern => pattern.test(cssSelector))) {
     return true;
   }
@@ -268,11 +288,11 @@ export function selectorMatchesDom(cssSelector, domSelectors) {
  * 아카이브 doc의 모든 요소에서 사용 가능한 selector 후보를 수집한다.
  * 가까운 조상 3단계까지의 selector 조합도 같이 만든다.
  */
-export function getSelectorsWithAncestors(targetDoc) {
-  const selectorsSet = new Set([":root", "*", "html", "body"]);
+export function getSelectorsWithAncestors(targetDoc: Document): Set<string> {
+  const selectorsSet = new Set<string>([":root", "*", "html", "body"]);
 
-  function getElementSelector(element) {
-    const selectors = [];
+  function getElementSelector(element: Element): string[] {
+    const selectors: string[] = [];
     if (element.tagName) selectors.push(element.tagName.toLowerCase());
     if (element.id) selectors.push(`#${element.id}`);
 
@@ -297,7 +317,7 @@ export function getSelectorsWithAncestors(targetDoc) {
     return selectors;
   }
 
-  function traverse(element, ancestors = []) {
+  function traverse(element: Element, ancestors: Element[] = []): void {
     if (!element || element.nodeType !== 1) return;
 
     const elementSelectors = getElementSelector(element);
@@ -329,7 +349,7 @@ export function getSelectorsWithAncestors(targetDoc) {
   return selectorsSet;
 }
 
-function extractStyles(rule) {
+function extractStyles(rule: CSSRule): string {
   const text = rule.cssText;
   return text.substring(text.indexOf("{") + 1, text.lastIndexOf("}")).trim();
 }
@@ -345,38 +365,38 @@ function extractStyles(rule) {
  *
  * 단, `:root` / `html` 룰의 styles에서 변수 *정의*는 수집해 둔다.
  */
-function processStyleSheetStructured(sheet, collector, variableTracker, processedSheets, depth = 0) {
+function processStyleSheetStructured(sheet: CSSStyleSheet, collector: StructuredCssCollector, variableTracker: CssVariableTracker, processedSheets: Set<string>, depth = 0): void {
   if (depth > 10) return;
 
   try {
     if (sheet.href && processedSheets.has(sheet.href)) return;
     if (sheet.href) processedSheets.add(sheet.href);
 
-    const rules = sheet.cssRules || sheet.rules;
+    const rules = sheet.cssRules || (sheet as any).rules;
     if (!rules) return;
 
-    for (const rule of rules) {
+    for (const rule of Array.from(rules) as CSSRule[]) {
       try {
         switch (rule.type) {
           case CSSRule.STYLE_RULE: {
             const styles = extractStyles(rule);
-            collector.addRule(rule.selectorText, styles);
-            if (rule.selectorText.includes(":root") || rule.selectorText === "html") {
+            collector.addRule((rule as CSSStyleRule).selectorText, styles);
+            if ((rule as CSSStyleRule).selectorText.includes(":root") || (rule as CSSStyleRule).selectorText === "html") {
               variableTracker.collectDefinitions(styles);
             }
             break;
           }
           case CSSRule.IMPORT_RULE:
-            if (rule.styleSheet) {
-              processStyleSheetStructured(rule.styleSheet, collector, variableTracker, processedSheets, depth + 1);
+            if ((rule as CSSImportRule).styleSheet) {
+              processStyleSheetStructured((rule as CSSImportRule).styleSheet!, collector, variableTracker, processedSheets, depth + 1);
             }
             break;
           case CSSRule.MEDIA_RULE: {
-            const condition = rule.conditionText || rule.media?.mediaText || "";
-            for (const r of rule.cssRules) {
+            const condition = (rule as CSSMediaRule).conditionText || (rule as CSSMediaRule).media?.mediaText || "";
+            for (const r of Array.from((rule as CSSGroupingRule).cssRules) as CSSRule[]) {
               if (r.type === CSSRule.STYLE_RULE) {
                 const styles = extractStyles(r);
-                collector.addRule(r.selectorText, styles, { type: "media", condition });
+                collector.addRule((r as CSSStyleRule).selectorText, styles, { type: "media", condition });
               }
             }
             break;
@@ -384,12 +404,12 @@ function processStyleSheetStructured(sheet, collector, variableTracker, processe
           // 12/13: @layer 룰(CSSLayerBlockRule / CSSLayerStatementRule) — 일부 브라우저에서 상수 미정의
           case 12:
           case 13: {
-            const layerName = rule.name || "anonymous";
-            if (rule.cssRules) {
-              for (const r of rule.cssRules) {
+            const layerName = (rule as any).name || "anonymous";
+            if ((rule as any).cssRules) {
+              for (const r of Array.from((rule as any).cssRules) as CSSRule[]) {
                 if (r.type === CSSRule.STYLE_RULE) {
                   const styles = extractStyles(r);
-                  collector.addRule(r.selectorText, styles, { type: "layer", name: layerName });
+                  collector.addRule((r as CSSStyleRule).selectorText, styles, { type: "layer", name: layerName });
                 }
               }
             }
@@ -402,10 +422,10 @@ function processStyleSheetStructured(sheet, collector, variableTracker, processe
             collector.keyframeRules.push(rule.cssText);
             break;
           case CSSRule.SUPPORTS_RULE:
-            for (const r of rule.cssRules) {
+            for (const r of Array.from((rule as CSSGroupingRule).cssRules) as CSSRule[]) {
               if (r.type === CSSRule.STYLE_RULE) {
                 const styles = extractStyles(r);
-                collector.addRule(r.selectorText, styles);
+                collector.addRule((r as CSSStyleRule).selectorText, styles);
               }
             }
             break;
@@ -413,7 +433,7 @@ function processStyleSheetStructured(sheet, collector, variableTracker, processe
       } catch (_ruleError) {}
     }
   } catch (e) {
-    console.warn(`스타일시트 처리 오류: ${e.message}`);
+    console.warn(`스타일시트 처리 오류: ${(e as any).message}`);
   }
 }
 
@@ -430,20 +450,20 @@ function processStyleSheetStructured(sheet, collector, variableTracker, processe
  * @param {string|null} [options.existingCss=null] - 머지할 기존 CSS 텍스트 (선택)
  * @returns {string} 직렬화된 CSS
  */
-export function createCssList(selectors, targetDoc = null, options = {}) {
+export function createCssList(selectors: Iterable<string> | null, targetDoc: Document | null = null, options: { mode?: "filtered" | "full", existingCss?: string | null } = {}): string {
   const { mode = "filtered", existingCss = null } = options;
 
   const collector = new StructuredCssCollector();
   const variableTracker = new CssVariableTracker();
-  const processedSheets = new Set();
+  const processedSheets = new Set<string>();
 
   const domSelectors = targetDoc
     ? getSelectorsWithAncestors(targetDoc)
-    : new Set(selectors);
+    : new Set<string>(selectors ?? []);
 
-  for (const sheet of document.styleSheets) {
+  for (const sheet of Array.from(document.styleSheets)) {
     try {
-      const testAccess = sheet.cssRules || sheet.rules;
+      const testAccess = sheet.cssRules || (sheet as any).rules;
       if (!testAccess) continue;
       processStyleSheetStructured(sheet, collector, variableTracker, processedSheets);
     } catch (_e) {
@@ -454,9 +474,9 @@ export function createCssList(selectors, targetDoc = null, options = {}) {
   let css = collector.generateCss(domSelectors, variableTracker, { mode });
 
   // 사용자 색상 → 메시지 배경 룰 자동 추가
-  for (const user of game.users) {
+  for (const user of game.users!) {
     const bgColor = hexToRgba(user.color.toString(), 0.3);
-    css += `div.chat-box.user-${user._id} { background-color: ${bgColor} !important; }\n`;
+    css += `div.chat-box.user-${(user as any)._id} { background-color: ${bgColor} !important; }\n`;
   }
 
   if (existingCss) {
