@@ -9,6 +9,14 @@ const MODULE_ID = "chat-tailor";
 const LOCKED_FLAG_KEY = "lockedSpeaker";
 const DEFAULT_IMG = "icons/svg/mystery-man.svg";
 
+/** 사용자가 고정한 발화자 정보 구조. game.user.setFlag에 그대로 저장된다. */
+interface LockedSpeaker {
+  sceneId: string | null;
+  tokenId: string | null;
+  actorId: string | null;
+  alias: string;
+}
+
 /**
  * Cautious Gamemaster's Pack (CGMP) 호환 상수.
  *
@@ -38,11 +46,11 @@ const CGMP_SPEAKER_MODE = {
  * GM/Player 각각 다른 설정 키를 사용한다. Player 모드는 DISABLE_GM_AS_PC를 제외한
  * 모든 값을 가질 수 있다 (CGMP가 UI에서 그 옵션만 GM 전용으로 제한).
  */
-function getCgmpSpeakerMode() {
-  if (!game.modules?.get?.(CGMP_MODULE_ID)?.active) return null;
+function getCgmpSpeakerMode(): number | null {
+  if (!(game.modules as any)?.get(CGMP_MODULE_ID)?.active) return null;
   try {
-    const key = game.user.isGM ? CGMP_OPTIONS.GM_SPEAKER_MODE : CGMP_OPTIONS.PLAYER_SPEAKER_MODE;
-    const mode = game.settings.get(CGMP_MODULE_ID, key);
+    const key = game.user!.isGM ? CGMP_OPTIONS.GM_SPEAKER_MODE : CGMP_OPTIONS.PLAYER_SPEAKER_MODE;
+    const mode = (game.settings as any).get(CGMP_MODULE_ID, key);
     return typeof mode === "number" ? mode : null;
   } catch (_) {
     return null;
@@ -55,8 +63,8 @@ function getCgmpSpeakerMode() {
  */
 function userSpeakerInfo() {
   return {
-    img: game.user.avatar || DEFAULT_IMG,
-    name: game.user.name,
+    img: (game.user as any).avatar || DEFAULT_IMG,
+    name: game.user!.name,
     locked: false,
     actor: null,
     token: null,
@@ -69,10 +77,10 @@ function userSpeakerInfo() {
  * user OOC로 폴백.
  */
 function assignedCharacterSpeakerInfo() {
-  const character = game.user.character;
+  const character = game.user!.character;
   if (!character) return userSpeakerInfo();
   return {
-    img: character.img ?? DEFAULT_IMG,
+    img: (character as any).img ?? DEFAULT_IMG,
     name: character.name,
     locked: false,
     actor: character,
@@ -92,8 +100,8 @@ function resolveCgmpForcedSpeaker() {
   switch (mode) {
     case CGMP_SPEAKER_MODE.DISABLE_GM_AS_PC: {
       // GM에게만 의미가 있고, *PC 토큰* 선택 시에만 발동. NPC 토큰이면 CGMP가 그대로 둠
-      if (!game.user.isGM) return null;
-      const controlled = canvas?.tokens?.controlled?.[0];
+      if (!game.user!.isGM) return null;
+      const controlled = (canvas as any)?.tokens?.controlled?.[0];
       const isPc = !!controlled?.actor?.hasPlayerOwner;
       return isPc ? userSpeakerInfo() : null;
     }
@@ -109,20 +117,20 @@ function resolveCgmpForcedSpeaker() {
 
 /**
  * 현재 사용자의 고정 발화자 정보 가져오기
- * @returns {object|null} { sceneId, actorId, tokenId, alias } or null
+ * @returns {LockedSpeaker|null} { sceneId, actorId, tokenId, alias } or null
  */
-function getLockedSpeaker() {
-  return game.user.getFlag(MODULE_ID, LOCKED_FLAG_KEY) ?? null;
+function getLockedSpeaker(): LockedSpeaker | null {
+  return ((game.user as any).getFlag(MODULE_ID, LOCKED_FLAG_KEY) as LockedSpeaker | null) ?? null;
 }
 
 /**
  * 고정 발화자 설정 (null 전달 시 해제)
  */
-async function setLockedSpeaker(speaker) {
+async function setLockedSpeaker(speaker: LockedSpeaker | null): Promise<void> {
   if (speaker === null) {
-    await game.user.unsetFlag(MODULE_ID, LOCKED_FLAG_KEY);
+    await (game.user as any).unsetFlag(MODULE_ID, LOCKED_FLAG_KEY);
   } else {
-    await game.user.setFlag(MODULE_ID, LOCKED_FLAG_KEY, speaker);
+    await (game.user as any).setFlag(MODULE_ID, LOCKED_FLAG_KEY, speaker);
   }
   updateSpeakerBar();
 }
@@ -142,34 +150,34 @@ async function setLockedSpeaker(speaker) {
 function resolveCurrentSpeaker() {
   const locked = getLockedSpeaker();
   if (locked) {
-    const scene = locked.sceneId ? game.scenes.get(locked.sceneId) : null;
+    const scene = locked.sceneId ? game.scenes!.get(locked.sceneId) : null;
     const token = scene && locked.tokenId ? scene.tokens.get(locked.tokenId) : null;
-    const actor = locked.actorId ? game.actors.get(locked.actorId) : null;
-    const img = token?.texture?.src ?? actor?.img ?? DEFAULT_IMG;
-    const name = locked.alias ?? token?.name ?? actor?.name ?? game.user.name;
+    const actor = locked.actorId ? game.actors!.get(locked.actorId) : null;
+    const img = (token as any)?.texture?.src ?? (actor as any)?.img ?? DEFAULT_IMG;
+    const name = locked.alias ?? token?.name ?? actor?.name ?? game.user!.name;
     return { img, name, locked: true, actor, token };
   }
 
   const cgmpForced = resolveCgmpForcedSpeaker();
   if (cgmpForced) return cgmpForced;
 
-  const controlled = canvas?.tokens?.controlled?.[0];
+  const controlled = (canvas as any)?.tokens?.controlled?.[0];
   if (controlled) {
     const token = controlled.document;
     const actor = controlled.actor;
     return {
-      img: token?.texture?.src ?? actor?.img ?? DEFAULT_IMG,
-      name: token?.name ?? actor?.name ?? game.user.name,
+      img: (token as any)?.texture?.src ?? (actor as any)?.img ?? DEFAULT_IMG,
+      name: token?.name ?? actor?.name ?? game.user!.name,
       locked: false,
       actor,
       token,
     };
   }
 
-  const character = game.user.character;
+  const character = game.user!.character;
   if (character) {
     return {
-      img: character.img ?? DEFAULT_IMG,
+      img: (character as any).img ?? DEFAULT_IMG,
       name: character.name,
       locked: false,
       actor: character,
@@ -177,7 +185,7 @@ function resolveCurrentSpeaker() {
     };
   }
 
-  return { img: DEFAULT_IMG, name: game.user.name, locked: false, actor: null, token: null };
+  return { img: DEFAULT_IMG, name: game.user!.name, locked: false, actor: null, token: null };
 }
 
 /**
@@ -193,12 +201,12 @@ function createSpeakerBarElement() {
   `;
 
   // 잠금 토글
-  bar.querySelector(".ct-speaker-lock").addEventListener("click", onLockToggle);
+  bar.querySelector(".ct-speaker-lock")!.addEventListener("click", onLockToggle);
 
   // 초상화 클릭 시 해당 액터 시트 열기
-  bar.querySelector(".ct-speaker-portrait").addEventListener("click", () => {
+  bar.querySelector(".ct-speaker-portrait")!.addEventListener("click", () => {
     const { actor } = resolveCurrentSpeaker();
-    actor?.sheet?.render(true);
+    (actor as any)?.sheet?.render(true);
   });
 
   return bar;
@@ -212,26 +220,26 @@ async function onLockToggle() {
   if (locked) {
     // 이미 고정되어 있으면 해제
     await setLockedSpeaker(null);
-    ui.notifications.info("발화자 고정이 해제되었습니다.");
+    ui.notifications!.info("발화자 고정이 해제되었습니다.");
     return;
   }
 
   // 현재 선택된 토큰을 고정
-  const controlled = canvas?.tokens?.controlled?.[0];
+  const controlled = (canvas as any)?.tokens?.controlled?.[0];
   if (!controlled) {
-    ui.notifications.warn("고정할 토큰을 먼저 선택해주세요.");
+    ui.notifications!.warn("고정할 토큰을 먼저 선택해주세요.");
     return;
   }
 
   const token = controlled.document;
   const actor = controlled.actor;
   await setLockedSpeaker({
-    sceneId: canvas.scene?.id ?? null,
+    sceneId: (canvas as any).scene?.id ?? null,
     tokenId: token?.id ?? null,
     actorId: actor?.id ?? null,
-    alias: token?.name ?? actor?.name ?? game.user.name,
+    alias: token?.name ?? actor?.name ?? game.user!.name,
   });
-  ui.notifications.info(`'${token?.name ?? actor?.name}'(으)로 발화자가 고정되었습니다.`);
+  ui.notifications!.info(`'${token?.name ?? actor?.name}'(으)로 발화자가 고정되었습니다.`);
 }
 
 /**
@@ -242,9 +250,9 @@ export function updateSpeakerBar() {
   if (!bar) return;
 
   const { img, name, locked } = resolveCurrentSpeaker();
-  const imgEl = bar.querySelector(".ct-speaker-portrait");
-  const nameEl = bar.querySelector(".ct-speaker-name");
-  const lockEl = bar.querySelector(".ct-speaker-lock");
+  const imgEl = bar.querySelector(".ct-speaker-portrait") as HTMLImageElement;
+  const nameEl = bar.querySelector(".ct-speaker-name") as HTMLElement;
+  const lockEl = bar.querySelector(".ct-speaker-lock") as HTMLElement;
 
   imgEl.src = img;
   nameEl.textContent = name;
@@ -263,7 +271,7 @@ export function updateSpeakerBar() {
 /**
  * 발화자 바 본체를 textarea 앞에 삽입
  */
-function placeSpeakerBar(textarea) {
+function placeSpeakerBar(textarea: Element): void {
   // 기존 바 제거 후 새로 삽입 (재렌더 대응)
   const existing = document.querySelector(".ct-speaker-bar");
   if (existing) existing.remove();
@@ -276,12 +284,12 @@ function placeSpeakerBar(textarea) {
 /**
  * 채팅 폼에 발화자 바 삽입 (DOM 준비 안 됐으면 대기)
  */
-function injectSpeakerBar(html) {
+function injectSpeakerBar(html: HTMLElement | JQuery | null): void {
   // v12: jQuery, v13+: HTMLElement — compat helper로 통일
   const root = toElement(html);
 
   // root가 없거나(전체 문서 대상), 또는 root 안에 textarea가 있으면 즉시
-  const search = root && root.querySelector ? root : document;
+  const search: Element | Document = root ?? document;
   const textarea = search.querySelector("#chat-message")
                 ?? search.querySelector("textarea[name='message']")
                 ?? document.querySelector("#chat-message");
@@ -319,7 +327,7 @@ function injectSpeakerBar(html) {
  *
  * @returns {boolean} lock이 적용되어 message가 변경되었는지 여부
  */
-function overrideSpeaker(message, data) {
+function overrideSpeaker(message: ChatMessage, data: any): boolean {
   const locked = getLockedSpeaker();
   if (!locked) return false;
 
@@ -333,7 +341,7 @@ function overrideSpeaker(message, data) {
     alias: locked.alias ?? data.speaker?.alias,
   };
   data.speaker = speaker;
-  message.updateSource({ speaker });
+  (message as any).updateSource({ speaker });
   return true;
 }
 
@@ -345,10 +353,10 @@ export function registerSpeakerBar() {
   Hooks.on("renderChatLog", (app, html) => injectSpeakerBar(html));
 
   // v13: input part는 별도로 이동/렌더링됨 (moveChatInput 훅 사용)
-  Hooks.on("moveChatInput", () => injectSpeakerBar(null));
+  (Hooks as any).on("moveChatInput", () => injectSpeakerBar(null));
 
   // 폴백: 일반 채팅 메시지 렌더 시 바가 없으면 다시 삽입
-  Hooks.on(getRenderChatMessageHook(), () => {
+  (Hooks as any).on(getRenderChatMessageHook(), () => {
     if (!document.querySelector(".ct-speaker-bar")) {
       injectSpeakerBar(null);
     }
@@ -367,20 +375,20 @@ export function registerSpeakerBar() {
   // 토큰/액터 정보 변경 → 바 갱신
   Hooks.on("updateToken", (tokenDoc) => {
     const locked = getLockedSpeaker();
-    if (locked?.tokenId === tokenDoc.id || canvas?.tokens?.controlled?.some(t => t.id === tokenDoc.id)) {
+    if (locked?.tokenId === tokenDoc.id || (canvas as any)?.tokens?.controlled?.some((t: any) => t.id === tokenDoc.id)) {
       updateSpeakerBar();
     }
   });
   Hooks.on("updateActor", (actor) => {
     const locked = getLockedSpeaker();
-    if (locked?.actorId === actor.id || canvas?.tokens?.controlled?.some(t => t.actor?.id === actor.id)) {
+    if (locked?.actorId === actor.id || (canvas as any)?.tokens?.controlled?.some((t: any) => t.actor?.id === actor.id)) {
       updateSpeakerBar();
     }
   });
 
   // 액터 할당 변경
   Hooks.on("updateUser", (user) => {
-    if (user.id === game.user.id) updateSpeakerBar();
+    if (user.id === game.user!.id) updateSpeakerBar();
   });
 
   // 발화자 오버라이드 — Lock이 활성일 때만 동작.

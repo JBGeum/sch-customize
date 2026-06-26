@@ -12,29 +12,29 @@ import { getChatStyles, isV13Plus } from "../compat/foundry";
  * Foundry `setup` hook에서 호출. `chatCommands` 라이브러리가 그때 준비된다.
  */
 export function registerChitchatCommand() {
-  const commands = game.chatCommands;
+  const commands = (game as any).chatCommands;
   commands.register({
     name: "/pt",
     module: "core",
-    aliases: [`${game.settings.get("chat-tailor", "customPrivTalkAlias")}`, "`", "!"],
+    aliases: [`${(game.settings as any).get("chat-tailor", "customPrivTalkAlias")}`, "`", "!"],
     icon: "<i class='fas fa-dice-d20'></i>",
     requiredRole: "NONE",
-    callback: async function (_chat, parameters, messageData) {
+    callback: async function (_chat: any, parameters: any, messageData: any) {
       // 마크다운 취소선 옵션이 꺼져 있으면 잡담 본문의 <del>을 ~로 환원해 일반 텍스트로 둠
-      if (!game.settings.get("chat-tailor", "markdownDelUse")) {
+      if (!(game.settings as any).get("chat-tailor", "markdownDelUse")) {
         parameters = parameters.replace(/<\s*\/?\s*del\s*>/g, "~");
       }
 
       const speakUser = (messageData.user instanceof User)
         ? messageData.user
-        : game.users.get(messageData.user);
+        : game.users!.get(messageData.user);
 
       messageData.speaker.actor = speakUser.id;
       messageData.speaker.token = null;
       messageData.speaker.alias = speakUser.name;
 
       const styles = getChatStyles();
-      const styleValue = game.settings.get("chat-tailor", "privTalkAsOOC")
+      const styleValue = (game.settings as any).get("chat-tailor", "privTalkAsOOC")
         ? styles.OOC : styles.OTHER;
       // v13+에서 .type은 document subtype 식별자(문자열)로 의미가 바뀌었으므로
       // 버전에 따라 사용하는 필드를 분리한다.
@@ -51,8 +51,8 @@ export function registerChitchatCommand() {
         },
       };
     },
-    autocompleteCallback: (_menu, _alias, _parameters) =>
-      [game.chatCommands.createInfoElement(game.i18n.localize("chat-tailor.chat.privTalkAutocomplete"))],
+    autocompleteCallback: (_menu: any, _alias: any, _parameters: any) =>
+      [(game as any).chatCommands.createInfoElement(game.i18n!.localize("chat-tailor.chat.privTalkAutocomplete"))],
     closeOnComplete: true,
   });
 }

@@ -11,9 +11,9 @@ import { toElement, getRenderChatMessageHook, isPrivTalkMessage } from "../compa
 
 // 모듈 내부에서 직전 메시지 정보를 추적하기 위한 상태.
 // Foundry 렌더 hook은 동기적으로 메시지 순서대로 호출되므로 모듈 스코프 변수로 충분.
-let lastPrivTalkMsg = null;
-let lastBaseMsg = null;
-let privTalkIndex = 0;
+let lastPrivTalkMsg: HTMLElement | null = null;
+let lastBaseMsg: { el: HTMLElement; msg: any } | null = null;
+let privTalkIndex: number = 0;
 
 /**
  * 외부에서 상태를 리셋해야 할 때(예: setup 후 새 세션 시작) 호출.
@@ -27,12 +27,12 @@ export function resetRenderState() {
 /**
  * 단일 chat message 렌더 후처리.
  */
-function onRenderChatMessage(message, htmlOrEl /*, messageData */) {
+function onRenderChatMessage(message: ChatMessage, htmlOrEl: HTMLElement | JQuery /*, messageData */): void {
   const el = toElement(htmlOrEl);
   if (!el) return;
 
-  const privTalkMergeEnabled = game.settings.get("chat-tailor", "privTalkMerge");
-  const baseMessageMergeEnabled = game.settings.get("chat-tailor", "baseMessageMerge");
+  const privTalkMergeEnabled = (game.settings as any).get("chat-tailor", "privTalkMerge");
+  const baseMessageMergeEnabled = (game.settings as any).get("chat-tailor", "baseMessageMerge");
   const privFlag = isPrivTalkMessage(message);
 
   if (privFlag) {
@@ -43,9 +43,9 @@ function onRenderChatMessage(message, htmlOrEl /*, messageData */) {
   handleBaseMessageRender(el, message, baseMessageMergeEnabled);
 }
 
-function handlePrivTalkRender(el, message, mergeEnabled) {
+function handlePrivTalkRender(el: HTMLElement, message: ChatMessage, mergeEnabled: boolean): void {
   el.classList.add("priv_talk");
-  el.classList.add(`user-${message.user?.id ?? message.author?.id}`);
+  el.classList.add(`user-${(message as any).user?.id ?? (message as any).author?.id}`);
 
   if (mergeEnabled) {
     if (privTalkIndex > 0 && lastPrivTalkMsg) {
@@ -73,12 +73,12 @@ function handlePrivTalkRender(el, message, mergeEnabled) {
       `<div class="pt priv_user">${message.speaker.alias}</div> <div class="pt">${message.content}</div>`;
   }
 
-  if (!game.settings.get("chat-tailor", "privTalkSpeakerLineChange")) {
+  if (!(game.settings as any).get("chat-tailor", "privTalkSpeakerLineChange")) {
     el.classList.add("line-change");
   }
 }
 
-function handleBaseMessageRender(el, message, mergeEnabled) {
+function handleBaseMessageRender(el: HTMLElement, message: ChatMessage, mergeEnabled: boolean): void {
   if (mergeEnabled && lastBaseMsg) {
     const lastMsgEl = lastBaseMsg.el;
     const lastMessage = lastBaseMsg.msg;
@@ -86,17 +86,17 @@ function handleBaseMessageRender(el, message, mergeEnabled) {
 
     // v13+: .style, v12: .type — 어느 쪽이든 비교
     const lastStyle = lastMessage.style ?? lastMessage.type;
-    const currStyle = message.style ?? message.type;
+    const currStyle = (message as any).style ?? (message as any).type;
     const sameStyle = lastStyle === currStyle;
 
     // v13+: .author(객체 또는 id), v12: .user(객체 또는 id) — 어떤 형태든 같은 author인지만 판별
     const lastAuthor = lastMessage.author?.id ?? lastMessage.user?.id ?? lastMessage.author ?? lastMessage.user;
-    const currAuthor = message.author?.id ?? message.user?.id ?? message.author ?? message.user;
+    const currAuthor = (message as any).author?.id ?? (message as any).user?.id ?? (message as any).author ?? (message as any).user;
     const sameAuthor = lastAuthor === currAuthor;
 
     // GM이 동일 유저로 NPC1 → NPC2 발화 전환 같은 경우, author는 같아도 발화 캐릭터가 다르므로
     // merge를 끊는다. actor/token이 비어 있는 OOC 메시지는 alias로 대체 비교.
-    const speakerKey = (s) => s?.actor ?? s?.token ?? s?.alias ?? "";
+    const speakerKey = (s: any): string => s?.actor ?? s?.token ?? s?.alias ?? "";
     const sameSpeaker = speakerKey(lastMessage.speaker) === speakerKey(message.speaker);
 
     if (sameAuthor && sameSpeaker && !lastMsgPrivTalkFlag && sameStyle) {
@@ -118,5 +118,5 @@ function handleBaseMessageRender(el, message, mergeEnabled) {
  * `init` hook 내에서 호출 — `game.release.generation`이 결정된 뒤 적절한 hook 이름을 고를 수 있다.
  */
 export function registerChitchatRender() {
-  Hooks.on(getRenderChatMessageHook(), onRenderChatMessage);
+  (Hooks as any).on(getRenderChatMessageHook(), onRenderChatMessage);
 }
