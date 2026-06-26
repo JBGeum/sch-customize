@@ -14,17 +14,20 @@ import { shouldMergeBaseMessage, decideRounding, type RoundingDecision } from ".
 
 // 모듈 내부에서 직전 메시지 정보를 추적하기 위한 상태.
 // Foundry 렌더 hook은 동기적으로 메시지 순서대로 호출되므로 모듈 스코프 변수로 충분.
-let lastPrivTalkMsg: HTMLElement | null = null;
-let lastBaseMsg: { el: HTMLElement; msg: any } | null = null;
-let privTalkIndex: number = 0;
+interface RenderState {
+  lastPrivTalkMsg: HTMLElement | null;
+  lastBaseMsg: { el: HTMLElement; msg: any } | null;
+  privTalkIndex: number;
+}
+const state: RenderState = { lastPrivTalkMsg: null, lastBaseMsg: null, privTalkIndex: 0 };
 
 /**
  * 외부에서 상태를 리셋해야 할 때(예: setup 후 새 세션 시작) 호출.
  */
 export function resetRenderState() {
-  lastPrivTalkMsg = null;
-  lastBaseMsg = null;
-  privTalkIndex = 0;
+  state.lastPrivTalkMsg = null;
+  state.lastBaseMsg = null;
+  state.privTalkIndex = 0;
 }
 
 /** 라운딩 결정을 prev/curr 엘리먼트에 적용. */
@@ -57,12 +60,12 @@ function handlePrivTalkRender(el: HTMLElement, message: ChatMessage, mergeEnable
   el.classList.add(`user-${(message as any).user?.id ?? (message as any).author?.id}`);
 
   if (mergeEnabled) {
-    if (privTalkIndex > 0 && lastPrivTalkMsg) {
-      applyRounding(lastPrivTalkMsg, el, decideRounding(lastPrivTalkMsg.classList.contains("end")));
+    if (state.privTalkIndex > 0 && state.lastPrivTalkMsg) {
+      applyRounding(state.lastPrivTalkMsg, el, decideRounding(state.lastPrivTalkMsg.classList.contains("end")));
     }
-    lastPrivTalkMsg = el;
+    state.lastPrivTalkMsg = el;
   }
-  privTalkIndex++;
+  state.privTalkIndex++;
 
   // 헤더 숨김 + 본문 영역을 잡담 전용 마크업으로 교체
   const header = el.querySelector("header");
@@ -80,14 +83,14 @@ function handlePrivTalkRender(el: HTMLElement, message: ChatMessage, mergeEnable
 }
 
 function handleBaseMessageRender(el: HTMLElement, message: ChatMessage, mergeEnabled: boolean): void {
-  if (mergeEnabled && lastBaseMsg) {
-    const prevWasPrivTalk = privTalkIndex > 0;
-    if (shouldMergeBaseMessage(lastBaseMsg.msg, message, prevWasPrivTalk)) {
-      applyRounding(lastBaseMsg.el, el, decideRounding(lastBaseMsg.el.classList.contains("end")));
+  if (mergeEnabled && state.lastBaseMsg) {
+    const prevWasPrivTalk = state.privTalkIndex > 0;
+    if (shouldMergeBaseMessage(state.lastBaseMsg.msg, message, prevWasPrivTalk)) {
+      applyRounding(state.lastBaseMsg.el, el, decideRounding(state.lastBaseMsg.el.classList.contains("end")));
     }
   }
-  lastBaseMsg = { msg: message, el };
-  privTalkIndex = 0;
+  state.lastBaseMsg = { msg: message, el };
+  state.privTalkIndex = 0;
 }
 
 /**
