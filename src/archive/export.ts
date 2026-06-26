@@ -29,6 +29,7 @@ import {
 } from "./util";
 import { createCssList } from "./css";
 import { mergeCss } from "./css-merge";
+import { isWhisper, shouldExcludeWhisper, resolveChatMergeFlag, selectBodySource, buildMessageClasses, maskWhisperSpeaker } from "./message-view";
 
 const TEMPLATE_PATH = `${TEMPLATE_BASE}/chat-archive-template.html`;
 const INCREMENTAL_TEMPLATE_PATH = `${TEMPLATE_BASE}/chat-archive-template-incremental.html`;
@@ -203,8 +204,8 @@ async function generateSimpleHtmlFromChats(chats: any[]): Promise<[string]> {
   let rollCount = 0;
   let privTalkCount = 0;
   for (const chat of chats) {
-    const whisperFlag = chat.whisper && chat.whisper.length > 0;
-    if (whisperFlag && (!includeWhisperFlag || !chat.isContentVisible)) continue;
+    const whisperFlag = isWhisper(chat);
+    if (shouldExcludeWhisper(chat, includeWhisperFlag)) continue;
 
     chatCount++;
     if (chat.rolls && chat.rolls.length > 0) rollCount++;
@@ -253,8 +254,8 @@ async function generateIncrementalHtmlFromChats(chats: any[], opts: { mode?: "fi
   const hideWhisperSetting = (game.settings as any).get(MODULE_ID, "hideWhisper");
 
   for (const chat of chats) {
-    const whisperFlag = chat.whisper && chat.whisper.length > 0;
-    if (whisperFlag && (!includeWhisperFlag || !chat.isContentVisible)) continue;
+    const whisperFlag = isWhisper(chat);
+    if (shouldExcludeWhisper(chat, includeWhisperFlag)) continue;
 
     const chatMergeFlag = prevSpeaker === chat.alias;
     prevPtFlag = await appendChatContents(chat, chatMergeFlag, prevPtFlag, whisperFlag, container, hideWhisperSetting);
@@ -298,8 +299,8 @@ async function generateHtmlFromChats(chats: any[]): Promise<[string, Set<string>
   const hideWhisperSetting = (game.settings as any).get(MODULE_ID, "hideWhisper");
 
   for (const chat of chats) {
-    const whisperFlag = chat.whisper && chat.whisper.length > 0;
-    if (whisperFlag && (!includeWhisperFlag || !chat.isContentVisible)) continue;
+    const whisperFlag = isWhisper(chat);
+    if (shouldExcludeWhisper(chat, includeWhisperFlag)) continue;
 
     const chatMergeFlag = prevSpeaker === chat.alias;
     prevPtFlag = await appendChatContents(chat, chatMergeFlag, prevPtFlag, whisperFlag, container, hideWhisperSetting);
@@ -359,51 +360,42 @@ function injectInlineCss(doc: Document, options: { mode?: "filtered" | "full" } 
  * @returns {Promise<boolean>} 현재 메시지가 priv_talk인지 여부 (다음 루프의 `prevPtFlag`로 전달)
  */
 export async function appendChatContents(chat: any, chatMergeFlag: boolean, prevPtFlag: boolean | undefined, whisperFlag: boolean, container: Element, hideWhisperSetting: any): Promise<boolean> {
-  const { flags, author } = chat;
+  const { author } = chat;
   let speaker: string = chat.alias;
 
   const privTalkFlag = isPrivTalkMessage(chat);
-  const hasRolls = chat.isRoll;
-  const isItemCard = flags?.item || false;
 
   let text: string;
-  if (hasRolls || isItemCard) {
-    // Roll/Item 카드만 무거운 렌더링 사용
-    text = await getRollResultContent(chat);
-  } else if (privTalkFlag) {
-    // 잡담은 chat.content에서 직접 추출 (가볍게)
-    text = extractPrivTalkFromContent(chat.content);
-  } else {
-    text = chat.content;
+  switch (selectBodySource(chat)) {
+    case "roll":     text = await getRollResultContent(chat); break;
+    case "privtalk": text = extractPrivTalkFromContent(chat.content); break;
+    default:         text = chat.content;
   }
 
   const imageUrl = getChatImageUrl(chat);
-  if (prevPtFlag !== privTalkFlag) chatMergeFlag = false;
+  const mergeFlag = resolveChatMergeFlag({ candidateMerge: chatMergeFlag, prevPtFlag, privTalkFlag, whisperFlag });
 
-  const div = createDivWithClasses(["chat-box", "message",
-    privTalkFlag ? "priv-talk" : null,
-    whisperFlag ? "whisper" : null,
-    whisperFlag && hideWhisperSetting ? "whisper-hidden" : null,
-    author ? `user-${author.id}` : null]);
+  const div = createDivWithClasses(buildMessageClasses({
+    privTalkFlag, whisperFlag, hideWhisper: hideWhisperSetting, authorId: author ? author.id : null,
+  }));
 
   if (whisperFlag) {
-    chatMergeFlag = false;
     const whisperTo = chat.whisper.map((i: string) => game.users!.get(i)!.name);
-    speaker = `${chat.alias}\n→[${whisperTo}]`;
+    speaker = maskWhisperSpeaker(chat.alias, whisperTo);
   }
 
-  const nameDiv = createDivWithClasses("chat-name", !chatMergeFlag ? speaker : null);
+  const nameDiv = createDivWithClasses("chat-name", !mergeFlag ? speaker : null);
   const imageDiv = createDivWithClasses("chat-image");
-  const imageElement = getChatImageElement(imageUrl, chatMergeFlag, privTalkFlag);
+  const imageElement = getChatImageElement(imageUrl, mergeFlag, privTalkFlag);
   if (imageElement) imageDiv.appendChild(imageElement);
 
-  const textDivClasses = ["chat-text", chatMergeFlag ? "chat-merge" : null];
+  const textDivClasses = ["chat-text", mergeFlag ? "chat-merge" : null];
   const textDiv = createDivWithClasses(textDivClasses, text, true);
 
   appendChildren(div, [imageDiv, nameDiv, textDiv]);
   container.appendChild(div);
 
-  return !!privTalkFlag;
+  return privTalkFlag;
 }
 
 // 디버그용 누적 통계
