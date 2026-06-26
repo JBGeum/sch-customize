@@ -9,8 +9,7 @@
     "watch": "vite build --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "package": "node scripts/package-module.mjs"
+    "test:watch": "vitest"
   },
   "author": "Scheree",
   "license": "MIT",
@@ -18,7 +17,6 @@
     "jszip": "^3.10.1"
   },
   "devDependencies": {
-    "archiver": "^7.0.1",
     "fvtt-types": "13.346.0-beta.20250812191140",
     "jsdom": "^24.1.0",
     "sass": "^1.77.0",
