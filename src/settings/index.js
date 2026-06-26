@@ -11,9 +11,9 @@
  * `applyAllCssSettings()`는 모든 설정 등록이 끝난 뒤 호출해야 한다(init 마지막).
  */
 
-import { ExportChatArchiveMenu, openChatArchiveWindow } from "../archive/dialog.js";
-import { getDFchatArchive } from "../archive/df.js";
-import { updateCssProperty } from "../appearance.js";
+import { ExportChatArchiveMenu, openChatArchiveWindow } from "../archive/dialog";
+import { getDFchatArchive } from "../archive/df";
+import { updateCssProperty } from "../appearance";
 
 const MODULE_ID = "chat-tailor";
 

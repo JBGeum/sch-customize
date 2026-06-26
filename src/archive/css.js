@@ -11,8 +11,8 @@
  *  - 사용자 색상 기반 메시지 배경 룰 자동 생성
  */
 
-import { hexToRgba } from "./util.js";
-import { mergeCss } from "./css-merge.js";
+import { hexToRgba } from "./util";
+import { mergeCss } from "./css-merge";
 
 /**
  * :root에 출력 가능한 단일 변수 값의 최대 길이(문자 수).

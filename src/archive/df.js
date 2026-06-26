@@ -5,7 +5,7 @@
  * 변환 후에는 설정값을 초기화한다.
  */
 
-import { downloadArchiveFile } from "./export.js";
+import { downloadArchiveFile } from "./export";
 
 export async function getDFchatArchive(filepath) {
   try {

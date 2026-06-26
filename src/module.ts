@@ -21,16 +21,17 @@
  *   ready  → 사용자별 색상 배경 스타일 주입
  */
 
-import { registerAllSettings } from "./settings/index.js";
-import { registerChitchatCommand } from "./chitchat/command.js";
-import { registerChitchatRender, resetRenderState } from "./chitchat/render.js";
-import { registerSpeakerBar } from "./speaker-bar.js";
-import { applyAllCssSettings, applyUserColorBackgrounds } from "./appearance.js";
+import "./styles/main.scss";
+import { registerAllSettings } from "./settings/index";
+import { registerChitchatCommand } from "./chitchat/command";
+import { registerChitchatRender, resetRenderState } from "./chitchat/render";
+import { registerSpeakerBar } from "./speaker-bar";
+import { applyAllCssSettings, applyUserColorBackgrounds } from "./appearance";
 import {
   openChatArchive,
   downloadArchiveFile,
   downloadIncrementalArchive,
-} from "./archive/export.js";
+} from "./archive/export";
 
 const MODULE_ID = "chat-tailor";
 
@@ -45,15 +46,15 @@ const MODULE_ID = "chat-tailor";
  * 매크로 호환성을 위해 wrapper에서 기본값을 채워주는 형태로 둔다.
  */
 function registerModuleApi() {
-  const mod = game.modules.get(MODULE_ID);
+  const mod = game.modules?.get(MODULE_ID);
   if (!mod) return;
 
   const allChats = () => [...(game.messages?.contents ?? [])];
 
-  mod.api = {
-    openChatArchive: (chats) => openChatArchive(chats ?? allChats()),
-    downloadArchiveFile: (chats) => downloadArchiveFile(chats ?? allChats()),
-    downloadIncrementalArchive: (chats, opts) =>
+  (mod as unknown as { api: unknown }).api = {
+    openChatArchive: (chats: any) => openChatArchive(chats ?? allChats()),
+    downloadArchiveFile: (chats: any) => downloadArchiveFile(chats ?? allChats()),
+    downloadIncrementalArchive: (chats: any, opts: any) =>
       downloadIncrementalArchive(chats ?? allChats(), opts),
   };
 }
@@ -67,7 +68,7 @@ Hooks.once("init", () => {
 
 Hooks.once("setup", () => {
   resetRenderState();
-  if (game.settings.get("chat-tailor", "enableSpeakerBar")) {
+  if ((game.settings as any).get("chat-tailor", "enableSpeakerBar")) {
     registerSpeakerBar();
   }
   registerChitchatCommand();

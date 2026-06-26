@@ -11,7 +11,7 @@
  * 합친 뒤, `existingCssText`가 제공되면 `mergeCss`로 union 머지한 결과를 사용한다.
  */
 
-import { renderChatMessageElement, callRenderChatMessageHooks, isPrivTalkMessage } from "../compat/foundry.js";
+import { renderChatMessageElement, callRenderChatMessageHooks, isPrivTalkMessage } from "../compat/foundry";
 import {
   requestSaveTarget,
   writeToSaveTarget,
@@ -24,9 +24,9 @@ import {
   extractPrivTalkFromContent,
   extractMessageContent,
   updateImageSources,
-} from "./util.js";
-import { createCssList } from "./css.js";
-import { mergeCss } from "./css-merge.js";
+} from "./util";
+import { createCssList } from "./css";
+import { mergeCss } from "./css-merge";
 
 const TEMPLATE_PATH = "modules/chat-tailor/template/chat-archive-template.html";
 const INCREMENTAL_TEMPLATE_PATH = "modules/chat-tailor/template/chat-archive-template-incremental.html";

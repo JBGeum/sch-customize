@@ -11,7 +11,7 @@
  * ApplicationV2 형태로 바뀌면 이 래퍼도 함께 갱신해야 한다.
  */
 
-import { downloadArchiveFile, downloadIncrementalArchive, openChatArchive } from "./export.js";
+import { downloadArchiveFile, downloadIncrementalArchive, openChatArchive } from "./export";
 
 /**
  * v13+ DialogV2 우선, 없으면 v12 Dialog V1로 폴백하는 confirm 다이얼로그.

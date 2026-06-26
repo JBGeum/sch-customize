@@ -7,7 +7,7 @@
  * Foundry v12: `renderChatMessage`(jQuery), v13+: `renderChatMessageHTML`(HTMLElement) 둘 다 호환.
  */
 
-import { toElement, getRenderChatMessageHook, isPrivTalkMessage } from "../compat/foundry.js";
+import { toElement, getRenderChatMessageHook, isPrivTalkMessage } from "../compat/foundry";
 
 // 모듈 내부에서 직전 메시지 정보를 추적하기 위한 상태.
 // Foundry 렌더 hook은 동기적으로 메시지 순서대로 호출되므로 모듈 스코프 변수로 충분.

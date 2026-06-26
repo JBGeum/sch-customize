@@ -6,7 +6,7 @@
  * `chat-tailor.priv_talk` flag를 켜서 메시지 객체를 반환한다.
  */
 
-import { getChatStyles, isV13Plus } from "../compat/foundry.js";
+import { getChatStyles, isV13Plus } from "../compat/foundry";
 
 /**
  * Foundry `setup` hook에서 호출. `chatCommands` 라이브러리가 그때 준비된다.

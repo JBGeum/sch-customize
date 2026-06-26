@@ -3,7 +3,7 @@
  * Foundry VTT v12 ~ v14 호환
  */
 
-import { toElement, getRenderChatMessageHook } from "./compat/foundry.js";
+import { toElement, getRenderChatMessageHook } from "./compat/foundry";
 
 const MODULE_ID = "chat-tailor";
 const LOCKED_FLAG_KEY = "lockedSpeaker";
