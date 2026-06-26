@@ -358,7 +358,7 @@ function injectInlineCss(doc: Document, options: { mode?: "filtered" | "full" } 
  *
  * @returns {Promise<boolean>} 현재 메시지가 priv_talk인지 여부 (다음 루프의 `prevPtFlag`로 전달)
  */
-async function appendChatContents(chat: any, chatMergeFlag: boolean, prevPtFlag: boolean | undefined, whisperFlag: boolean, container: Element, hideWhisperSetting: any): Promise<boolean> {
+export async function appendChatContents(chat: any, chatMergeFlag: boolean, prevPtFlag: boolean | undefined, whisperFlag: boolean, container: Element, hideWhisperSetting: any): Promise<boolean> {
   const { flags, author } = chat;
   let speaker: string = chat.alias;
 
