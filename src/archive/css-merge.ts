@@ -72,7 +72,7 @@ function extractBody(styleRule: CSSRule): string {
 
 function extractChildStyleRules(groupRule: CSSGroupingRule): ChildStyleRule[] {
   const children: ChildStyleRule[] = [];
-  for (const child of Array.from(groupRule.cssRules)) {
+  for (const child of Array.from(groupRule.cssRules || [])) {
     if (child.type === CSSRule.STYLE_RULE) {
       children.push({ selectorText: (child as CSSStyleRule).selectorText, body: extractBody(child) });
     } else {

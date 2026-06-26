@@ -46,7 +46,7 @@ const MODULE_ID = "chat-tailor";
  * 매크로 호환성을 위해 wrapper에서 기본값을 채워주는 형태로 둔다.
  */
 function registerModuleApi() {
-  const mod = game.modules?.get(MODULE_ID);
+  const mod = game.modules!.get(MODULE_ID);
   if (!mod) return;
 
   const allChats = () => [...(game.messages?.contents ?? [])];

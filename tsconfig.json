@@ -11,8 +11,6 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "allowJs": true,
-    "checkJs": false,
     "noEmit": true
   },
   "include": ["src", "test", "vite.config.ts"]

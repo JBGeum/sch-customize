@@ -107,7 +107,7 @@ export function callRenderChatMessageHooks(chat: ChatMessage, element: HTMLEleme
       : "",
     isWhisper: whisperIds.length > 0,
     whisperTo: whisperIds
-      .map((id: string) => game.users?.get(id)?.name)
+      .map((id: string) => game.users!.get(id)?.name)
       .filter(Boolean)
       .join(", "),
     ...overrides,
