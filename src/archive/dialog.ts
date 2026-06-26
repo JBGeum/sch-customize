@@ -16,15 +16,21 @@ import { downloadArchiveFile, downloadIncrementalArchive, openChatArchive } from
 /**
  * v13+ DialogV2 우선, 없으면 v12 Dialog V1로 폴백하는 confirm 다이얼로그.
  */
-export async function showConfirmDialog({ title, content, confirmLabel, confirmIcon = "fas fa-check", onConfirm }) {
-  const DialogV2 = foundry.applications?.api?.DialogV2;
+export async function showConfirmDialog({ title, content, confirmLabel, confirmIcon = "fas fa-check", onConfirm }: {
+  title: string;
+  content: string;
+  confirmLabel: string;
+  confirmIcon?: string;
+  onConfirm: () => Promise<void>;
+}): Promise<void> {
+  const DialogV2 = (foundry as any).applications?.api?.DialogV2;
   if (DialogV2) {
     try {
       const ok = await DialogV2.confirm({
         window: { title },
         content: `<p>${content}</p>`,
         yes: { label: confirmLabel, icon: confirmIcon },
-        no:  { label: game.i18n.localize("chat-tailor.dialog.download.button.cancel") },
+        no:  { label: game.i18n!.localize("chat-tailor.dialog.download.button.cancel") },
       });
       if (ok) await onConfirm();
     } catch (_e) {
@@ -45,7 +51,7 @@ export async function showConfirmDialog({ title, content, confirmLabel, confirmI
       },
       cancel: {
         icon: '<i class="fas fa-times"></i>',
-        label: game.i18n.localize("chat-tailor.dialog.download.button.cancel"),
+        label: game.i18n!.localize("chat-tailor.dialog.download.button.cancel"),
       },
     },
     default: "cancel",
@@ -58,42 +64,44 @@ export async function showConfirmDialog({ title, content, confirmLabel, confirmI
  * FormApplication 자체는 렌더하지 않는다.
  */
 export class DownloadChatArchive extends FormApplication {
-  render(_force, _options) {
+  override render(_force?: boolean, _options?: any): this {
     showConfirmDialog({
-      title: game.i18n.localize("chat-tailor.dialog.download.title"),
-      content: game.i18n.localize("chat-tailor.dialog.download.content"),
-      confirmLabel: game.i18n.localize("chat-tailor.dialog.download.button.download"),
+      title: game.i18n!.localize("chat-tailor.dialog.download.title"),
+      content: game.i18n!.localize("chat-tailor.dialog.download.content"),
+      confirmLabel: game.i18n!.localize("chat-tailor.dialog.download.button.download"),
       onConfirm: async () => {
         try {
-          const chats = [...(game.messages.contents)];
+          const chats = [...(game.messages!.contents)];
           await downloadArchiveFile(chats);
         } catch (error) {
           console.error("[chat-tailor] Failed to download chat archive:", error);
           ui.notifications?.error(
-            game.i18n.localize("chat-tailor.dialog.download.error") || "Failed to download chat archive."
+            game.i18n!.localize("chat-tailor.dialog.download.error") || "Failed to download chat archive."
           );
         }
       },
     });
+    return this;
   }
-  getData() { return {}; }
-  async _updateObject(_event, _formData) {}
+  override getData(_options?: Partial<FormApplication.Options>): object { return {}; }
+  protected override async _updateObject(_event: Event, _formData?: object): Promise<void> {}
 }
 
 export class openChatArchiveWindow extends FormApplication {
-  render(_force, _options) {
+  override render(_force?: boolean, _options?: any): this {
     showConfirmDialog({
-      title: game.i18n.localize("chat-tailor.dialog.open.title"),
-      content: game.i18n.localize("chat-tailor.dialog.open.content"),
-      confirmLabel: game.i18n.localize("chat-tailor.dialog.open.button.open"),
+      title: game.i18n!.localize("chat-tailor.dialog.open.title"),
+      content: game.i18n!.localize("chat-tailor.dialog.open.content"),
+      confirmLabel: game.i18n!.localize("chat-tailor.dialog.open.button.open"),
       onConfirm: async () => {
-        const chats = [...(game.messages.contents)];
+        const chats = [...(game.messages!.contents)];
         await openChatArchive(chats);
       },
     });
+    return this;
   }
-  getData() { return {}; }
-  async _updateObject(_event, _formData) {}
+  override getData(_options?: Partial<FormApplication.Options>): object { return {}; }
+  protected override async _updateObject(_event: Event, _formData?: object): Promise<void> {}
 }
 
 /**
@@ -101,8 +109,8 @@ export class openChatArchiveWindow extends FormApplication {
  *
  * <form>이 아닌 <div>로 감싼다 — DialogV2의 submit 버튼이 의도치 않게 form submit을 트리거할 가능성 제거.
  */
-function buildExportModeFormHtml() {
-  const t = (key) => game.i18n.localize(`chat-tailor.dialog.export.${key}`);
+function buildExportModeFormHtml(): string {
+  const t = (key: string) => game.i18n!.localize(`chat-tailor.dialog.export.${key}`);
   return `
     <div class="chat-tailor-export-form" style="display:flex;flex-direction:column;gap:0.6rem;">
       <fieldset style="display:flex;flex-direction:column;gap:0.4rem;padding:0.5rem;">
@@ -141,8 +149,8 @@ function buildExportModeFormHtml() {
  * 다양한 root에서 폼 컨테이너를 찾는다 (DialogV2 element, jQuery wrapper, plain HTMLElement).
  * 최후 수단으로 document 전체에서 검색.
  */
-function findExportForm(rootEl) {
-  const tryEl = (el) => el?.querySelector?.(".chat-tailor-export-form") ?? null;
+function findExportForm(rootEl: any): Element | null {
+  const tryEl = (el: any) => el?.querySelector?.(".chat-tailor-export-form") ?? null;
   return tryEl(rootEl)
     ?? tryEl(rootEl?.element)
     ?? tryEl(rootEl?.[0])
@@ -152,7 +160,7 @@ function findExportForm(rootEl) {
 /**
  * 모드 선택에 따라 기존 CSS 선택 섹션 표시/숨김 토글.
  */
-function attachExportFormHandlers(rootEl) {
+function attachExportFormHandlers(rootEl: any): void {
   const form = findExportForm(rootEl);
   if (!form) {
     console.warn("[chat-tailor] export form not found in render");
@@ -161,8 +169,8 @@ function attachExportFormHandlers(rootEl) {
   const radios = form.querySelectorAll("input[name='ct-export-mode']");
   const section = form.querySelector(".ct-existing-css-section");
   const update = () => {
-    const value = form.querySelector("input[name='ct-export-mode']:checked")?.value;
-    if (section) section.style.display = (value === "merge" || value === "full") ? "" : "none";
+    const value = (form.querySelector("input[name='ct-export-mode']:checked") as HTMLInputElement | null)?.value;
+    if (section) (section as HTMLElement).style.display = (value === "merge" || value === "full") ? "" : "none";
   };
   radios.forEach(r => r.addEventListener("change", update));
   update();
@@ -171,16 +179,16 @@ function attachExportFormHandlers(rootEl) {
 /**
  * 폼에서 모드 + 기존 CSS 텍스트 추출. 파일 미선택 시 existingCssText=null.
  */
-async function readExportFormValues(rootEl) {
+async function readExportFormValues(rootEl: any): Promise<{ mode: string; existingCssText: string | null } | null> {
   const form = findExportForm(rootEl);
   if (!form) {
     console.error("[chat-tailor] export form not found at submit");
     return null;
   }
-  const mode = form.querySelector("input[name='ct-export-mode']:checked")?.value ?? "solo";
-  const fileInput = form.querySelector("input[name='ct-existing-css']");
+  const mode = (form.querySelector("input[name='ct-export-mode']:checked") as HTMLInputElement | null)?.value ?? "solo";
+  const fileInput = form.querySelector("input[name='ct-existing-css']") as HTMLInputElement | null;
   const file = fileInput?.files?.[0] ?? null;
-  let existingCssText = null;
+  let existingCssText: string | null = null;
   if (file && (mode === "merge" || mode === "full")) {
     try {
       existingCssText = await file.text();
@@ -194,8 +202,8 @@ async function readExportFormValues(rootEl) {
 /**
  * 선택된 모드에 따라 적절한 export 함수로 dispatch.
  */
-async function dispatchExport({ mode, existingCssText }) {
-  const chats = [...(game.messages.contents)];
+async function dispatchExport({ mode, existingCssText }: { mode: string; existingCssText: string | null }): Promise<void> {
+  const chats = [...(game.messages!.contents)];
   try {
     if (mode === "solo") {
       await downloadArchiveFile(chats);
@@ -208,7 +216,7 @@ async function dispatchExport({ mode, existingCssText }) {
   } catch (error) {
     console.error("[chat-tailor] Failed to export chat archive:", error);
     ui.notifications?.error(
-      game.i18n.localize("chat-tailor.dialog.export.error") || "Failed to export chat archive."
+      game.i18n!.localize("chat-tailor.dialog.export.error") || "Failed to export chat archive."
     );
   }
 }
@@ -225,16 +233,16 @@ async function dispatchExport({ mode, existingCssText }) {
  *  - 렌더된 폼 element를 closure 변수에 저장해 두면 dialog.element 의존 없이 안정적으로 접근 가능.
  *  - `default`는 dialog 옵션 top-level의 action 이름이며, 버튼 객체에 `default: true`를 두지 않는다.
  */
-async function showExportModeDialog() {
-  const title = game.i18n.localize("chat-tailor.dialog.export.title");
+async function showExportModeDialog(): Promise<void> {
+  const title = game.i18n!.localize("chat-tailor.dialog.export.title");
   const contentHtml = buildExportModeFormHtml();
-  const confirmLabel = game.i18n.localize("chat-tailor.dialog.download.button.download");
-  const cancelLabel = game.i18n.localize("chat-tailor.dialog.download.button.cancel");
+  const confirmLabel = game.i18n!.localize("chat-tailor.dialog.download.button.download");
+  const cancelLabel = game.i18n!.localize("chat-tailor.dialog.download.button.cancel");
 
   // 렌더된 dialog의 root element를 closure로 보관 — 콜백 시점에 안정적으로 접근하기 위함
-  let dialogRoot = null;
+  let dialogRoot: any = null;
 
-  const DialogV2 = foundry.applications?.api?.DialogV2;
+  const DialogV2 = (foundry as any).applications?.api?.DialogV2;
   if (DialogV2) {
     try {
       const result = await DialogV2.wait({
@@ -247,7 +255,7 @@ async function showExportModeDialog() {
             action: "confirm",
             label: confirmLabel,
             icon: "fas fa-download",
-            callback: async (_event, _button, dialog) => {
+            callback: async (_event: any, _button: any, dialog: any) => {
               const root = dialogRoot ?? dialog?.element ?? document;
               return await readExportFormValues(root);
             },
@@ -255,7 +263,7 @@ async function showExportModeDialog() {
           { action: "cancel", label: cancelLabel, icon: "fas fa-times" },
         ],
         // render hook 시그니처: (app, html). html은 HTMLElement.
-        render: (_app, html) => {
+        render: (_app: any, html: any) => {
           // html이 HTMLElement인 경우와 jQuery wrapper인 경우 모두 대응
           const root = html instanceof HTMLElement
             ? html
@@ -281,7 +289,7 @@ async function showExportModeDialog() {
       confirm: {
         icon: '<i class="fas fa-download"></i>',
         label: confirmLabel,
-        callback: async (html) => {
+        callback: async (html: any) => {
           const root = html?.[0] ?? html ?? dialogRoot;
           const values = await readExportFormValues(root);
           if (values) await dispatchExport(values);
@@ -293,7 +301,7 @@ async function showExportModeDialog() {
       },
     },
     default: "confirm",
-    render: (html) => {
+    render: (html: any) => {
       const root = html?.[0] ?? html;
       dialogRoot = root ?? null;
       attachExportFormHandlers(root);
@@ -305,9 +313,10 @@ async function showExportModeDialog() {
  * 모드 선택 다이얼로그를 띄우는 settings.registerMenu용 래퍼.
  */
 export class ExportChatArchiveMenu extends FormApplication {
-  render(_force, _options) {
+  override render(_force?: boolean, _options?: any): this {
     showExportModeDialog();
+    return this;
   }
-  getData() { return {}; }
-  async _updateObject(_event, _formData) {}
+  override getData(_options?: Partial<FormApplication.Options>): object { return {}; }
+  protected override async _updateObject(_event: Event, _formData?: object): Promise<void> {}
 }

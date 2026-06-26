@@ -179,7 +179,7 @@ export function cleanImageFilename(filename: string): string {
  * `isHtml`가 true이면 `.container > <div>` 구조로 감싸고 `innerHTML`로 콘텐츠 주입,
  * false면 `textContent`로 안전하게 주입한다.
  */
-export function createDivWithClasses(classes: string | string[], content: string | null | undefined, isHtml: boolean): HTMLElement {
+export function createDivWithClasses(classes: string | (string | null | undefined)[], content?: string | null, isHtml?: boolean): HTMLElement {
   const div = document.createElement("div");
   (Array.isArray(classes) ? classes : [classes]).forEach(cls => cls && div.classList.add(cls));
 

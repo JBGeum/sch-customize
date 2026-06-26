@@ -7,19 +7,19 @@
 
 import { downloadArchiveFile } from "./export";
 
-export async function getDFchatArchive(filepath) {
+export async function getDFchatArchive(filepath: string): Promise<void> {
   try {
     const response = await fetch(filepath);
     if (!response.ok) {
       throw new Error("Could not access the archive from server side: " + filepath);
     }
     const jsonDataArray = await response.json();
-    const chats = jsonDataArray.map(data => new ChatMessage(data));
+    const chats = jsonDataArray.map((data: unknown) => new ChatMessage(data as any));
     await downloadArchiveFile(chats);
   } catch (error) {
     console.error(`Failed to read JSON for archive ${filepath}\n${error}`);
     throw error;
   } finally {
-    game.settings.set("chat-tailor", "convertDFchatArchive", "");
+    (game.settings as any).set("chat-tailor", "convertDFchatArchive", "");
   }
 }

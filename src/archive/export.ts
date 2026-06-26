@@ -11,6 +11,7 @@
  * 합친 뒤, `existingCssText`가 제공되면 `mergeCss`로 union 머지한 결과를 사용한다.
  */
 
+import JSZip from "jszip";
 import { renderChatMessageElement, callRenderChatMessageHooks, isPrivTalkMessage } from "../compat/foundry";
 import {
   requestSaveTarget,
@@ -35,7 +36,7 @@ const SHARED_CSS_FILENAME = "chat-styles.css";
 /**
  * 기존(단독) 템플릿의 `<style>` 블록 내용을 그대로 추출해 baseline CSS로 사용한다.
  */
-async function getBaselineCss() {
+async function getBaselineCss(): Promise<string> {
   try {
     const response = await fetch(TEMPLATE_PATH);
     const html = await response.text();
@@ -53,7 +54,7 @@ async function getBaselineCss() {
  * 채팅 메시지들을 zip(HTML + images/ + portraits/)으로 패키징한 Blob을 반환.
  * 저장 동작과 분리되어 있어 테스트/재사용이 용이하다.
  */
-async function packageChatsToZipBlob(chats) {
+async function packageChatsToZipBlob(chats: any[]): Promise<Blob> {
   const [htmlContent, contentImg, portraitImg] = await generateHtmlFromChats(chats);
 
   const zip = new JSZip();
@@ -77,7 +78,7 @@ async function packageChatsToZipBlob(chats) {
  * picker를 *먼저* 호출하지 않으면 zip 생성 후 호출 시점에 user gesture가 만료되어
  * `about:blank#blocked` 차단이 발생할 수 있다.
  */
-export async function downloadArchiveFile(chats) {
+export async function downloadArchiveFile(chats: any[]): Promise<void> {
   const filename = buildArchiveFilename("chat-log", "zip");
   const target = await requestSaveTarget(filename);
   if (!target) return;
@@ -102,7 +103,7 @@ export async function downloadArchiveFile(chats) {
  * @param {'filtered'|'full'} [opts.mode='filtered']
  * @param {string|null} [opts.existingCssText=null] - 머지 대상 기존 chat-styles.css 텍스트
  */
-export async function downloadIncrementalArchive(chats, opts = {}) {
+export async function downloadIncrementalArchive(chats: any[], opts: { mode?: "filtered" | "full"; existingCssText?: string | null } = {}): Promise<void> {
   const { mode = "filtered", existingCssText = null } = opts;
 
   // user gesture가 살아있는 동안 picker를 *먼저* 호출 — 사용자가 위치를 선택하는
@@ -135,7 +136,7 @@ export async function downloadIncrementalArchive(chats, opts = {}) {
  *    HTML이 준비되면 같은 창의 document를 갈아끼운다.
  *  - 팝업 차단이 명시적으로 켜져 있으면 `window.open`이 `null`을 반환하므로 사용자에게 알린다.
  */
-export async function openChatArchive(chats) {
+export async function openChatArchive(chats: any[]): Promise<void> {
   const newWindow = window.open("", "_blank");
   if (!newWindow) {
     ui.notifications?.error(
@@ -153,7 +154,7 @@ export async function openChatArchive(chats) {
   );
   newWindow.document.close();
 
-  let htmlContent;
+  let htmlContent: string;
   try {
     [htmlContent] = await generateSimpleHtmlFromChats(chats);
   } catch (e) {
@@ -177,7 +178,7 @@ export async function openChatArchive(chats) {
  * 별도 창 표시용 — 이미지 src를 재매핑하지 않는다.
  * `extractImageSets`가 빠진 경량 버전.
  */
-async function generateSimpleHtmlFromChats(chats) {
+async function generateSimpleHtmlFromChats(chats: any[]): Promise<[string]> {
   console.time("[DEBUG] generateSimpleHtmlFromChats 전체");
   console.time("[DEBUG] 1. 템플릿 로드");
 
@@ -188,13 +189,13 @@ async function generateSimpleHtmlFromChats(chats) {
   const doc = parser.parseFromString(templateHtml, "text/html");
   console.timeEnd("[DEBUG] 1. 템플릿 로드");
 
-  const container = doc.querySelector(".foundry-chat-container");
-  let prevPtFlag;
-  let prevSpeaker;
+  const container = doc.querySelector(".foundry-chat-container")!;
+  let prevPtFlag: boolean | undefined;
+  let prevSpeaker: string | undefined;
 
   // 설정값을 루프 밖에서 한 번만 가져옴 (성능 최적화)
-  const includeWhisperFlag = game.settings.get("chat-tailor", "includeWhisper");
-  const hideWhisperSetting = game.settings.get("chat-tailor", "hideWhisper");
+  const includeWhisperFlag = (game.settings as any).get("chat-tailor", "includeWhisper");
+  const hideWhisperSetting = (game.settings as any).get("chat-tailor", "hideWhisper");
 
   console.time("[DEBUG] 2. 채팅 처리 루프");
   let chatCount = 0;
@@ -234,7 +235,7 @@ async function generateSimpleHtmlFromChats(chats) {
  *   - cssText는 단독 템플릿의 baseline + `createCssList(mode)` 결과를 합친 뒤,
  *     `existingCssText`가 있으면 union 머지한 결과.
  */
-async function generateIncrementalHtmlFromChats(chats, opts = {}) {
+async function generateIncrementalHtmlFromChats(chats: any[], opts: { mode?: "filtered" | "full"; existingCssText?: string | null } = {}): Promise<[string, Set<string>, Set<string>, string]> {
   const { mode = "filtered", existingCssText = null } = opts;
 
   const response = await fetch(INCREMENTAL_TEMPLATE_PATH);
@@ -243,12 +244,12 @@ async function generateIncrementalHtmlFromChats(chats, opts = {}) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(templateHtml, "text/html");
 
-  const container = doc.querySelector(".foundry-chat-container");
-  let prevPtFlag;
-  let prevSpeaker;
+  const container = doc.querySelector(".foundry-chat-container")!;
+  let prevPtFlag: boolean | undefined;
+  let prevSpeaker: string | undefined;
 
-  const includeWhisperFlag = game.settings.get("chat-tailor", "includeWhisper");
-  const hideWhisperSetting = game.settings.get("chat-tailor", "hideWhisper");
+  const includeWhisperFlag = (game.settings as any).get("chat-tailor", "includeWhisper");
+  const hideWhisperSetting = (game.settings as any).get("chat-tailor", "hideWhisper");
 
   for (const chat of chats) {
     const whisperFlag = chat.whisper && chat.whisper.length > 0;
@@ -261,11 +262,11 @@ async function generateIncrementalHtmlFromChats(chats, opts = {}) {
 
   rewriteInlineRolls(doc);
 
-  const contentImg = new Set([...doc.querySelectorAll(".chat-text img")]
+  const contentImg = new Set([...doc.querySelectorAll<HTMLImageElement>(".chat-text img")]
     .map(img => img.src ? img.src
       : window.location.href.replace("game", "") + img?.getAttribute("src")));
 
-  const portraitImg = new Set([...doc.querySelectorAll(".chat-image img")]
+  const portraitImg = new Set([...doc.querySelectorAll<HTMLImageElement>(".chat-image img")]
     .map(img => img.src ? img.src
       : window.location.href.replace("game", "") + img?.getAttribute("src")));
 
@@ -281,19 +282,19 @@ async function generateIncrementalHtmlFromChats(chats, opts = {}) {
 /**
  * 다운로드용 — 이미지 src를 zip 상대경로로 매핑하고, 이미지 URL 집합을 함께 반환한다.
  */
-async function generateHtmlFromChats(chats) {
+async function generateHtmlFromChats(chats: any[]): Promise<[string, Set<string>, Set<string>]> {
   const response = await fetch(TEMPLATE_PATH);
   const templateHtml = await response.text();
 
   const parser = new DOMParser();
   const doc = parser.parseFromString(templateHtml, "text/html");
 
-  const container = doc.querySelector(".foundry-chat-container");
-  let prevPtFlag;
-  let prevSpeaker;
+  const container = doc.querySelector(".foundry-chat-container")!;
+  let prevPtFlag: boolean | undefined;
+  let prevSpeaker: string | undefined;
 
-  const includeWhisperFlag = game.settings.get("chat-tailor", "includeWhisper");
-  const hideWhisperSetting = game.settings.get("chat-tailor", "hideWhisper");
+  const includeWhisperFlag = (game.settings as any).get("chat-tailor", "includeWhisper");
+  const hideWhisperSetting = (game.settings as any).get("chat-tailor", "hideWhisper");
 
   for (const chat of chats) {
     const whisperFlag = chat.whisper && chat.whisper.length > 0;
@@ -306,11 +307,11 @@ async function generateHtmlFromChats(chats) {
 
   rewriteInlineRolls(doc);
 
-  const contentImg = new Set([...doc.querySelectorAll(".chat-text img")]
+  const contentImg = new Set([...doc.querySelectorAll<HTMLImageElement>(".chat-text img")]
     .map(img => img.src ? img.src
       : window.location.href.replace("game", "") + img?.getAttribute("src")));
 
-  const portraitImg = new Set([...doc.querySelectorAll(".chat-image img")]
+  const portraitImg = new Set([...doc.querySelectorAll<HTMLImageElement>(".chat-image img")]
     .map(img => img.src ? img.src
       : window.location.href.replace("game", "") + img?.getAttribute("src")));
 
@@ -324,13 +325,13 @@ async function generateHtmlFromChats(chats) {
  * `<a class="inline-roll inline-result">`를 일반 `<div class="inline-roll">`로 평탄화한다.
  * 아카이브에서는 클릭 핸들러가 없으므로 텍스트로 풀어둔다.
  */
-function rewriteInlineRolls(doc) {
-  const inlineRollLinks = doc.querySelectorAll("a.inline-roll.inline-result");
+function rewriteInlineRolls(doc: Document): void {
+  const inlineRollLinks = doc.querySelectorAll<HTMLElement>("a.inline-roll.inline-result");
   inlineRollLinks.forEach((link) => {
     const newDiv = doc.createElement("div");
     newDiv.className = "inline-roll";
-    newDiv.textContent = link.dataset.tooltip + "=>" + link.textContent;
-    link.parentNode.insertBefore(newDiv, link.nextSibling);
+    newDiv.textContent = String(link.dataset.tooltip) + "=>" + link.textContent;
+    link.parentNode!.insertBefore(newDiv, link.nextSibling);
     link.remove();
   });
 }
@@ -341,7 +342,7 @@ function rewriteInlineRolls(doc) {
  * @param {Document} doc
  * @param {{ mode?: 'filtered'|'full' }} [options]
  */
-function injectInlineCss(doc, options = {}) {
+function injectInlineCss(doc: Document, options: { mode?: "filtered" | "full" } = {}): void {
   const styleElement = doc.createElement("style");
   styleElement.type = "text/css";
   styleElement.appendChild(doc.createTextNode(createCssList(null, doc, { mode: options.mode ?? "filtered" })));
@@ -356,15 +357,15 @@ function injectInlineCss(doc, options = {}) {
  *
  * @returns {Promise<boolean>} 현재 메시지가 priv_talk인지 여부 (다음 루프의 `prevPtFlag`로 전달)
  */
-async function appendChatContents(chat, chatMergeFlag, prevPtFlag, whisperFlag, container, hideWhisperSetting) {
+async function appendChatContents(chat: any, chatMergeFlag: boolean, prevPtFlag: boolean | undefined, whisperFlag: boolean, container: Element, hideWhisperSetting: any): Promise<boolean> {
   const { flags, author } = chat;
-  let speaker = chat.alias;
+  let speaker: string = chat.alias;
 
   const privTalkFlag = isPrivTalkMessage(chat);
   const hasRolls = chat.isRoll;
   const isItemCard = flags?.item || false;
 
-  let text;
+  let text: string;
   if (hasRolls || isItemCard) {
     // Roll/Item 카드만 무거운 렌더링 사용
     text = await getRollResultContent(chat);
@@ -386,11 +387,11 @@ async function appendChatContents(chat, chatMergeFlag, prevPtFlag, whisperFlag, 
 
   if (whisperFlag) {
     chatMergeFlag = false;
-    const whisperTo = chat.whisper.map(i => game.users.get(i).name);
+    const whisperTo = chat.whisper.map((i: string) => game.users!.get(i)!.name);
     speaker = `${chat.alias}\n→[${whisperTo}]`;
   }
 
-  const nameDiv = createDivWithClasses("chat-name", !chatMergeFlag ? [speaker] : null);
+  const nameDiv = createDivWithClasses("chat-name", !chatMergeFlag ? speaker : null);
   const imageDiv = createDivWithClasses("chat-image");
   const imageElement = getChatImageElement(imageUrl, chatMergeFlag, privTalkFlag);
   if (imageElement) imageDiv.appendChild(imageElement);
@@ -413,7 +414,7 @@ let _debugRollTotalTime = 0;
  * 임시 컨테이너에서 `renderHTML()`로 렌더한 뒤 그 결과 element만 빼낸다.
  * 동시에 다른 모듈의 후처리(`renderChatMessageHTML` 훅 등)도 호출해 주어 호환성을 유지한다.
  */
-async function getRollResultContent(chat) {
+async function getRollResultContent(chat: any): Promise<string> {
   const startTime = performance.now();
   _debugRollCount++;
 
