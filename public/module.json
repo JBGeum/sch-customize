@@ -22,7 +22,7 @@
       "type": "Macro"
     }
   ],
-  "styles": [  "styles/priv_talk.css", "styles/speaker-bar.css"],
+  "styles": ["module.css"],
   "relationships": {
     "requires": [{
       "id": "_chatcommands",
@@ -31,12 +31,7 @@
       "compatibility": { "verified": "2.0.1" }
     }]
   },
-    "esmodules": [
-      "./scripts/init.js"
-    ],
-    "scripts": [
-      "./lib/jszip.min.js"
-    ],
+    "esmodules": ["module.js"],
     "languages": [
       {
         "lang": "en",
