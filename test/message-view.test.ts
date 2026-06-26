@@ -158,6 +158,33 @@ describe("populateChatDoc", () => {
     // 2번째(일반)는 직전이 잡담이라 prevPtFlag(true) !== privTalkFlag(false) → merge 안 됨
     expect(boxes[1].querySelector(".chat-text")!.classList.contains("chat-merge")).toBe(false);
   });
+
+  it("필터로 제외된 속삭임은 prevSpeaker 연속성을 끊지 않는다", async () => {
+    const doc = chatDoc();
+    const chats = [
+      plain({ content: "a" }),                                                         // Alice
+      plain({ alias: "Eve", speaker: { alias: "Eve" }, whisper: ["u1"], content: "w" }), // 제외됨(includeWhisper=false)
+      plain({ content: "c" }),                                                         // Alice 다시
+    ];
+    await populateChatDoc(doc, chats, { includeWhisper: false, hideWhisper: false });
+    const boxes = doc.querySelectorAll(".chat-box");
+    expect(boxes.length).toBe(2); // 속삭임 1건 제외
+    // 제외된 속삭임이 prevSpeaker(continue가 갱신 앞에 위치)를 바꾸지 않으므로 2번째 Alice가 1번째와 merge
+    expect(boxes[1].querySelector(".chat-text")!.classList.contains("chat-merge")).toBe(true);
+  });
+
+  it("includeWhisper=true: 속삭임이 추가되고 같은 alias여도 merge 강제 false", async () => {
+    const doc = chatDoc();
+    const chats = [
+      plain({ content: "a" }),                  // Alice
+      plain({ whisper: ["u1"], content: "w" }), // Alice의 속삭임(포함됨)
+    ];
+    await populateChatDoc(doc, chats, { includeWhisper: true, hideWhisper: false });
+    const boxes = doc.querySelectorAll(".chat-box");
+    expect(boxes.length).toBe(2);                                  // 속삭임 포함
+    expect(boxes[1].classList.contains("whisper")).toBe(true);
+    expect(boxes[1].querySelector(".chat-text")!.classList.contains("chat-merge")).toBe(false);
+  });
 });
 
 describe("extractImageSets", () => {
