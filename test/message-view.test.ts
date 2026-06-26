@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { appendChatContents } from "../src/archive/export";
+import { isWhisper, shouldExcludeWhisper, resolveChatMergeFlag, selectBodySource, buildMessageClasses, maskWhisperSpeaker } from "../src/archive/message-view";
 
 // Foundry 전역 스텁 — whisper 수신자명 / actor 조회(초상화 없음 경로)
 (globalThis as any).game = {
@@ -78,4 +79,51 @@ describe("appendChatContents — 속삭임", () => {
     expect(box.classList.contains("whisper")).toBe(true);
     expect(box.classList.contains("whisper-hidden")).toBe(false);
   });
+});
+
+describe("isWhisper", () => {
+  it("whisper 배열 있음", () => expect(isWhisper({ whisper: ["a"] })).toBe(true));
+  it("빈 배열", () => expect(isWhisper({ whisper: [] })).toBe(false));
+  it("없음", () => expect(isWhisper({})).toBe(false));
+});
+
+describe("shouldExcludeWhisper", () => {
+  it("비속삭임 → false", () => expect(shouldExcludeWhisper({ whisper: [] }, false)).toBe(false));
+  it("속삭임+include off → true", () => expect(shouldExcludeWhisper({ whisper: ["a"], isContentVisible: true }, false)).toBe(true));
+  it("속삭임+include on+visible → false", () => expect(shouldExcludeWhisper({ whisper: ["a"], isContentVisible: true }, true)).toBe(false));
+  it("속삭임+include on+invisible → true", () => expect(shouldExcludeWhisper({ whisper: ["a"], isContentVisible: false }, true)).toBe(true));
+});
+
+describe("resolveChatMergeFlag", () => {
+  const A = { candidateMerge: true, prevPtFlag: false, privTalkFlag: false, whisperFlag: false };
+  it("후보 true + 조건 충족 → true", () => expect(resolveChatMergeFlag(A)).toBe(true));
+  it("후보 false → false", () => expect(resolveChatMergeFlag({ ...A, candidateMerge: false })).toBe(false));
+  it("ptFlag 전환 → false", () => expect(resolveChatMergeFlag({ ...A, prevPtFlag: true })).toBe(false));
+  it("첫 메시지(prevPtFlag undefined) → false", () => expect(resolveChatMergeFlag({ ...A, prevPtFlag: undefined })).toBe(false));
+  it("whisper → false", () => expect(resolveChatMergeFlag({ ...A, whisperFlag: true })).toBe(false));
+});
+
+describe("selectBodySource", () => {
+  it("isRoll → roll", () => expect(selectBodySource({ isRoll: true })).toBe("roll"));
+  it("flags.item → roll", () => expect(selectBodySource({ flags: { item: {} } })).toBe("roll"));
+  it("roll이 잡담보다 우선", () => expect(selectBodySource({ isRoll: true, flags: { "sch-customize": { priv_talk: true } } })).toBe("roll"));
+  it("잡담 → privtalk", () => expect(selectBodySource({ flags: { "sch-customize": { priv_talk: true } } })).toBe("privtalk"));
+  it("일반 → plain", () => expect(selectBodySource({ flags: {} })).toBe("plain"));
+});
+
+describe("buildMessageClasses", () => {
+  it("일반(author 있음)", () =>
+    expect(buildMessageClasses({ privTalkFlag: false, whisperFlag: false, hideWhisper: false, authorId: "A" }))
+      .toEqual(["chat-box", "message", null, null, null, "user-A"]));
+  it("잡담+속삭임+hide", () =>
+    expect(buildMessageClasses({ privTalkFlag: true, whisperFlag: true, hideWhisper: true, authorId: null }))
+      .toEqual(["chat-box", "message", "priv-talk", "whisper", "whisper-hidden", null]));
+  it("속삭임이지만 hide=false → whisper-hidden 위치 null", () =>
+    expect(buildMessageClasses({ privTalkFlag: false, whisperFlag: true, hideWhisper: false, authorId: "B" }))
+      .toEqual(["chat-box", "message", null, "whisper", null, "user-B"]));
+});
+
+describe("maskWhisperSpeaker", () => {
+  it("단일 수신자", () => expect(maskWhisperSpeaker("Bob", ["Carol"])).toBe("Bob\n→[Carol]"));
+  it("복수 수신자(쉼표결합)", () => expect(maskWhisperSpeaker("Bob", ["Carol", "Dave"])).toBe("Bob\n→[Carol,Dave]"));
 });
