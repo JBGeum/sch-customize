@@ -3,12 +3,14 @@
  *
  * 동일 사용자의 연속 메시지를 top / middle / end 클래스로 묶어 시각적으로 그룹화한다.
  * 잡담(priv_talk)은 본 모듈이 만든 메시지이고, 일반 메시지는 모든 chat type에 대해 적용된다.
+ * 그룹화 판정은 순수 모듈 `./grouping` 에 위임하고, 여기서는 DOM 적용만 한다.
  *
  * Foundry v12: `renderChatMessage`(jQuery), v13+: `renderChatMessageHTML`(HTMLElement) 둘 다 호환.
  */
 
 import { MODULE_ID } from "../constants";
 import { toElement, getRenderChatMessageHook, isPrivTalkMessage } from "../compat/foundry";
+import { shouldMergeBaseMessage, decideRounding, type RoundingDecision } from "./grouping";
 
 // 모듈 내부에서 직전 메시지 정보를 추적하기 위한 상태.
 // Foundry 렌더 hook은 동기적으로 메시지 순서대로 호출되므로 모듈 스코프 변수로 충분.
@@ -25,6 +27,13 @@ export function resetRenderState() {
   privTalkIndex = 0;
 }
 
+/** 라운딩 결정을 prev/curr 엘리먼트에 적용. */
+function applyRounding(prevEl: HTMLElement, currEl: HTMLElement, d: RoundingDecision): void {
+  d.prevRemove.forEach((c) => prevEl.classList.remove(c));
+  d.prevAdd.forEach((c) => prevEl.classList.add(c));
+  d.currAdd.forEach((c) => currEl.classList.add(c));
+}
+
 /**
  * 단일 chat message 렌더 후처리.
  */
@@ -34,9 +43,8 @@ export function onRenderChatMessage(message: ChatMessage, htmlOrEl: HTMLElement 
 
   const privTalkMergeEnabled = (game.settings as any).get(MODULE_ID, "privTalkMerge");
   const baseMessageMergeEnabled = (game.settings as any).get(MODULE_ID, "baseMessageMerge");
-  const privFlag = isPrivTalkMessage(message);
 
-  if (privFlag) {
+  if (isPrivTalkMessage(message)) {
     handlePrivTalkRender(el, message, privTalkMergeEnabled);
     return;
   }
@@ -50,15 +58,7 @@ function handlePrivTalkRender(el: HTMLElement, message: ChatMessage, mergeEnable
 
   if (mergeEnabled) {
     if (privTalkIndex > 0 && lastPrivTalkMsg) {
-      const prevEl = lastPrivTalkMsg;
-      if (prevEl.classList.contains("end")) {
-        prevEl.classList.remove("end");
-        prevEl.classList.add("middle");
-        el.classList.add("end");
-      } else {
-        prevEl.classList.add("top");
-        el.classList.add("end");
-      }
+      applyRounding(lastPrivTalkMsg, el, decideRounding(lastPrivTalkMsg.classList.contains("end")));
     }
     lastPrivTalkMsg = el;
   }
@@ -81,34 +81,9 @@ function handlePrivTalkRender(el: HTMLElement, message: ChatMessage, mergeEnable
 
 function handleBaseMessageRender(el: HTMLElement, message: ChatMessage, mergeEnabled: boolean): void {
   if (mergeEnabled && lastBaseMsg) {
-    const lastMsgEl = lastBaseMsg.el;
-    const lastMessage = lastBaseMsg.msg;
-    const lastMsgPrivTalkFlag = privTalkIndex > 0;
-
-    // v13+: .style, v12: .type — 어느 쪽이든 비교
-    const lastStyle = lastMessage.style ?? lastMessage.type;
-    const currStyle = (message as any).style ?? (message as any).type;
-    const sameStyle = lastStyle === currStyle;
-
-    // v13+: .author(객체 또는 id), v12: .user(객체 또는 id) — 어떤 형태든 같은 author인지만 판별
-    const lastAuthor = lastMessage.author?.id ?? lastMessage.user?.id ?? lastMessage.author ?? lastMessage.user;
-    const currAuthor = (message as any).author?.id ?? (message as any).user?.id ?? (message as any).author ?? (message as any).user;
-    const sameAuthor = lastAuthor === currAuthor;
-
-    // GM이 동일 유저로 NPC1 → NPC2 발화 전환 같은 경우, author는 같아도 발화 캐릭터가 다르므로
-    // merge를 끊는다. actor/token이 비어 있는 OOC 메시지는 alias로 대체 비교.
-    const speakerKey = (s: any): string => s?.actor ?? s?.token ?? s?.alias ?? "";
-    const sameSpeaker = speakerKey(lastMessage.speaker) === speakerKey(message.speaker);
-
-    if (sameAuthor && sameSpeaker && !lastMsgPrivTalkFlag && sameStyle) {
-      if (lastMsgEl.classList.contains("end")) {
-        lastMsgEl.classList.remove("end");
-        lastMsgEl.classList.add("middle");
-        el.classList.add("end");
-      } else {
-        lastMsgEl.classList.add("top");
-        el.classList.add("end");
-      }
+    const prevWasPrivTalk = privTalkIndex > 0;
+    if (shouldMergeBaseMessage(lastBaseMsg.msg, message, prevWasPrivTalk)) {
+      applyRounding(lastBaseMsg.el, el, decideRounding(lastBaseMsg.el.classList.contains("end")));
     }
   }
   lastBaseMsg = { msg: message, el };
