@@ -13,7 +13,7 @@
  * 현재 Foundry 코어가 v13 이상인지 여부.
  * @returns {boolean}
  */
-export function isV13Plus() {
+export function isV13Plus(): boolean {
   return (game?.release?.generation ?? 0) >= 13;
 }
 
@@ -21,7 +21,7 @@ export function isV13Plus() {
  * 메시지 렌더 hook 이름 (v13+: HTMLElement / v12: jQuery).
  * @returns {"renderChatMessageHTML"|"renderChatMessage"}
  */
-export function getRenderChatMessageHook() {
+export function getRenderChatMessageHook(): "renderChatMessageHTML" | "renderChatMessage" {
   return isV13Plus() ? "renderChatMessageHTML" : "renderChatMessage";
 }
 
@@ -30,10 +30,10 @@ export function getRenderChatMessageHook() {
  * @param {HTMLElement|JQuery|null|undefined} htmlOrEl
  * @returns {HTMLElement|null}
  */
-export function toElement(htmlOrEl) {
+export function toElement(htmlOrEl: HTMLElement | JQuery | null | undefined): HTMLElement | null {
   if (!htmlOrEl) return null;
   if (htmlOrEl instanceof HTMLElement) return htmlOrEl;
-  return htmlOrEl[0] ?? null;
+  return (htmlOrEl as unknown as { [0]?: HTMLElement })[0] ?? null;
 }
 
 /**
@@ -50,11 +50,11 @@ export function getChatStyles() {
  * @param {ChatMessage} chat
  * @returns {Promise<HTMLElement|null>}
  */
-export async function renderChatMessageElement(chat) {
-  if (typeof chat.renderHTML === "function") {
-    return await chat.renderHTML();
+export async function renderChatMessageElement(chat: ChatMessage): Promise<HTMLElement | null> {
+  if (typeof (chat as any).renderHTML === "function") {
+    return await (chat as any).renderHTML();
   }
-  const $html = await chat.getHTML();
+  const $html = await (chat as any).getHTML();
   return $html?.[0] ?? null;
 }
 
@@ -71,11 +71,12 @@ export async function renderChatMessageElement(chat) {
  * @param {ChatMessage} message
  * @returns {boolean}
  */
-export function isPrivTalkMessage(message) {
+export function isPrivTalkMessage(message: ChatMessage): boolean {
+  const flags = message.flags as Record<string, Record<string, unknown> | undefined> | undefined;
   return !!(
-    message.flags?.["chat-tailor"]?.priv_talk
-    || message.flags?.["sch-customize"]?.priv_talk
-    || message.flags?.priv_talk
+    flags?.["chat-tailor"]?.["priv_talk"]
+    || flags?.["sch-customize"]?.["priv_talk"]
+    || flags?.["priv_talk"]
   );
 }
 
@@ -94,28 +95,29 @@ export function isPrivTalkMessage(message) {
  * @param {HTMLElement} element - 렌더된 메시지 HTMLElement
  * @param {object} [overrides] - render context에 덮어쓸 추가 키
  */
-export function callRenderChatMessageHooks(chat, element, overrides = {}) {
-  const whisperIds = chat.whisper ?? [];
+export function callRenderChatMessageHooks(chat: ChatMessage, element: HTMLElement, overrides: Record<string, unknown> = {}): void {
+  const whisperIds: string[] = (chat as any).whisper ?? [];
   const messageData = {
     message: chat.toObject(false),
     user: game.user,
     author: chat.author,
     alias: chat.alias,
-    cssClass: typeof chat.getCSSClasses === "function"
-      ? chat.getCSSClasses().join(" ")
+    cssClass: typeof (chat as any).getCSSClasses === "function"
+      ? (chat as any).getCSSClasses().join(" ")
       : "",
     isWhisper: whisperIds.length > 0,
     whisperTo: whisperIds
-      .map(id => game.users.get(id)?.name)
+      .map((id: string) => game.users?.get(id)?.name)
       .filter(Boolean)
       .join(", "),
     ...overrides,
   };
 
   if (isV13Plus()) {
-    Hooks.callAll("renderChatMessageHTML", chat, element, messageData);
+    (Hooks as any).callAll("renderChatMessageHTML", chat, element, messageData);
   } else {
-    const wrapper = window.jQuery ? window.jQuery(element) : element;
-    Hooks.callAll("renderChatMessage", chat, wrapper, messageData);
+    const jq = (window as any).jQuery;
+    const wrapper = jq ? jq(element) : element;
+    (Hooks as any).callAll("renderChatMessage", chat, wrapper, messageData);
   }
 }

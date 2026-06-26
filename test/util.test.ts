@@ -47,7 +47,7 @@ describe("filenameFromUrl", () => {
 });
 
 describe("buildArchiveFilename", () => {
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => { vi.unstubAllGlobals(); });
 
   it("world 명의 금지문자를 _ 로 치환하고 형식을 만든다", () => {
     vi.stubGlobal("game", { world: { title: "Test/World:1" } });

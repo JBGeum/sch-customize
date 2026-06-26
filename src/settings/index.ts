@@ -17,9 +17,12 @@ import { updateCssProperty } from "../appearance";
 
 const MODULE_ID = "chat-tailor";
 
-export function registerAllSettings() {
+export function registerAllSettings(): void {
+  // game.settings is typed to only accept "core" as module id; cast to any for third-party module use.
+  const gs = game.settings as any;
+
   // ─── Speaker Bar ───
-  game.settings.register(MODULE_ID, "enableSpeakerBar", {
+  gs.register(MODULE_ID, "enableSpeakerBar", {
     name: `${MODULE_ID}.settings.enableSpeakerBar.name`,
     hint: `${MODULE_ID}.settings.enableSpeakerBar.hint`,
     scope: "client",
@@ -31,14 +34,14 @@ export function registerAllSettings() {
 
   // ─── Chat Archive 메뉴 ───
   // 단일 진입점에서 단독 / 누적+머지 / 누적+전체덤프 3 모드를 선택한다.
-  game.settings.registerMenu(MODULE_ID, "downloadChatArchiveMenu", {
+  gs.registerMenu(MODULE_ID, "downloadChatArchiveMenu", {
     name: `${MODULE_ID}.settings.downloadChatArchiveMenu.name`,
     hint: `${MODULE_ID}.settings.downloadChatArchiveMenu.hint`,
     icon: "fas fa-download",
     type: ExportChatArchiveMenu,
   });
 
-  game.settings.registerMenu(MODULE_ID, "openChatArchiveWindow", {
+  gs.registerMenu(MODULE_ID, "openChatArchiveWindow", {
     name: `${MODULE_ID}.settings.openChatArchiveWindow.name`,
     hint: `${MODULE_ID}.settings.openChatArchiveWindow.hint`,
     icon: "fas fa-arrow-up-right-from-square",
@@ -46,7 +49,7 @@ export function registerAllSettings() {
   });
 
   // ─── Chat Archive 옵션 ───
-  game.settings.register(MODULE_ID, "includeWhisper", {
+  gs.register(MODULE_ID, "includeWhisper", {
     name: `${MODULE_ID}.settings.includeWhisper.name`,
     hint: `${MODULE_ID}.settings.includeWhisper.hint`,
     scope: "world",
@@ -55,7 +58,7 @@ export function registerAllSettings() {
     type: Boolean,
   });
 
-  game.settings.register(MODULE_ID, "hideWhisper", {
+  gs.register(MODULE_ID, "hideWhisper", {
     name: `${MODULE_ID}.settings.hideWhisper.name`,
     hint: `${MODULE_ID}.settings.hideWhisper.hint`,
     scope: "client",
@@ -65,24 +68,24 @@ export function registerAllSettings() {
   });
 
   // ─── DF Chat Archive 변환 (GM 전용) ───
-  game.settings.register(MODULE_ID, "convertDFchatArchive", {
+  gs.register(MODULE_ID, "convertDFchatArchive", {
     name: `${MODULE_ID}.settings.convertDFchatArchive.name`,
     restricted: true,
     config: true,
     type: String,
     filePicker: "any",
     default: "",
-    onChange: value => {
+    onChange: (value: string) => {
       if (value.endsWith(".json")) {
         getDFchatArchive(value);
       } else if (value.length > 0) {
-        alert(game.i18n.localize(`${MODULE_ID}.settings.convertDFchatArchive.alert`));
+        alert(game.i18n!.localize(`${MODULE_ID}.settings.convertDFchatArchive.alert`));
       }
     },
   });
 
   // ─── Chitchat 동작 ───
-  game.settings.register(MODULE_ID, "customPrivTalkAlias", {
+  gs.register(MODULE_ID, "customPrivTalkAlias", {
     name: `${MODULE_ID}.settings.customPrivTalkAlias.name`,
     hint: `${MODULE_ID}.settings.customPrivTalkAlias.hint`,
     scope: "client",
@@ -92,7 +95,7 @@ export function registerAllSettings() {
     onChange: () => window.location.reload(),
   });
 
-  game.settings.register(MODULE_ID, "markdownDelUse", {
+  gs.register(MODULE_ID, "markdownDelUse", {
     name: `${MODULE_ID}.settings.markdownDelUse.name`,
     hint: `${MODULE_ID}.settings.markdownDelUse.hint`,
     scope: "client",
@@ -102,7 +105,7 @@ export function registerAllSettings() {
     onChange: () => window.location.reload(),
   });
 
-  game.settings.register(MODULE_ID, "privTalkAsOOC", {
+  gs.register(MODULE_ID, "privTalkAsOOC", {
     name: `${MODULE_ID}.settings.privTalkAsOOC.name`,
     hint: `${MODULE_ID}.settings.privTalkAsOOC.hint`,
     scope: "world",
@@ -111,7 +114,7 @@ export function registerAllSettings() {
     type: Boolean,
   });
 
-  game.settings.register(MODULE_ID, "privTalkSpeakerLineChange", {
+  gs.register(MODULE_ID, "privTalkSpeakerLineChange", {
     name: `${MODULE_ID}.settings.privTalkSpeakerLineChange.name`,
     hint: `${MODULE_ID}.settings.privTalkSpeakerLineChange.hint`,
     scope: "client",
@@ -122,7 +125,7 @@ export function registerAllSettings() {
   });
 
   // ─── 머지(그룹화) 토글 ───
-  game.settings.register(MODULE_ID, "baseMessageMerge", {
+  gs.register(MODULE_ID, "baseMessageMerge", {
     name: `${MODULE_ID}.settings.baseMessageMerge.name`,
     hint: `${MODULE_ID}.settings.baseMessageMerge.hint`,
     scope: "client",
@@ -132,7 +135,7 @@ export function registerAllSettings() {
     onChange: () => window.location.reload(),
   });
 
-  game.settings.register(MODULE_ID, "privTalkMerge", {
+  gs.register(MODULE_ID, "privTalkMerge", {
     name: `${MODULE_ID}.settings.privTalkMerge.name`,
     hint: `${MODULE_ID}.settings.privTalkMerge.hint`,
     scope: "client",
@@ -143,7 +146,7 @@ export function registerAllSettings() {
   });
 
   // ─── 외관 슬라이더 ───
-  game.settings.register(MODULE_ID, "setChatLogFontSize", {
+  gs.register(MODULE_ID, "setChatLogFontSize", {
     name: `${MODULE_ID}.settings.setChatLogFontSize.name`,
     hint: `${MODULE_ID}.settings.setChatLogFontSize.hint`,
     config: true,
@@ -151,10 +154,10 @@ export function registerAllSettings() {
     scope: "client",
     range: { min: 14, max: 30, step: 0.5 },
     default: 14,
-    onChange: value => updateCssProperty("clFontSize", `${value}px`),
+    onChange: (value: number) => updateCssProperty("clFontSize", `${value}px`),
   });
 
-  game.settings.register(MODULE_ID, "setPrivTalkFontSize", {
+  gs.register(MODULE_ID, "setPrivTalkFontSize", {
     name: `${MODULE_ID}.settings.setPrivTalkFontSize.name`,
     hint: `${MODULE_ID}.settings.setPrivTalkFontSize.hint`,
     config: true,
@@ -162,10 +165,10 @@ export function registerAllSettings() {
     scope: "client",
     range: { min: 10, max: 30, step: 0.5 },
     default: 12,
-    onChange: value => updateCssProperty("ptFontSize", `${value}px`),
+    onChange: (value: number) => updateCssProperty("ptFontSize", `${value}px`),
   });
 
-  game.settings.register(MODULE_ID, "setPrivTalkFontOpacity", {
+  gs.register(MODULE_ID, "setPrivTalkFontOpacity", {
     name: `${MODULE_ID}.settings.setPrivTalkFontOpacity.name`,
     hint: `${MODULE_ID}.settings.setPrivTalkFontOpacity.hint`,
     config: true,
@@ -173,10 +176,10 @@ export function registerAllSettings() {
     scope: "client",
     range: { min: 0, max: 1, step: 0.05 },
     default: 0.8,
-    onChange: value => updateCssProperty("fontColor", `rgba(0,0,0,${value})`),
+    onChange: (value: number) => updateCssProperty("fontColor", `rgba(0,0,0,${value})`),
   });
 
-  game.settings.register(MODULE_ID, "setPrivTalkMarginLeft", {
+  gs.register(MODULE_ID, "setPrivTalkMarginLeft", {
     name: `${MODULE_ID}.settings.setPrivTalkMarginLeft.name`,
     hint: `${MODULE_ID}.settings.setPrivTalkMarginLeft.hint`,
     config: true,
@@ -184,10 +187,10 @@ export function registerAllSettings() {
     scope: "client",
     range: { min: 0, max: 40, step: 1 },
     default: 10,
-    onChange: value => updateCssProperty("marginLeft", `${value}px`),
+    onChange: (value: number) => updateCssProperty("marginLeft", `${value}px`),
   });
 
-  game.settings.register(MODULE_ID, "setPrivTalkBgBrightness", {
+  gs.register(MODULE_ID, "setPrivTalkBgBrightness", {
     name: `${MODULE_ID}.settings.setPrivTalkBgBrightness.name`,
     hint: `${MODULE_ID}.settings.setPrivTalkBgBrightness.hint`,
     config: true,
@@ -195,6 +198,6 @@ export function registerAllSettings() {
     scope: "client",
     range: { min: 0, max: 1, step: 0.05 },
     default: 0.7,
-    onChange: value => updateCssProperty("brightness", `${value}`),
+    onChange: (value: number) => updateCssProperty("brightness", `${value}`),
   });
 }
