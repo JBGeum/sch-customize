@@ -353,19 +353,12 @@ export async function appendChatContents(chat: any, chatMergeFlag: boolean, prev
   return privTalkFlag;
 }
 
-// 디버그용 누적 통계
-let _debugRollCount = 0;
-let _debugRollTotalTime = 0;
-
 /**
  * Roll / Item 카드는 Foundry가 직접 렌더해줘야 정확한 결과가 나오므로,
  * 임시 컨테이너에서 `renderHTML()`로 렌더한 뒤 그 결과 element만 빼낸다.
  * 동시에 다른 모듈의 후처리(`renderChatMessageHTML` 훅 등)도 호출해 주어 호환성을 유지한다.
  */
 async function getRollResultContent(chat: any): Promise<string> {
-  const startTime = performance.now();
-  _debugRollCount++;
-
   const isPrivTalk = isPrivTalkMessage(chat);
 
   const element = await renderChatMessageElement(chat);
@@ -381,11 +374,5 @@ async function getRollResultContent(chat: any): Promise<string> {
   const result = extractMessageContent(element, isPrivTalk);
   tempContainer.remove();
 
-  const elapsed = performance.now() - startTime;
-  _debugRollTotalTime += elapsed;
-
-  if (_debugRollCount % 10 === 0 || elapsed > 100) {
-    console.log(`[DEBUG] getRollResultContent #${_debugRollCount}: ${elapsed.toFixed(1)}ms (누적: ${_debugRollTotalTime.toFixed(0)}ms)`);
-  }
   return result;
 }
