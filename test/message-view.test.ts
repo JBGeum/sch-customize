@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { appendChatContents } from "../src/archive/export";
 
 // Foundry 전역 스텁 — whisper 수신자명 / actor 조회(초상화 없음 경로)
@@ -65,7 +65,7 @@ describe("appendChatContents — 속삭임", () => {
   it("whisper+hideWhisper: 클래스 + 마스킹 화자명 + merge 강제 false", async () => {
     const chat = plain({ author: { id: "B" }, alias: "Bob", speaker: { alias: "Bob" },
       content: "secret", whisper: ["u1", "u2"] });
-    const box = await append(chat, { merge: true, whisper: true, hideWhisper: true });
+    const box = await append(chat, { merge: true, prevPt: false, whisper: true, hideWhisper: true });
     expect(box.classList.contains("whisper")).toBe(true);
     expect(box.classList.contains("whisper-hidden")).toBe(true);
     expect(box.querySelector(".chat-name")!.textContent).toBe("Bob\n→[RCP-u1,RCP-u2]");
