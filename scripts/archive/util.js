@@ -31,28 +31,6 @@ export function buildArchiveFilename(prefix, ext) {
 }
 
 /**
- * File System Access API(`showSaveFilePicker`)로 blob을 저장.
- * 사용자가 취소(AbortError)하면 `false`를 반환하고,
- * API 미지원/오류 시 throw하여 호출 측이 fallback할 수 있게 한다.
- *
- * @returns {Promise<boolean>} 저장 완료 여부 (취소 시 false)
- */
-async function trySaveWithFilePicker(blob, filename) {
-  if (!window.showSaveFilePicker) {
-    throw new Error("showSaveFilePicker is not supported");
-  }
-  const ext = filename.split(".").pop().toLowerCase();
-  const handle = await window.showSaveFilePicker({
-    suggestedName: filename,
-    types: [{ description: "ZIP Archive", accept: { "application/zip": [`.${ext}`] } }],
-  });
-  const writable = await handle.createWritable();
-  await writable.write(blob);
-  await writable.close();
-  return true;
-}
-
-/**
  * data URI 앵커 클릭 방식으로 blob을 저장.
  *
  * blob URL을 쓰면 Foundry VTT 서비스 워커가 요청을 가로채면서 `download` 속성이
@@ -77,22 +55,76 @@ async function saveWithDataUriAnchor(blob, filename) {
 }
 
 /**
- * Blob을 지정한 파일명으로 저장한다.
+ * 사용자 제스처 컨텍스트 안에서 *먼저* 저장 타깃을 확보한다.
  *
- * 저장 전략 (위에서 아래로 시도):
- *  1. `showSaveFilePicker` — 네이티브 저장 대화상자, 가장 사용자 친화적
- *  2. data URI 앵커 클릭 — 모든 모던 브라우저 fallback
+ * 무거운 비동기 작업(zip 생성, CSS 머지 등)을 시작하기 전 — 사용자가 "다운로드"
+ * 버튼을 클릭한 직후 — 에 호출해야 한다. 그래야 `showSaveFilePicker`가 user gesture
+ * 안에서 호출되어 다이얼로그가 정상적으로 뜨고, picker 미지원 환경에서도 fallback이
+ * `about:blank#blocked` 차단에 걸리지 않는다.
+ *
+ * 반환값:
+ *  - `{ kind: "file-handle", handle }`  — picker로 사용자가 위치 선택을 마친 경우
+ *  - `{ kind: "data-uri", filename }`   — picker 미지원/실패. 이후 data URI 앵커로 폴백
+ *  - `null`                              — 사용자가 picker를 취소(AbortError)
+ *
+ * @param {string} filename
+ * @returns {Promise<{kind: "file-handle", handle: any}|{kind: "data-uri", filename: string}|null>}
+ */
+export async function requestSaveTarget(filename) {
+  if (!window.showSaveFilePicker) {
+    return { kind: "data-uri", filename };
+  }
+  const ext = filename.split(".").pop().toLowerCase();
+  try {
+    const handle = await window.showSaveFilePicker({
+      suggestedName: filename,
+      types: [{ description: "ZIP Archive", accept: { "application/zip": [`.${ext}`] } }],
+    });
+    return { kind: "file-handle", handle };
+  } catch (e) {
+    if (e.name === "AbortError") return null;
+    // 미지원/권한 거부 등 — data URI fallback으로 진행
+    return { kind: "data-uri", filename };
+  }
+}
+
+/**
+ * `requestSaveTarget`이 확보해 둔 타깃에 blob을 기록한다.
+ *
+ * picker handle이라면 사용자가 이미 위치 선택을 마친 상태이므로 user gesture와
+ * 무관하게 안전하게 쓸 수 있다. data URI fallback은 anchor click을 시도하지만
+ * picker 미지원 환경(Firefox/Safari 등)에서는 여전히 임계점을 넘으면 차단될 수
+ * 있으므로, 가능하면 picker 경로를 타도록 환경을 우선한다.
+ *
+ * @param {{kind: "file-handle", handle: any}|{kind: "data-uri", filename: string}|null} target
+ * @param {Blob} blob
+ * @returns {Promise<boolean>} 실제로 기록되었는지
+ */
+export async function writeToSaveTarget(target, blob) {
+  if (!target) return false;
+  if (target.kind === "file-handle") {
+    const writable = await target.handle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+    return true;
+  }
+  await saveWithDataUriAnchor(blob, target.filename);
+  return true;
+}
+
+/**
+ * Blob을 지정한 파일명으로 저장한다. (레거시 단축형)
+ *
+ * 내부적으로 `requestSaveTarget` → `writeToSaveTarget`을 순차 호출한다. 이 함수는
+ * blob을 *이미 만든 뒤* 호출되므로, picker 호출 시점이 사용자 제스처 컨텍스트와
+ * 분리되어 미지원/오류 시 fallback 경로의 `about:blank#blocked` 차단 위험이 있다.
+ * 무거운 export 파이프라인에서는 두 단계 API(`requestSaveTarget`/`writeToSaveTarget`)
+ * 를 직접 사용해 picker 호출을 사용자 클릭 직후로 끌어올려야 한다.
  */
 export async function saveAs(blob, filename) {
-  try {
-    await trySaveWithFilePicker(blob, filename);
-    return;
-  } catch (e) {
-    // 사용자가 저장 대화상자를 취소한 경우 — 저장하지 않고 종료
-    if (e.name === "AbortError") return;
-    // 그 외(미지원 환경, 권한 거부 등)는 fallback으로 진행
-  }
-  await saveWithDataUriAnchor(blob, filename);
+  const target = await requestSaveTarget(filename);
+  if (!target) return;
+  await writeToSaveTarget(target, blob);
 }
 
 /**

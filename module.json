@@ -3,7 +3,7 @@
   "name": "chat-tailor",
   "title": "Chat Tailor",
   "description": "Tailors the Foundry VTT chat for narrative play: styled chitchat (side-talk), a speaker bar with lockable speaker, HTML chat log archiving, and appearance tuning.",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "compatibility": {
     "minimum": "12",
     "verified": "13"

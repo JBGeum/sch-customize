@@ -13,7 +13,8 @@
 
 import { renderChatMessageElement, callRenderChatMessageHooks, isPrivTalkMessage } from "../compat/foundry.js";
 import {
-  saveAs,
+  requestSaveTarget,
+  writeToSaveTarget,
   buildArchiveFilename,
   zipInsideFolder,
   createDivWithClasses,
@@ -66,15 +67,23 @@ async function packageChatsToZipBlob(chats) {
 /**
  * 채팅 로그를 zip 파일로 저장한다.
  *
- * 책임이 세 단계로 분리되어 있다.
- *   1. `packageChatsToZipBlob`  — 메시지 → Blob 변환
- *   2. `buildArchiveFilename`   — `chat-log-yyyyMMdd-worldName.zip` 파일명 생성
- *   3. `saveAs`                 — 저장 전략 (FilePicker → data URI fallback)
+ * 처리 순서 — *순서가 중요*:
+ *   1. `buildArchiveFilename`   — `chat-log-yyyyMMdd-worldName.zip` 파일명 생성
+ *   2. `requestSaveTarget`      — 사용자 제스처가 살아 있는 동안 picker 호출 → 핸들 확보
+ *   3. `packageChatsToZipBlob`  — 메시지 → Blob 변환 (무거운 작업, 사용자가 picker에서
+ *                                 위치 선택하는 동안 백그라운드로 진행)
+ *   4. `writeToSaveTarget`      — 핸들에 blob 기록
+ *
+ * picker를 *먼저* 호출하지 않으면 zip 생성 후 호출 시점에 user gesture가 만료되어
+ * `about:blank#blocked` 차단이 발생할 수 있다.
  */
 export async function downloadArchiveFile(chats) {
-  const blob = await packageChatsToZipBlob(chats);
   const filename = buildArchiveFilename("chat-log", "zip");
-  await saveAs(blob, filename);
+  const target = await requestSaveTarget(filename);
+  if (!target) return;
+
+  const blob = await packageChatsToZipBlob(chats);
+  await writeToSaveTarget(target, blob);
 }
 
 /**
@@ -96,6 +105,12 @@ export async function downloadArchiveFile(chats) {
 export async function downloadIncrementalArchive(chats, opts = {}) {
   const { mode = "filtered", existingCssText = null } = opts;
 
+  // user gesture가 살아있는 동안 picker를 *먼저* 호출 — 사용자가 위치를 선택하는
+  // 시간 동안 백그라운드로 무거운 generate/merge/zip 작업이 진행된다.
+  const filename = buildArchiveFilename("chat-log-incremental", "zip");
+  const target = await requestSaveTarget(filename);
+  if (!target) return;
+
   const [htmlContent, contentImg, portraitImg, cssText] =
     await generateIncrementalHtmlFromChats(chats, { mode, existingCssText });
 
@@ -106,17 +121,54 @@ export async function downloadIncrementalArchive(chats, opts = {}) {
   zip.file(buildArchiveFilename("chat-log", "html"), htmlContent);
 
   const blob = await zip.generateAsync({ type: "blob" });
-  const filename = buildArchiveFilename("chat-log-incremental", "zip");
-  await saveAs(blob, filename);
+  await writeToSaveTarget(target, blob);
 }
 
 /**
  * 채팅 로그를 별도 창에서 열기 — 이미지 zip 없이 인라인 src 그대로 사용.
+ *
+ * 구현 메모:
+ *  - `window.open(..., "_blank")`은 **사용자 제스처(user activation)가 살아 있을 때만**
+ *    팝업 차단을 우회한다. HTML 생성(`generateSimpleHtmlFromChats`)이 수 초 이상 걸리면
+ *    그 사이 user activation이 만료되어 새 탭이 `about:blank#blocked`로 차단된다.
+ *  - 그래서 무거운 작업 *전에* 빈 창을 먼저 열어 핸들을 확보하고, 로딩 안내를 표시한 뒤,
+ *    HTML이 준비되면 같은 창의 document를 갈아끼운다.
+ *  - 팝업 차단이 명시적으로 켜져 있으면 `window.open`이 `null`을 반환하므로 사용자에게 알린다.
  */
 export async function openChatArchive(chats) {
-  const [htmlContent] = await generateSimpleHtmlFromChats(chats);
-
   const newWindow = window.open("", "_blank");
+  if (!newWindow) {
+    ui.notifications?.error(
+      "팝업이 차단되었습니다. 브라우저의 팝업 차단을 해제한 뒤 다시 시도하세요."
+    );
+    return;
+  }
+
+  // 무거운 빌드 동안 사용자에게 보여줄 placeholder
+  newWindow.document.write(
+    "<!doctype html><html><head><meta charset='utf-8'><title>Loading…</title></head>"
+    + "<body style='font-family:sans-serif;padding:2rem;color:#444;'>"
+    + "채팅 로그를 생성 중입니다… 잠시만 기다려 주세요."
+    + "</body></html>"
+  );
+  newWindow.document.close();
+
+  let htmlContent;
+  try {
+    [htmlContent] = await generateSimpleHtmlFromChats(chats);
+  } catch (e) {
+    console.error("[chat-tailor] openChatArchive 실패:", e);
+    if (!newWindow.closed) {
+      newWindow.document.body.textContent = "채팅 로그 생성 중 오류가 발생했습니다.";
+    }
+    ui.notifications?.error("채팅 로그 생성 중 오류가 발생했습니다.");
+    return;
+  }
+
+  // 사용자가 로딩 중에 창을 닫았을 수 있음
+  if (newWindow.closed) return;
+
+  newWindow.document.open();
   newWindow.document.write(htmlContent);
   newWindow.document.close();
 }
@@ -375,7 +427,7 @@ async function getRollResultContent(chat) {
   document.body.appendChild(tempContainer);
   tempContainer.appendChild(element);
 
-  callRenderChatMessageHooks(chat, element, chat.toObject());
+  callRenderChatMessageHooks(chat, element);
 
   const result = extractMessageContent(element, isPrivTalk);
   tempContainer.remove();

@@ -81,16 +81,41 @@ export function isPrivTalkMessage(message) {
 
 /**
  * 임시 렌더된 메시지에 대해 다른 모듈의 렌더 후처리 hook을 호출.
- * v13+에서는 `renderChatMessageHTML`을, v12에서는 `renderChatMessage`(jQuery)를 호출한다.
+ *
+ * Foundry 코어의 `renderChatMessage(HTML)` 훅이 외부 모듈에 전달하는 세 번째 인자는
+ * *render context wrapper 객체*이지 `chat.toObject()` 그 자체가 아니다. 표준 구조는:
+ *
+ *   { message: serialized, user, author, alias, cssClass, isWhisper, whisperTo, ... }
+ *
+ * 일부 모듈(예: CGMP)이 `messageData.message.flags`를 읽으므로, 최소한 `message`
+ * 키는 반드시 채워야 한다. 이 함수가 누락된 표준 키를 자동으로 채워준다.
+ *
  * @param {ChatMessage} chat
- * @param {HTMLElement} element
- * @param {object} data
+ * @param {HTMLElement} element - 렌더된 메시지 HTMLElement
+ * @param {object} [overrides] - render context에 덮어쓸 추가 키
  */
-export function callRenderChatMessageHooks(chat, element, data) {
+export function callRenderChatMessageHooks(chat, element, overrides = {}) {
+  const whisperIds = chat.whisper ?? [];
+  const messageData = {
+    message: chat.toObject(false),
+    user: game.user,
+    author: chat.author,
+    alias: chat.alias,
+    cssClass: typeof chat.getCSSClasses === "function"
+      ? chat.getCSSClasses().join(" ")
+      : "",
+    isWhisper: whisperIds.length > 0,
+    whisperTo: whisperIds
+      .map(id => game.users.get(id)?.name)
+      .filter(Boolean)
+      .join(", "),
+    ...overrides,
+  };
+
   if (isV13Plus()) {
-    Hooks.callAll("renderChatMessageHTML", chat, element, data);
+    Hooks.callAll("renderChatMessageHTML", chat, element, messageData);
   } else {
     const wrapper = window.jQuery ? window.jQuery(element) : element;
-    Hooks.callAll("renderChatMessage", chat, wrapper, data);
+    Hooks.callAll("renderChatMessage", chat, wrapper, messageData);
   }
 }
