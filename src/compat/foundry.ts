@@ -61,12 +61,11 @@ export async function renderChatMessageElement(chat: ChatMessage): Promise<HTMLE
 /**
  * ChatMessage가 잡담(priv_talk)인지 판별한다.
  *
- * 모듈 ID가 'sch-customize' → 'chat-tailor'로 변경되었으므로,
- * 이전에 기록된 메시지에는 구 네임스페이스 flag가 남아 있을 수 있다.
- * 아래 세 경로를 모두 확인해 어느 버전의 메시지라도 인식되도록 한다:
- *   1. flags['chat-tailor']['priv_talk']   — 현재 버전
- *   2. flags['sch-customize']['priv_talk'] — 모듈 ID 변경 전 구버전
- *   3. flags['priv_talk']                  — 네임스페이스 없는 최초 레거시
+ * 모듈 ID 이력: priv_talk → sch-customize → chat-tailor → (되돌림) sch-customize.
+ * 어느 시기에 만들어진 메시지든 인식하기 위해 세 네임스페이스를 모두 읽는다:
+ *   1. flags['sch-customize']['priv_talk'] — 현재(되돌린) 버전
+ *   2. flags['chat-tailor']['priv_talk']   — chat-tailor 시기 메시지(레거시 보존)
+ *   3. flags['priv_talk']                  — 최초 네임스페이스 없음
  *
  * @param {ChatMessage} message
  * @returns {boolean}

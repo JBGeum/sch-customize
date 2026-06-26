@@ -6,6 +6,7 @@
  * `chat-tailor.priv_talk` flag를 켜서 메시지 객체를 반환한다.
  */
 
+import { MODULE_ID } from "../constants";
 import { getChatStyles, isV13Plus } from "../compat/foundry";
 
 /**
@@ -16,12 +17,12 @@ export function registerChitchatCommand() {
   commands.register({
     name: "/pt",
     module: "core",
-    aliases: [`${(game.settings as any).get("chat-tailor", "customPrivTalkAlias")}`, "`", "!"],
+    aliases: [`${(game.settings as any).get(MODULE_ID, "customPrivTalkAlias")}`, "`", "!"],
     icon: "<i class='fas fa-dice-d20'></i>",
     requiredRole: "NONE",
     callback: async function (_chat: any, parameters: any, messageData: any) {
       // 마크다운 취소선 옵션이 꺼져 있으면 잡담 본문의 <del>을 ~로 환원해 일반 텍스트로 둠
-      if (!(game.settings as any).get("chat-tailor", "markdownDelUse")) {
+      if (!(game.settings as any).get(MODULE_ID, "markdownDelUse")) {
         parameters = parameters.replace(/<\s*\/?\s*del\s*>/g, "~");
       }
 
@@ -34,7 +35,7 @@ export function registerChitchatCommand() {
       messageData.speaker.alias = speakUser.name;
 
       const styles = getChatStyles();
-      const styleValue = (game.settings as any).get("chat-tailor", "privTalkAsOOC")
+      const styleValue = (game.settings as any).get(MODULE_ID, "privTalkAsOOC")
         ? styles.OOC : styles.OTHER;
       // v13+에서 .type은 document subtype 식별자(문자열)로 의미가 바뀌었으므로
       // 버전에 따라 사용하는 필드를 분리한다.
@@ -47,7 +48,7 @@ export function registerChitchatCommand() {
       return {
         content: parameters,
         flags: {
-          "chat-tailor": { priv_talk: true },
+          [MODULE_ID]: { priv_talk: true },
         },
       };
     },

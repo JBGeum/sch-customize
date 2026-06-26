@@ -22,6 +22,7 @@
  */
 
 import "./styles/main.scss";
+import { MODULE_ID } from "./constants";
 import { registerAllSettings } from "./settings/index";
 import { registerChitchatCommand } from "./chitchat/command";
 import { registerChitchatRender, resetRenderState } from "./chitchat/render";
@@ -32,8 +33,6 @@ import {
   downloadArchiveFile,
   downloadIncrementalArchive,
 } from "./archive/export";
-
-const MODULE_ID = "chat-tailor";
 
 /**
  * 외부(매크로/타 모듈)에서 호출 가능한 공개 API를 module.api에 노출한다.
@@ -68,7 +67,7 @@ Hooks.once("init", () => {
 
 Hooks.once("setup", () => {
   resetRenderState();
-  if ((game.settings as any).get("chat-tailor", "enableSpeakerBar")) {
+  if ((game.settings as any).get(MODULE_ID, "enableSpeakerBar")) {
     registerSpeakerBar();
   }
   registerChitchatCommand();

@@ -7,6 +7,7 @@
  * Foundry v12: `renderChatMessage`(jQuery), v13+: `renderChatMessageHTML`(HTMLElement) 둘 다 호환.
  */
 
+import { MODULE_ID } from "../constants";
 import { toElement, getRenderChatMessageHook, isPrivTalkMessage } from "../compat/foundry";
 
 // 모듈 내부에서 직전 메시지 정보를 추적하기 위한 상태.
@@ -31,8 +32,8 @@ function onRenderChatMessage(message: ChatMessage, htmlOrEl: HTMLElement | JQuer
   const el = toElement(htmlOrEl);
   if (!el) return;
 
-  const privTalkMergeEnabled = (game.settings as any).get("chat-tailor", "privTalkMerge");
-  const baseMessageMergeEnabled = (game.settings as any).get("chat-tailor", "baseMessageMerge");
+  const privTalkMergeEnabled = (game.settings as any).get(MODULE_ID, "privTalkMerge");
+  const baseMessageMergeEnabled = (game.settings as any).get(MODULE_ID, "baseMessageMerge");
   const privFlag = isPrivTalkMessage(message);
 
   if (privFlag) {
@@ -73,7 +74,7 @@ function handlePrivTalkRender(el: HTMLElement, message: ChatMessage, mergeEnable
       `<div class="pt priv_user">${message.speaker.alias}</div> <div class="pt">${message.content}</div>`;
   }
 
-  if (!(game.settings as any).get("chat-tailor", "privTalkSpeakerLineChange")) {
+  if (!(game.settings as any).get(MODULE_ID, "privTalkSpeakerLineChange")) {
     el.classList.add("line-change");
   }
 }

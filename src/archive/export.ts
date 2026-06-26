@@ -12,6 +12,7 @@
  */
 
 import JSZip from "jszip";
+import { MODULE_ID, TEMPLATE_BASE } from "../constants";
 import { renderChatMessageElement, callRenderChatMessageHooks, isPrivTalkMessage } from "../compat/foundry";
 import {
   requestSaveTarget,
@@ -29,8 +30,8 @@ import {
 import { createCssList } from "./css";
 import { mergeCss } from "./css-merge";
 
-const TEMPLATE_PATH = "modules/chat-tailor/template/chat-archive-template.html";
-const INCREMENTAL_TEMPLATE_PATH = "modules/chat-tailor/template/chat-archive-template-incremental.html";
+const TEMPLATE_PATH = `${TEMPLATE_BASE}/chat-archive-template.html`;
+const INCREMENTAL_TEMPLATE_PATH = `${TEMPLATE_BASE}/chat-archive-template-incremental.html`;
 const SHARED_CSS_FILENAME = "chat-styles.css";
 
 /**
@@ -194,8 +195,8 @@ async function generateSimpleHtmlFromChats(chats: any[]): Promise<[string]> {
   let prevSpeaker: string | undefined;
 
   // 설정값을 루프 밖에서 한 번만 가져옴 (성능 최적화)
-  const includeWhisperFlag = (game.settings as any).get("chat-tailor", "includeWhisper");
-  const hideWhisperSetting = (game.settings as any).get("chat-tailor", "hideWhisper");
+  const includeWhisperFlag = (game.settings as any).get(MODULE_ID, "includeWhisper");
+  const hideWhisperSetting = (game.settings as any).get(MODULE_ID, "hideWhisper");
 
   console.time("[DEBUG] 2. 채팅 처리 루프");
   let chatCount = 0;
@@ -248,8 +249,8 @@ async function generateIncrementalHtmlFromChats(chats: any[], opts: { mode?: "fi
   let prevPtFlag: boolean | undefined;
   let prevSpeaker: string | undefined;
 
-  const includeWhisperFlag = (game.settings as any).get("chat-tailor", "includeWhisper");
-  const hideWhisperSetting = (game.settings as any).get("chat-tailor", "hideWhisper");
+  const includeWhisperFlag = (game.settings as any).get(MODULE_ID, "includeWhisper");
+  const hideWhisperSetting = (game.settings as any).get(MODULE_ID, "hideWhisper");
 
   for (const chat of chats) {
     const whisperFlag = chat.whisper && chat.whisper.length > 0;
@@ -293,8 +294,8 @@ async function generateHtmlFromChats(chats: any[]): Promise<[string, Set<string>
   let prevPtFlag: boolean | undefined;
   let prevSpeaker: string | undefined;
 
-  const includeWhisperFlag = (game.settings as any).get("chat-tailor", "includeWhisper");
-  const hideWhisperSetting = (game.settings as any).get("chat-tailor", "hideWhisper");
+  const includeWhisperFlag = (game.settings as any).get(MODULE_ID, "includeWhisper");
+  const hideWhisperSetting = (game.settings as any).get(MODULE_ID, "hideWhisper");
 
   for (const chat of chats) {
     const whisperFlag = chat.whisper && chat.whisper.length > 0;

@@ -5,6 +5,7 @@
  * 변환 후에는 설정값을 초기화한다.
  */
 
+import { MODULE_ID } from "../constants";
 import { downloadArchiveFile } from "./export";
 
 export async function getDFchatArchive(filepath: string): Promise<void> {
@@ -20,6 +21,6 @@ export async function getDFchatArchive(filepath: string): Promise<void> {
     console.error(`Failed to read JSON for archive ${filepath}\n${error}`);
     throw error;
   } finally {
-    (game.settings as any).set("chat-tailor", "convertDFchatArchive", "");
+    (game.settings as any).set(MODULE_ID, "convertDFchatArchive", "");
   }
 }

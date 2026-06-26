@@ -11,11 +11,10 @@
  * `applyAllCssSettings()`는 모든 설정 등록이 끝난 뒤 호출해야 한다(init 마지막).
  */
 
+import { MODULE_ID } from "../constants";
 import { ExportChatArchiveMenu, openChatArchiveWindow } from "../archive/dialog";
 import { getDFchatArchive } from "../archive/df";
 import { updateCssProperty } from "../appearance";
-
-const MODULE_ID = "chat-tailor";
 
 export function registerAllSettings(): void {
   // game.settings is typed to only accept "core" as module id; cast to any for third-party module use.

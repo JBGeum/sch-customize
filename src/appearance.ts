@@ -9,6 +9,8 @@
  *                                  styles/priv_talk.css 가 그 변수를 참조
  */
 
+import { MODULE_ID } from "./constants";
+
 /**
  * 외부에서 전달받는 짧은 키 → 실제 CSS custom property 이름 매핑.
  * 키를 짧게 두는 이유는 `settings.onChange`에서 호출이 길어지는 것을 막기 위함.
@@ -38,11 +40,11 @@ export function updateCssProperty(property: keyof typeof CSS_PROPERTY, value: st
  */
 export function applyAllCssSettings(): void {
   const gs = game.settings as any;
-  updateCssProperty("fontColor",  `rgba(0,0,0,${gs.get("chat-tailor", "setPrivTalkFontOpacity")})`);
-  updateCssProperty("clFontSize", `${gs.get("chat-tailor", "setChatLogFontSize")}px`);
-  updateCssProperty("ptFontSize", `${gs.get("chat-tailor", "setPrivTalkFontSize")}px`);
-  updateCssProperty("marginLeft", `${gs.get("chat-tailor", "setPrivTalkMarginLeft")}px`);
-  updateCssProperty("brightness", `${gs.get("chat-tailor", "setPrivTalkBgBrightness")}`);
+  updateCssProperty("fontColor",  `rgba(0,0,0,${gs.get(MODULE_ID, "setPrivTalkFontOpacity")})`);
+  updateCssProperty("clFontSize", `${gs.get(MODULE_ID, "setChatLogFontSize")}px`);
+  updateCssProperty("ptFontSize", `${gs.get(MODULE_ID, "setPrivTalkFontSize")}px`);
+  updateCssProperty("marginLeft", `${gs.get(MODULE_ID, "setPrivTalkMarginLeft")}px`);
+  updateCssProperty("brightness", `${gs.get(MODULE_ID, "setPrivTalkBgBrightness")}`);
 }
 
 /**

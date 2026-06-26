@@ -4,8 +4,7 @@
  */
 
 import { toElement, getRenderChatMessageHook } from "./compat/foundry";
-
-const MODULE_ID = "chat-tailor";
+import { MODULE_ID } from "./constants";
 const LOCKED_FLAG_KEY = "lockedSpeaker";
 const DEFAULT_IMG = "icons/svg/mystery-man.svg";
 
