@@ -328,7 +328,7 @@ export function mergeCss(existingCssText: string | null, freshCssText: string): 
   const output = serializeCategorized(merged);
 
   if (typeof console !== "undefined" && console.log) {
-    console.log(`[chat-tailor] mergeCss: existing style rules ${eCat.styleRules.length}, new ${fCat.styleRules.length}, output ${mergedStyle.length}`);
+    console.log(`[sch-customize] mergeCss: existing style rules ${eCat.styleRules.length}, new ${fCat.styleRules.length}, output ${mergedStyle.length}`);
   }
 
   return output;

@@ -3,7 +3,7 @@
  *
  * `/pt`, `!`, `` ` ``, 사용자 지정 alias 중 무엇으로 입력해도 본 명령이 받게 된다.
  * 콜백은 messageData의 speaker를 발신자 본인으로 덮어쓰고, style/type을 OOC 또는 OTHER로 분류한 뒤,
- * `chat-tailor.priv_talk` flag를 켜서 메시지 객체를 반환한다.
+ * `sch-customize.priv_talk` flag를 켜서 메시지 객체를 반환한다.
  */
 
 import { MODULE_ID } from "../constants";

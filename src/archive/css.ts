@@ -111,7 +111,7 @@ export class CssVariableTracker {
 
     if (skipped.length && typeof console !== "undefined") {
       console.log(
-        `[chat-tailor] :root에서 길이 초과 변수 ${skipped.length}개 제외 ` +
+        `[sch-customize] :root에서 길이 초과 변수 ${skipped.length}개 제외 ` +
         `(임계값 ${MAX_VAR_LENGTH}자): ` +
         skipped.slice(0, 5).map(s => `${s.varName}(${s.length}자)`).join(", ") +
         (skipped.length > 5 ? ` 외 ${skipped.length - 5}개` : ""),
@@ -234,7 +234,7 @@ export class StructuredCssCollector {
  * 있는 주요 시스템·모듈 prefix를 넉넉히 포함한다.
  */
 const ALWAYS_INCLUDE_PATTERNS = [
-  // chat-tailor 자체
+  // sch-customize 자체
   /\.chat-/, /\.message/, /\.priv[-_]?talk/, /\.pt\b/, /\.chitchat/, /\.speaker-/,
   // 주사위 / 롤 / 인라인
   /\.dice-/, /\.roll/, /\.inline-roll/,

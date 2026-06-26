@@ -46,7 +46,7 @@ async function getBaselineCss(): Promise<string> {
     const styleEl = doc.querySelector("style");
     return styleEl ? styleEl.textContent || "" : "";
   } catch (e) {
-    console.warn("[chat-tailor] baseline CSS 추출 실패:", e);
+    console.warn("[sch-customize] baseline CSS 추출 실패:", e);
     return "";
   }
 }
@@ -159,7 +159,7 @@ export async function openChatArchive(chats: any[]): Promise<void> {
   try {
     [htmlContent] = await generateSimpleHtmlFromChats(chats);
   } catch (e) {
-    console.error("[chat-tailor] openChatArchive 실패:", e);
+    console.error("[sch-customize] openChatArchive 실패:", e);
     if (!newWindow.closed) {
       newWindow.document.body.textContent = "채팅 로그 생성 중 오류가 발생했습니다.";
     }

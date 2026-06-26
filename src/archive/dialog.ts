@@ -74,7 +74,7 @@ export class DownloadChatArchive extends FormApplication {
           const chats = [...(game.messages!.contents)];
           await downloadArchiveFile(chats);
         } catch (error) {
-          console.error("[chat-tailor] Failed to download chat archive:", error);
+          console.error("[sch-customize] Failed to download chat archive:", error);
           ui.notifications?.error(
             game.i18n!.localize("sch-customize.dialog.download.error") || "Failed to download chat archive."
           );
@@ -163,7 +163,7 @@ function findExportForm(rootEl: any): Element | null {
 function attachExportFormHandlers(rootEl: any): void {
   const form = findExportForm(rootEl);
   if (!form) {
-    console.warn("[chat-tailor] export form not found in render");
+    console.warn("[sch-customize] export form not found in render");
     return;
   }
   const radios = form.querySelectorAll("input[name='sch-export-mode']");
@@ -182,7 +182,7 @@ function attachExportFormHandlers(rootEl: any): void {
 async function readExportFormValues(rootEl: any): Promise<{ mode: string; existingCssText: string | null } | null> {
   const form = findExportForm(rootEl);
   if (!form) {
-    console.error("[chat-tailor] export form not found at submit");
+    console.error("[sch-customize] export form not found at submit");
     return null;
   }
   const mode = (form.querySelector("input[name='sch-export-mode']:checked") as HTMLInputElement | null)?.value ?? "solo";
@@ -193,7 +193,7 @@ async function readExportFormValues(rootEl: any): Promise<{ mode: string; existi
     try {
       existingCssText = await file.text();
     } catch (e) {
-      console.warn("[chat-tailor] 기존 CSS 읽기 실패:", e);
+      console.warn("[sch-customize] 기존 CSS 읽기 실패:", e);
     }
   }
   return { mode, existingCssText };
@@ -214,7 +214,7 @@ async function dispatchExport({ mode, existingCssText }: { mode: string; existin
       });
     }
   } catch (error) {
-    console.error("[chat-tailor] Failed to export chat archive:", error);
+    console.error("[sch-customize] Failed to export chat archive:", error);
     ui.notifications?.error(
       game.i18n!.localize("sch-customize.dialog.export.error") || "Failed to export chat archive."
     );
@@ -276,7 +276,7 @@ async function showExportModeDialog(): Promise<void> {
         await dispatchExport(result);
       }
     } catch (e) {
-      console.warn("[chat-tailor] export dialog 취소/오류:", e);
+      console.warn("[sch-customize] export dialog 취소/오류:", e);
     }
     return;
   }

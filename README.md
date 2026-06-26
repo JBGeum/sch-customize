@@ -1,4 +1,4 @@
-# Chat Tailor
+# sch-customize
 
 A Foundry VTT module that tailors the chat experience for narrative-heavy tabletop sessions. Add styled chitchat lines, archive chat logs, lock your speaker, and fine-tune chat appearance.
 
@@ -81,16 +81,16 @@ A speaker indicator above the chat input that shows who you are about to speak a
 In Foundry VTT, go to **Add-on Modules** → **Install Module** and paste the manifest URL:
 
 ```
-https://github.com/JBGeum/chat-tailor/releases/latest/download/module.json
+https://github.com/JBGeum/sch-customize/releases/latest/download/module.json
 ```
 
 ### Manual
 
-Download the latest `chat-tailor.zip` from the [Releases page](https://github.com/JBGeum/chat-tailor/releases), extract it into `Data/modules/chat-tailor/`, and restart Foundry.
+Download the latest `sch-customize.zip` from the [Releases page](https://github.com/JBGeum/sch-customize/releases), extract it into `Data/modules/sch-customize/`, and restart Foundry.
 
 ### Dependencies
 
-Chat Tailor requires **[Chat Commands](https://gitlab.com/woodentavern/foundryvtt-chat-command-lib)** (auto-installed via dependency resolution in modern Foundry versions).
+sch-customize requires **[Chat Commands](https://gitlab.com/woodentavern/foundryvtt-chat-command-lib)** (auto-installed via dependency resolution in modern Foundry versions).
 
 ---
 
@@ -125,7 +125,7 @@ You can customize the single-character trigger in module settings.
 
 ### Archiving the chat
 
-Open **Settings → Module Settings → Chat Tailor**:
+Open **Settings → Module Settings → sch-customize**:
 - **Download Chat Log**: Export to HTML
 - **Show Chat Log**: View in a new window
 
@@ -164,7 +164,7 @@ Open **Settings → Module Settings → Chat Tailor**:
 ## Credits
 
 - Original author: **Scheree**
-- Maintained at [JBGeum/chat-tailor](https://github.com/JBGeum/chat-tailor)
+- Maintained at [JBGeum/sch-customize](https://github.com/JBGeum/sch-customize)
 - Bundles [JSZip](https://stuk.github.io/jszip/) for HTML log archives
 - Requires [Chat Commands](https://gitlab.com/woodentavern/foundryvtt-chat-command-lib) by woodentavern
 
@@ -174,7 +174,7 @@ Open **Settings → Module Settings → Chat Tailor**:
 
 ## Feedback & Issues
 
-Please report bugs or suggestions on the [GitHub Issues](https://github.com/JBGeum/chat-tailor/issues) page.
+Please report bugs or suggestions on the [GitHub Issues](https://github.com/JBGeum/sch-customize/issues) page.
 
 ---
 

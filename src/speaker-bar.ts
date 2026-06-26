@@ -138,7 +138,7 @@ async function setLockedSpeaker(speaker: LockedSpeaker | null): Promise<void> {
  * 현재 표시될 발화자 정보 결정.
  *
  * 우선순위:
- *  1. chat-tailor Lock 발화자       — 사용자 명시적 의사이므로 무조건 우선
+ *  1. sch-customize Lock 발화자       — 사용자 명시적 의사이므로 무조건 우선
  *  2. CGMP 강제 발화자 (있을 때)    — CGMP가 실제 메시지의 speaker를 바꿔버리므로
  *                                     Speaker Bar UI와 chat log 발신자의 정합성을 위해
  *                                     선택된 토큰보다 먼저 평가

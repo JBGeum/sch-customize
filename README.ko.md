@@ -1,4 +1,4 @@
-# Chat Tailor
+# sch-customize
 
 내러티브 중심의 TRPG 세션을 위해 Foundry VTT의 채팅 경험을 다듬는 모듈입니다. 잡담 스타일링, 채팅 로그 아카이브, 발화자 고정, 채팅 외관 세밀 조정 기능을 제공합니다.
 
@@ -82,12 +82,12 @@
 Foundry VTT에서 **모듈 관리** → **모듈 설치** → 아래 manifest URL 붙여넣기:
 
 ```
-https://github.com/JBGeum/chat-tailor/releases/latest/download/module.json
+https://github.com/JBGeum/sch-customize/releases/latest/download/module.json
 ```
 
 ### 수동 설치
 
-[Releases 페이지](https://github.com/JBGeum/chat-tailor/releases)에서 최신 `chat-tailor.zip`을 다운로드한 뒤 `Data/modules/chat-tailor/`에 압축을 풀고 Foundry를 재시작합니다.
+[Releases 페이지](https://github.com/JBGeum/sch-customize/releases)에서 최신 `sch-customize.zip`을 다운로드한 뒤 `Data/modules/sch-customize/`에 압축을 풀고 Foundry를 재시작합니다.
 
 ### 의존 모듈
 
@@ -126,7 +126,7 @@ https://github.com/JBGeum/chat-tailor/releases/latest/download/module.json
 
 ### 채팅 로그 보관
 
-**설정 → 모듈 설정 → Chat Tailor**에서:
+**설정 → 모듈 설정 → sch-customize**에서:
 - **채팅 로그 다운로드**: HTML 파일로 내보내기
 - **채팅 로그 표시**: 새 창에서 열기
 
@@ -165,7 +165,7 @@ https://github.com/JBGeum/chat-tailor/releases/latest/download/module.json
 ## 크레딧
 
 - 원작자: **Scheree**
-- 유지보수: [JBGeum/chat-tailor](https://github.com/JBGeum/chat-tailor)
+- 유지보수: [JBGeum/sch-customize](https://github.com/JBGeum/sch-customize)
 - HTML 로그 아카이브에 [JSZip](https://stuk.github.io/jszip/) 사용
 - woodentavern의 [Chat Commands](https://gitlab.com/woodentavern/foundryvtt-chat-command-lib) 의존
 
@@ -175,7 +175,7 @@ https://github.com/JBGeum/chat-tailor/releases/latest/download/module.json
 
 ## 피드백 및 이슈
 
-버그 제보나 기능 제안은 [GitHub Issues](https://github.com/JBGeum/chat-tailor/issues)에 남겨주세요.
+버그 제보나 기능 제안은 [GitHub Issues](https://github.com/JBGeum/sch-customize/issues)에 남겨주세요.
 
 ---
 
