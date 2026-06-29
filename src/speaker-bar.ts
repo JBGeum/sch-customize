@@ -5,16 +5,8 @@
 
 import { toElement, getRenderChatMessageHook } from "./compat/foundry";
 import { MODULE_ID } from "./constants";
+import { resolveSpeaker, resolveOverrideSpeaker, DEFAULT_IMG, type LockedSpeaker, type SpeakerContext } from "./speaker-resolve";
 const LOCKED_FLAG_KEY = "lockedSpeaker";
-const DEFAULT_IMG = "icons/svg/mystery-man.svg";
-
-/** 사용자가 고정한 발화자 정보 구조. game.user.setFlag에 그대로 저장된다. */
-interface LockedSpeaker {
-  sceneId: string | null;
-  tokenId: string | null;
-  actorId: string | null;
-  alias: string;
-}
 
 /**
  * Cautious Gamemaster's Pack (CGMP) 호환 상수.
@@ -31,14 +23,6 @@ const CGMP_OPTIONS = {
   GM_SPEAKER_MODE: "gmSpeakerMode",
   PLAYER_SPEAKER_MODE: "playerSpeakerMode",
 };
-const CGMP_SPEAKER_MODE = {
-  DEFAULT: 0,
-  DISABLE_GM_AS_PC: 1,
-  FORCE_IN_CHARACTER: 2,
-  ALWAYS_OOC: 3,
-  IN_CHARACTER_ALWAYS_ASSIGNED: 4,
-};
-
 /**
  * 현재 사용자에게 적용되는 CGMP speaker mode. CGMP가 비활성이면 null.
  *
@@ -53,64 +37,6 @@ function getCgmpSpeakerMode(): number | null {
     return typeof mode === "number" ? mode : null;
   } catch (_) {
     return null;
-  }
-}
-
-/**
- * 현재 사용자 자체를 발화자로 표시할 때 쓰는 OOC fallback. CGMP가 OOC로 강제하는
- * 경우(DISABLE_GM_AS_PC/ALWAYS_OOC)에 사용한다.
- */
-function userSpeakerInfo() {
-  return {
-    img: (game.user as any).avatar || DEFAULT_IMG,
-    name: game.user!.name,
-    locked: false,
-    actor: null,
-    token: null,
-  };
-}
-
-/**
- * 사용자에게 할당된 캐릭터를 발화자로 표시. CGMP가 in-character로 강제하는
- * 경우(FORCE_IN_CHARACTER/IN_CHARACTER_ALWAYS_ASSIGNED)에 사용. 할당이 없으면
- * user OOC로 폴백.
- */
-function assignedCharacterSpeakerInfo() {
-  const character = game.user!.character;
-  if (!character) return userSpeakerInfo();
-  return {
-    img: (character as any).img ?? DEFAULT_IMG,
-    name: character.name,
-    locked: false,
-    actor: character,
-    token: null,
-  };
-}
-
-/**
- * CGMP가 메시지의 speaker를 강제로 바꾸는 모드라면, 그 결과에 해당하는 발화자
- * 정보를 반환한다. 강제 변경 없는 모드(DEFAULT) 또는 CGMP가 미적용인 케이스
- * (예: DISABLE_GM_AS_PC인데 NPC 토큰 선택)에서는 null 반환 → 기존 우선순위로 폴백.
- */
-function resolveCgmpForcedSpeaker() {
-  const mode = getCgmpSpeakerMode();
-  if (mode === null || mode === CGMP_SPEAKER_MODE.DEFAULT) return null;
-
-  switch (mode) {
-    case CGMP_SPEAKER_MODE.DISABLE_GM_AS_PC: {
-      // GM에게만 의미가 있고, *PC 토큰* 선택 시에만 발동. NPC 토큰이면 CGMP가 그대로 둠
-      if (!game.user!.isGM) return null;
-      const controlled = (canvas as any)?.tokens?.controlled?.[0];
-      const isPc = !!controlled?.actor?.hasPlayerOwner;
-      return isPc ? userSpeakerInfo() : null;
-    }
-    case CGMP_SPEAKER_MODE.FORCE_IN_CHARACTER:
-    case CGMP_SPEAKER_MODE.IN_CHARACTER_ALWAYS_ASSIGNED:
-      return assignedCharacterSpeakerInfo();
-    case CGMP_SPEAKER_MODE.ALWAYS_OOC:
-      return userSpeakerInfo();
-    default:
-      return null;
   }
 }
 
@@ -135,56 +61,41 @@ async function setLockedSpeaker(speaker: LockedSpeaker | null): Promise<void> {
 }
 
 /**
- * 현재 표시될 발화자 정보 결정.
- *
- * 우선순위:
- *  1. sch-customize Lock 발화자       — 사용자 명시적 의사이므로 무조건 우선
- *  2. CGMP 강제 발화자 (있을 때)    — CGMP가 실제 메시지의 speaker를 바꿔버리므로
- *                                     Speaker Bar UI와 chat log 발신자의 정합성을 위해
- *                                     선택된 토큰보다 먼저 평가
- *  3. 선택된 토큰
- *  4. 사용자 할당 캐릭터
- *  5. 사용자 자신 (기본 portrait)
+ * 경계 reader: game/canvas 전역을 1회 읽어 SpeakerContext로 모은다.
+ * 순수 결정(resolveSpeaker)은 이 결과만 소비한다. (전역 읽기 격리 지점, 미테스트.)
  */
-function resolveCurrentSpeaker() {
+function readSpeakerContext(): SpeakerContext {
   const locked = getLockedSpeaker();
+  let lockedToken: any = null;
+  let lockedActor: any = null;
   if (locked) {
     const scene = locked.sceneId ? game.scenes!.get(locked.sceneId) : null;
-    const token = scene && locked.tokenId ? scene.tokens.get(locked.tokenId) : null;
-    const actor = locked.actorId ? game.actors!.get(locked.actorId) : null;
-    const img = (token as any)?.texture?.src ?? (actor as any)?.img ?? DEFAULT_IMG;
-    const name = locked.alias ?? token?.name ?? actor?.name ?? game.user!.name;
-    return { img, name, locked: true, actor, token };
+    lockedToken = scene && locked.tokenId ? scene.tokens.get(locked.tokenId) : null;
+    lockedActor = locked.actorId ? game.actors!.get(locked.actorId) : null;
   }
+  const c = (canvas as any)?.tokens?.controlled?.[0];
+  const controlled = c ? { token: c.document, actor: c.actor, isPc: !!c.actor?.hasPlayerOwner } : null;
+  return {
+    locked,
+    lockedToken,
+    lockedActor,
+    cgmpMode: getCgmpSpeakerMode(),
+    isGM: !!game.user!.isGM,
+    controlled,
+    assignedCharacter: game.user!.character,
+    userName: game.user!.name,
+    userAvatar: (game.user as any).avatar || DEFAULT_IMG,
+  };
+}
 
-  const cgmpForced = resolveCgmpForcedSpeaker();
-  if (cgmpForced) return cgmpForced;
-
-  const controlled = (canvas as any)?.tokens?.controlled?.[0];
-  if (controlled) {
-    const token = controlled.document;
-    const actor = controlled.actor;
-    return {
-      img: (token as any)?.texture?.src ?? (actor as any)?.img ?? DEFAULT_IMG,
-      name: token?.name ?? actor?.name ?? game.user!.name,
-      locked: false,
-      actor,
-      token,
-    };
-  }
-
-  const character = game.user!.character;
-  if (character) {
-    return {
-      img: (character as any).img ?? DEFAULT_IMG,
-      name: character.name,
-      locked: false,
-      actor: character,
-      token: null,
-    };
-  }
-
-  return { img: DEFAULT_IMG, name: game.user!.name, locked: false, actor: null, token: null };
+/**
+ * 현재 표시될 발화자 정보 결정. (얇은 경계 래퍼 — 전역 → context → 순수 결정.)
+ *
+ * 우선순위:
+ *  1. sch-customize Lock 발화자  2. CGMP 강제  3. 선택 토큰  4. 배정 캐릭터  5. 사용자
+ */
+export function resolveCurrentSpeaker() {
+  return resolveSpeaker(readSpeakerContext());
 }
 
 /**
@@ -328,19 +239,9 @@ function injectSpeakerBar(html: HTMLElement | JQuery | null): void {
  *
  * @returns {boolean} lock이 적용되어 message가 변경되었는지 여부
  */
-function overrideSpeaker(message: ChatMessage, data: any): boolean {
-  const locked = getLockedSpeaker();
-  if (!locked) return false;
-
-  // 잡담(priv_talk)은 자체 speaker 처리가 있으므로 제외
-  if (data.flags?.[MODULE_ID]?.priv_talk) return false;
-
-  const speaker = {
-    scene: locked.sceneId ?? null,
-    actor: locked.actorId ?? null,
-    token: locked.tokenId ?? null,
-    alias: locked.alias ?? data.speaker?.alias,
-  };
+export function overrideSpeaker(message: ChatMessage, data: any): boolean {
+  const speaker = resolveOverrideSpeaker(getLockedSpeaker(), data);
+  if (!speaker) return false;
   data.speaker = speaker;
   (message as any).updateSource({ speaker });
   return true;
