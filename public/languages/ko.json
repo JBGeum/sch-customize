@@ -5,6 +5,7 @@
     "sch-customize.dialog.download.content": "채팅 로그를 다운로드 합니다.",
     "sch-customize.dialog.download.button.download": "다운로드",
     "sch-customize.dialog.download.button.cancel": "취소",
+    "sch-customize.dialog.download.error": "채팅 로그 다운로드에 실패했습니다.",
     "sch-customize.dialog.export.title": "채팅 로그 Export",
     "sch-customize.dialog.export.legend": "Export 모드 선택",
     "sch-customize.dialog.export.mode.solo.label": "단독 (CSS 인라인, 자기완결 zip)",
