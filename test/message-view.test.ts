@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { appendChatContents, populateChatDoc, extractImageSets } from "../src/archive/export";
 import { isWhisper, shouldExcludeWhisper, resolveChatMergeFlag, selectBodySource, buildMessageClasses, maskWhisperSpeaker } from "../src/archive/message-view";
 
@@ -196,5 +196,34 @@ describe("extractImageSets", () => {
     const { contentImg, portraitImg } = extractImageSets(doc);
     expect([...contentImg]).toEqual(["http://x/a.png"]);
     expect([...portraitImg]).toEqual(["http://x/p.png"]);
+  });
+});
+
+describe("appendChatContents — 삭제된 속삭임 수신자(C6)", () => {
+  const origGet = (globalThis as any).game.users.get;
+  const origI18n = (globalThis as any).game.i18n;
+  beforeEach(() => {
+    (globalThis as any).game.users.get = (id: string) =>
+      id === "gone" ? undefined : { name: "RCP-" + id };
+    (globalThis as any).game.i18n = {
+      localize: (k: string) =>
+        k === "sch-customize.archive.whisperUnknownUser" ? "Unknown user" : k,
+    };
+  });
+  afterEach(() => {
+    (globalThis as any).game.users.get = origGet;
+    (globalThis as any).game.i18n = origI18n;
+  });
+
+  it("삭제된 수신자는 placeholder로 표시(throw 없음, 수신자 수 보존)", async () => {
+    const chat = plain({ alias: "Bob", speaker: { alias: "Bob" }, content: "secret", whisper: ["u1", "gone"] });
+    const box = await append(chat, { whisper: true, hideWhisper: true });
+    expect(box.querySelector(".chat-name")!.textContent).toBe("Bob\n→[RCP-u1,Unknown user]");
+  });
+
+  it("정상 수신자 전원 유효 → 기존과 동일", async () => {
+    const chat = plain({ alias: "Bob", speaker: { alias: "Bob" }, content: "secret", whisper: ["u1", "u2"] });
+    const box = await append(chat, { whisper: true, hideWhisper: true });
+    expect(box.querySelector(".chat-name")!.textContent).toBe("Bob\n→[RCP-u1,RCP-u2]");
   });
 });

@@ -22,6 +22,8 @@
     "sch-customize.dialog.open.title": "Show Chat Log",
     "sch-customize.dialog.open.content": "Open the chat log in a new window.",
     "sch-customize.dialog.open.button.open": "Open",
+    "sch-customize.dialog.open.error": "Failed to open the chat log.",
+    "sch-customize.archive.whisperUnknownUser": "Unknown user",
     "sch-customize.settings.includeWhisper.name": "Include Whispers in Chat Log",
     "sch-customize.settings.includeWhisper.hint": "Include whispers in the exported chat log.",
     "sch-customize.settings.hideWhisper.name": "Hide Whispers in Chat Log",

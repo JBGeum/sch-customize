@@ -336,7 +336,8 @@ export async function appendChatContents(chat: any, chatMergeFlag: boolean, prev
   }));
 
   if (whisperFlag) {
-    const whisperTo = chat.whisper.map((i: string) => game.users!.get(i)!.name);
+    const whisperTo = chat.whisper.map((i: string) =>
+      game.users!.get(i)?.name ?? game.i18n!.localize("sch-customize.archive.whisperUnknownUser"));
     speaker = maskWhisperSpeaker(chat.alias, whisperTo);
   }
 

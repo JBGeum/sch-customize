@@ -26,17 +26,19 @@ export async function showConfirmDialog({ title, content, confirmLabel, confirmI
 }): Promise<void> {
   const DialogV2 = (foundry as any).applications?.api?.DialogV2;
   if (DialogV2) {
+    let ok = false;
     try {
-      const ok = await DialogV2.confirm({
+      ok = await DialogV2.confirm({
         window: { title },
         content: `<p>${content}</p>`,
         yes: { label: confirmLabel, icon: confirmIcon },
         no:  { label: game.i18n!.localize("sch-customize.dialog.download.button.cancel") },
       });
-      if (ok) await onConfirm();
     } catch (_e) {
-      // 사용자가 창을 닫음 등 — 조용히 무시
+      // 사용자가 창을 닫음/취소 — 조용히 무시
+      return;
     }
+    if (ok) await onConfirm();
     return;
   }
 
@@ -95,8 +97,13 @@ export class openChatArchiveWindow extends FormApplication {
       content: game.i18n!.localize("sch-customize.dialog.open.content"),
       confirmLabel: game.i18n!.localize("sch-customize.dialog.open.button.open"),
       onConfirm: async () => {
-        const chats = [...(game.messages!.contents)];
-        await openChatArchive(chats);
+        try {
+          const chats = [...(game.messages!.contents)];
+          await openChatArchive(chats);
+        } catch (error) {
+          console.error("[sch-customize] Failed to open chat archive:", error);
+          ui.notifications?.error(game.i18n!.localize("sch-customize.dialog.open.error"));
+        }
       },
     });
     return this;

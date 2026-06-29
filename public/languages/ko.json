@@ -22,6 +22,8 @@
     "sch-customize.dialog.open.title": "채팅 로그 표시",
     "sch-customize.dialog.open.content": "채팅 로그를 새 창에 표시합니다.",
     "sch-customize.dialog.open.button.open": "열기",
+    "sch-customize.dialog.open.error": "채팅 로그 열기에 실패했습니다.",
+    "sch-customize.archive.whisperUnknownUser": "알 수 없는 사용자",
     "sch-customize.settings.includeWhisper.name": "채팅 로그 귓속말을 포함",
     "sch-customize.settings.includeWhisper.hint": "채팅 로그에 귓속말을 포함합니다.",
     "sch-customize.settings.hideWhisper.name": "채팅 로그 귓속말 숨김",
