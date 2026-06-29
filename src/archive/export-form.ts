@@ -10,6 +10,9 @@
  *  - readExportFormValues: 폼에서 mode + 기존 CSS 텍스트 추출
  */
 
+import { MODULE_ID } from "../constants";
+import { SETTINGS } from "../settings/keys";
+
 /**
  * 누적/단독 export 모드 선택 다이얼로그 본문.
  *
@@ -17,6 +20,9 @@
  */
 export function buildExportModeFormHtml(): string {
   const t = (key: string) => game.i18n!.localize(`sch-customize.dialog.export.${key}`);
+  const gs = game.settings as any;
+  const incChecked = gs.get(MODULE_ID, SETTINGS.includeWhisper) ? "checked" : "";
+  const hideChecked = gs.get(MODULE_ID, SETTINGS.hideWhisper) ? "checked" : "";
   return `
     <div class="sch-customize-export-form" style="display:flex;flex-direction:column;gap:0.6rem;">
       <fieldset style="display:flex;flex-direction:column;gap:0.4rem;padding:0.5rem;">
@@ -40,6 +46,16 @@ export function buildExportModeFormHtml(): string {
           </span>
         </label>
       </fieldset>
+      <div class="sch-whisper-options" style="display:flex;flex-direction:column;gap:0.3rem;padding:0.4rem 0.6rem;">
+        <label style="display:flex;align-items:center;gap:0.4rem;">
+          <input type="checkbox" name="sch-include-whisper" ${incChecked}>
+          <span>${t("includeWhisper.label")}</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:0.4rem;">
+          <input type="checkbox" name="sch-hide-whisper" ${hideChecked}>
+          <span>${t("hideWhisper.label")}</span>
+        </label>
+      </div>
       <div class="sch-existing-css-section" style="display:none;padding:0.4rem 0.6rem;border-top:1px dashed rgba(0,0,0,0.2);">
         <label style="display:flex;flex-direction:column;gap:0.3rem;">
           <span><strong>${t("existing.label")}</strong></span>
@@ -85,7 +101,7 @@ export function attachExportFormHandlers(rootEl: any): void {
 /**
  * 폼에서 모드 + 기존 CSS 텍스트 추출. 파일 미선택 시 existingCssText=null.
  */
-export async function readExportFormValues(rootEl: any): Promise<{ mode: string; existingCssText: string | null } | null> {
+export async function readExportFormValues(rootEl: any): Promise<{ mode: string; existingCssText: string | null; includeWhisper: boolean; hideWhisper: boolean } | null> {
   const form = findExportForm(rootEl);
   if (!form) {
     console.error("[sch-customize] export form not found at submit");
@@ -102,5 +118,7 @@ export async function readExportFormValues(rootEl: any): Promise<{ mode: string;
       console.warn("[sch-customize] 기존 CSS 읽기 실패:", e);
     }
   }
-  return { mode, existingCssText };
+  const includeWhisper = !!(form.querySelector("input[name='sch-include-whisper']") as HTMLInputElement | null)?.checked;
+  const hideWhisper = !!(form.querySelector("input[name='sch-hide-whisper']") as HTMLInputElement | null)?.checked;
+  return { mode, existingCssText, includeWhisper, hideWhisper };
 }

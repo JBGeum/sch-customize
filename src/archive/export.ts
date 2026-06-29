@@ -57,8 +57,8 @@ async function getBaselineCss(): Promise<string> {
  * 채팅 메시지들을 zip(HTML + images/ + portraits/)으로 패키징한 Blob을 반환.
  * 저장 동작과 분리되어 있어 테스트/재사용이 용이하다.
  */
-async function packageChatsToZipBlob(chats: any[]): Promise<Blob> {
-  const [htmlContent, contentImg, portraitImg] = await generateHtmlFromChats(chats);
+async function packageChatsToZipBlob(chats: any[], settings: { includeWhisper: boolean; hideWhisper: boolean }): Promise<Blob> {
+  const [htmlContent, contentImg, portraitImg] = await generateHtmlFromChats(chats, settings);
 
   const zip = new JSZip();
   await zipInsideFolder(zip, contentImg, "images");
@@ -81,12 +81,12 @@ async function packageChatsToZipBlob(chats: any[]): Promise<Blob> {
  * picker를 *먼저* 호출하지 않으면 zip 생성 후 호출 시점에 user gesture가 만료되어
  * `about:blank#blocked` 차단이 발생할 수 있다.
  */
-export async function downloadArchiveFile(chats: any[]): Promise<void> {
+export async function downloadArchiveFile(chats: any[], settings: { includeWhisper: boolean; hideWhisper: boolean }): Promise<void> {
   const filename = buildArchiveFilename("chat-log", "zip");
   const target = await requestSaveTarget(filename);
   if (!target) return;
 
-  const blob = await packageChatsToZipBlob(chats);
+  const blob = await packageChatsToZipBlob(chats, settings);
   await writeToSaveTarget(target, blob);
 }
 
@@ -106,8 +106,8 @@ export async function downloadArchiveFile(chats: any[]): Promise<void> {
  * @param {'filtered'|'full'} [opts.mode='filtered']
  * @param {string|null} [opts.existingCssText=null] - 머지 대상 기존 chat-styles.css 텍스트
  */
-export async function downloadIncrementalArchive(chats: any[], opts: { mode?: "filtered" | "full"; existingCssText?: string | null } = {}): Promise<void> {
-  const { mode = "filtered", existingCssText = null } = opts;
+export async function downloadIncrementalArchive(chats: any[], opts: { mode?: "filtered" | "full"; existingCssText?: string | null; includeWhisper: boolean; hideWhisper: boolean }): Promise<void> {
+  const { mode = "filtered", existingCssText = null, includeWhisper, hideWhisper } = opts;
 
   // user gesture가 살아있는 동안 picker를 *먼저* 호출 — 사용자가 위치를 선택하는
   // 시간 동안 백그라운드로 무거운 generate/merge/zip 작업이 진행된다.
@@ -116,7 +116,7 @@ export async function downloadIncrementalArchive(chats: any[], opts: { mode?: "f
   if (!target) return;
 
   const [htmlContent, contentImg, portraitImg, cssText] =
-    await generateIncrementalHtmlFromChats(chats, { mode, existingCssText });
+    await generateIncrementalHtmlFromChats(chats, { mode, existingCssText, includeWhisper, hideWhisper });
 
   const zip = new JSZip();
   await zipInsideFolder(zip, contentImg, "images");
@@ -157,9 +157,15 @@ export async function openChatArchive(chats: any[]): Promise<void> {
   );
   newWindow.document.close();
 
+  const gs = game.settings as any;
+  const settings = {
+    includeWhisper: gs.get(MODULE_ID, SETTINGS.includeWhisper),
+    hideWhisper: gs.get(MODULE_ID, SETTINGS.hideWhisper),
+  };
+
   let htmlContent: string;
   try {
-    [htmlContent] = await generateSimpleHtmlFromChats(chats);
+    [htmlContent] = await generateSimpleHtmlFromChats(chats, settings);
   } catch (e) {
     console.error("[sch-customize] openChatArchive 실패:", e);
     if (!newWindow.closed) {
@@ -212,16 +218,13 @@ export function extractImageSets(doc: Document): { contentImg: Set<string>; port
  * 별도 창 표시용 — 이미지 src를 재매핑하지 않는다.
  * `extractImageSets`가 빠진 경량 버전.
  */
-async function generateSimpleHtmlFromChats(chats: any[]): Promise<[string]> {
+async function generateSimpleHtmlFromChats(chats: any[], settings: { includeWhisper: boolean; hideWhisper: boolean }): Promise<[string]> {
   const response = await fetch(TEMPLATE_PATH);
   const templateHtml = await response.text();
   const parser = new DOMParser();
   const doc = parser.parseFromString(templateHtml, "text/html");
 
-  await populateChatDoc(doc, chats, {
-    includeWhisper: (game.settings as any).get(MODULE_ID, SETTINGS.includeWhisper),
-    hideWhisper: (game.settings as any).get(MODULE_ID, SETTINGS.hideWhisper),
-  });
+  await populateChatDoc(doc, chats, settings);
 
   injectInlineCss(doc);
   return [doc.documentElement.outerHTML];
@@ -234,18 +237,15 @@ async function generateSimpleHtmlFromChats(chats: any[]): Promise<[string]> {
  *   - cssText는 단독 템플릿의 baseline + `createCssList(mode)` 결과를 합친 뒤,
  *     `existingCssText`가 있으면 union 머지한 결과.
  */
-async function generateIncrementalHtmlFromChats(chats: any[], opts: { mode?: "filtered" | "full"; existingCssText?: string | null } = {}): Promise<[string, Set<string>, Set<string>, string]> {
-  const { mode = "filtered", existingCssText = null } = opts;
+async function generateIncrementalHtmlFromChats(chats: any[], opts: { mode?: "filtered" | "full"; existingCssText?: string | null; includeWhisper: boolean; hideWhisper: boolean }): Promise<[string, Set<string>, Set<string>, string]> {
+  const { mode = "filtered", existingCssText = null, includeWhisper, hideWhisper } = opts;
 
   const response = await fetch(INCREMENTAL_TEMPLATE_PATH);
   const templateHtml = await response.text();
   const parser = new DOMParser();
   const doc = parser.parseFromString(templateHtml, "text/html");
 
-  await populateChatDoc(doc, chats, {
-    includeWhisper: (game.settings as any).get(MODULE_ID, SETTINGS.includeWhisper),
-    hideWhisper: (game.settings as any).get(MODULE_ID, SETTINGS.hideWhisper),
-  });
+  await populateChatDoc(doc, chats, { includeWhisper, hideWhisper });
 
   const { contentImg, portraitImg } = extractImageSets(doc);
 
@@ -261,16 +261,13 @@ async function generateIncrementalHtmlFromChats(chats: any[], opts: { mode?: "fi
 /**
  * 다운로드용 — 이미지 src를 zip 상대경로로 매핑하고, 이미지 URL 집합을 함께 반환한다.
  */
-async function generateHtmlFromChats(chats: any[]): Promise<[string, Set<string>, Set<string>]> {
+async function generateHtmlFromChats(chats: any[], settings: { includeWhisper: boolean; hideWhisper: boolean }): Promise<[string, Set<string>, Set<string>]> {
   const response = await fetch(TEMPLATE_PATH);
   const templateHtml = await response.text();
   const parser = new DOMParser();
   const doc = parser.parseFromString(templateHtml, "text/html");
 
-  await populateChatDoc(doc, chats, {
-    includeWhisper: (game.settings as any).get(MODULE_ID, SETTINGS.includeWhisper),
-    hideWhisper: (game.settings as any).get(MODULE_ID, SETTINGS.hideWhisper),
-  });
+  await populateChatDoc(doc, chats, settings);
 
   const { contentImg, portraitImg } = extractImageSets(doc);
 

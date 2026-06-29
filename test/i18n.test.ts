@@ -35,3 +35,15 @@ describe("i18n: dialog.open.error 키", () => {
     });
   }
 });
+
+describe("i18n: dialog.export.whisper 라벨 키", () => {
+  for (const key of ["includeWhisper", "hideWhisper"]) {
+    for (const lang of ["en", "ko"]) {
+      it(`${lang}.json 의 dialog.export.${key}.label 존재`, () => {
+        const v = load(lang)[`sch-customize.dialog.export.${key}.label`];
+        expect(typeof v).toBe("string");
+        expect(v.trim().length).toBeGreaterThan(0);
+      });
+    }
+  }
+});

@@ -11,6 +11,8 @@
  * ApplicationV2 형태로 바뀌면 이 래퍼도 함께 갱신해야 한다.
  */
 
+import { MODULE_ID } from "../constants";
+import { SETTINGS } from "../settings/keys";
 import { downloadArchiveFile, downloadIncrementalArchive, openChatArchive } from "./export";
 import { buildExportModeFormHtml, attachExportFormHandlers, readExportFormValues } from "./export-form";
 
@@ -75,7 +77,11 @@ export class DownloadChatArchive extends FormApplication {
       onConfirm: async () => {
         try {
           const chats = [...(game.messages!.contents)];
-          await downloadArchiveFile(chats);
+          const gs = game.settings as any;
+          await downloadArchiveFile(chats, {
+            includeWhisper: gs.get(MODULE_ID, SETTINGS.includeWhisper),
+            hideWhisper: gs.get(MODULE_ID, SETTINGS.hideWhisper),
+          });
         } catch (error) {
           console.error("[sch-customize] Failed to download chat archive:", error);
           ui.notifications?.error(
@@ -115,15 +121,17 @@ export class openChatArchiveWindow extends FormApplication {
 /**
  * 선택된 모드에 따라 적절한 export 함수로 dispatch.
  */
-async function dispatchExport({ mode, existingCssText }: { mode: string; existingCssText: string | null }): Promise<void> {
+async function dispatchExport({ mode, existingCssText, includeWhisper, hideWhisper }: { mode: string; existingCssText: string | null; includeWhisper: boolean; hideWhisper: boolean }): Promise<void> {
   const chats = [...(game.messages!.contents)];
   try {
     if (mode === "solo") {
-      await downloadArchiveFile(chats);
+      await downloadArchiveFile(chats, { includeWhisper, hideWhisper });
     } else {
       await downloadIncrementalArchive(chats, {
         mode: mode === "full" ? "full" : "filtered",
         existingCssText,
+        includeWhisper,
+        hideWhisper,
       });
     }
   } catch (error) {

@@ -50,12 +50,19 @@ function registerModuleApi() {
   if (!mod) return;
 
   const allChats = () => [...(game.messages?.contents ?? [])];
+  const savedWhisperSettings = () => {
+    const gs = game.settings as any;
+    return {
+      includeWhisper: gs.get(MODULE_ID, SETTINGS.includeWhisper),
+      hideWhisper: gs.get(MODULE_ID, SETTINGS.hideWhisper),
+    };
+  };
 
   (mod as unknown as { api: unknown }).api = {
     openChatArchive: (chats: any) => openChatArchive(chats ?? allChats()),
-    downloadArchiveFile: (chats: any) => downloadArchiveFile(chats ?? allChats()),
+    downloadArchiveFile: (chats: any) => downloadArchiveFile(chats ?? allChats(), savedWhisperSettings()),
     downloadIncrementalArchive: (chats: any, opts: any) =>
-      downloadIncrementalArchive(chats ?? allChats(), opts),
+      downloadIncrementalArchive(chats ?? allChats(), { ...savedWhisperSettings(), ...opts }),
   };
 }
 
