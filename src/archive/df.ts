@@ -7,6 +7,7 @@
 
 import { MODULE_ID } from "../constants";
 import { downloadArchiveFile } from "./export";
+import { SETTINGS } from "../settings/keys";
 
 export async function getDFchatArchive(filepath: string): Promise<void> {
   try {
@@ -21,6 +22,6 @@ export async function getDFchatArchive(filepath: string): Promise<void> {
     console.error(`Failed to read JSON for archive ${filepath}\n${error}`);
     throw error;
   } finally {
-    (game.settings as any).set(MODULE_ID, "convertDFchatArchive", "");
+    (game.settings as any).set(MODULE_ID, SETTINGS.convertDFchatArchive, "");
   }
 }

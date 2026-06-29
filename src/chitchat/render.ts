@@ -10,6 +10,7 @@
 
 import { MODULE_ID } from "../constants";
 import { toElement, getRenderChatMessageHook, isPrivTalkMessage } from "../compat/foundry";
+import { SETTINGS } from "../settings/keys";
 import { shouldMergeBaseMessage, decideRounding, type RoundingDecision } from "./grouping";
 
 // 모듈 내부에서 직전 메시지 정보를 추적하기 위한 상태.
@@ -44,8 +45,8 @@ export function onRenderChatMessage(message: ChatMessage, htmlOrEl: HTMLElement 
   const el = toElement(htmlOrEl);
   if (!el) return;
 
-  const privTalkMergeEnabled = (game.settings as any).get(MODULE_ID, "privTalkMerge");
-  const baseMessageMergeEnabled = (game.settings as any).get(MODULE_ID, "baseMessageMerge");
+  const privTalkMergeEnabled = (game.settings as any).get(MODULE_ID, SETTINGS.privTalkMerge);
+  const baseMessageMergeEnabled = (game.settings as any).get(MODULE_ID, SETTINGS.baseMessageMerge);
 
   if (isPrivTalkMessage(message)) {
     handlePrivTalkRender(el, message, privTalkMergeEnabled);
@@ -77,7 +78,7 @@ function handlePrivTalkRender(el: HTMLElement, message: ChatMessage, mergeEnable
       `<div class="pt priv_user">${message.speaker.alias}</div> <div class="pt">${message.content}</div>`;
   }
 
-  if (!(game.settings as any).get(MODULE_ID, "privTalkSpeakerLineChange")) {
+  if (!(game.settings as any).get(MODULE_ID, SETTINGS.privTalkSpeakerLineChange)) {
     el.classList.add("speaker-inline");
   }
 }

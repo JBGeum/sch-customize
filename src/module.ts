@@ -23,6 +23,7 @@
 
 import "./styles/main.scss";
 import { MODULE_ID } from "./constants";
+import { SETTINGS } from "./settings/keys";
 import { registerAllSettings } from "./settings/index";
 import { registerChitchatCommand } from "./chitchat/command";
 import { registerChitchatRender, resetRenderState } from "./chitchat/render";
@@ -67,7 +68,7 @@ Hooks.once("init", () => {
 
 Hooks.once("setup", () => {
   resetRenderState();
-  if ((game.settings as any).get(MODULE_ID, "enableSpeakerBar")) {
+  if ((game.settings as any).get(MODULE_ID, SETTINGS.enableSpeakerBar)) {
     registerSpeakerBar();
   }
   registerChitchatCommand();

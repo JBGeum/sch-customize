@@ -10,6 +10,7 @@
  */
 
 import { MODULE_ID } from "./constants";
+import { SETTINGS } from "./settings/keys";
 
 /**
  * 외부에서 전달받는 짧은 키 → 실제 CSS custom property 이름 매핑.
@@ -40,11 +41,11 @@ export function updateCssProperty(property: keyof typeof CSS_PROPERTY, value: st
  */
 export function applyAllCssSettings(): void {
   const gs = game.settings as any;
-  updateCssProperty("fontColor",  `rgba(0,0,0,${gs.get(MODULE_ID, "setPrivTalkFontOpacity")})`);
-  updateCssProperty("clFontSize", `${gs.get(MODULE_ID, "setChatLogFontSize")}px`);
-  updateCssProperty("ptFontSize", `${gs.get(MODULE_ID, "setPrivTalkFontSize")}px`);
-  updateCssProperty("marginLeft", `${gs.get(MODULE_ID, "setPrivTalkMarginLeft")}px`);
-  updateCssProperty("brightness", `${gs.get(MODULE_ID, "setPrivTalkBgBrightness")}`);
+  updateCssProperty("fontColor",  `rgba(0,0,0,${gs.get(MODULE_ID, SETTINGS.setPrivTalkFontOpacity)})`);
+  updateCssProperty("clFontSize", `${gs.get(MODULE_ID, SETTINGS.setChatLogFontSize)}px`);
+  updateCssProperty("ptFontSize", `${gs.get(MODULE_ID, SETTINGS.setPrivTalkFontSize)}px`);
+  updateCssProperty("marginLeft", `${gs.get(MODULE_ID, SETTINGS.setPrivTalkMarginLeft)}px`);
+  updateCssProperty("brightness", `${gs.get(MODULE_ID, SETTINGS.setPrivTalkBgBrightness)}`);
 }
 
 /**

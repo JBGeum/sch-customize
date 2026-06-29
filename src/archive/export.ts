@@ -13,6 +13,7 @@
 
 import JSZip from "jszip";
 import { MODULE_ID, TEMPLATE_BASE } from "../constants";
+import { SETTINGS } from "../settings/keys";
 import { renderChatMessageElement, callRenderChatMessageHooks, isPrivTalkMessage } from "../compat/foundry";
 import {
   requestSaveTarget,
@@ -218,8 +219,8 @@ async function generateSimpleHtmlFromChats(chats: any[]): Promise<[string]> {
   const doc = parser.parseFromString(templateHtml, "text/html");
 
   await populateChatDoc(doc, chats, {
-    includeWhisper: (game.settings as any).get(MODULE_ID, "includeWhisper"),
-    hideWhisper: (game.settings as any).get(MODULE_ID, "hideWhisper"),
+    includeWhisper: (game.settings as any).get(MODULE_ID, SETTINGS.includeWhisper),
+    hideWhisper: (game.settings as any).get(MODULE_ID, SETTINGS.hideWhisper),
   });
 
   injectInlineCss(doc);
@@ -242,8 +243,8 @@ async function generateIncrementalHtmlFromChats(chats: any[], opts: { mode?: "fi
   const doc = parser.parseFromString(templateHtml, "text/html");
 
   await populateChatDoc(doc, chats, {
-    includeWhisper: (game.settings as any).get(MODULE_ID, "includeWhisper"),
-    hideWhisper: (game.settings as any).get(MODULE_ID, "hideWhisper"),
+    includeWhisper: (game.settings as any).get(MODULE_ID, SETTINGS.includeWhisper),
+    hideWhisper: (game.settings as any).get(MODULE_ID, SETTINGS.hideWhisper),
   });
 
   const { contentImg, portraitImg } = extractImageSets(doc);
@@ -267,8 +268,8 @@ async function generateHtmlFromChats(chats: any[]): Promise<[string, Set<string>
   const doc = parser.parseFromString(templateHtml, "text/html");
 
   await populateChatDoc(doc, chats, {
-    includeWhisper: (game.settings as any).get(MODULE_ID, "includeWhisper"),
-    hideWhisper: (game.settings as any).get(MODULE_ID, "hideWhisper"),
+    includeWhisper: (game.settings as any).get(MODULE_ID, SETTINGS.includeWhisper),
+    hideWhisper: (game.settings as any).get(MODULE_ID, SETTINGS.hideWhisper),
   });
 
   const { contentImg, portraitImg } = extractImageSets(doc);
