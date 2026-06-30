@@ -283,6 +283,20 @@ describe("zipInsideFolder", () => {
     expect(files["img.png"]).toBe("blob:http://b/img.png");
   });
 
+  it("청크 경계를 넘는 같은 filename 충돌도 마지막 삽입 url 이 최종", async () => {
+    const fetchMock = vi.fn(async (url: string) => ({ blob: async () => `blob:${url}` }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { zip, files } = makeFakeZip();
+    // 7개 url: index 0(청크0) 과 index 6(청크1) 이 같은 cleaned filename "dup.png"
+    const urls = [
+      "http://a/dup.png",
+      "http://x/i1.png", "http://x/i2.png", "http://x/i3.png", "http://x/i4.png", "http://x/i5.png",
+      "http://b/dup.png",
+    ];
+    await zipInsideFolder(zip, urls, "images");
+    expect(files["dup.png"]).toBe("blob:http://b/dup.png"); // 마지막(청크1) 삽입이 승리
+  });
+
   it("동시 in-flight 가 상한(6) 을 초과하지 않고, 병렬화되어 상한에 도달한다", async () => {
     let inFlight = 0;
     let maxInFlight = 0;

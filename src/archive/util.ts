@@ -299,17 +299,18 @@ export async function zipInsideFolder(zip: any, imgSet: Iterable<string>, folder
 
   for (let i = 0; i < urls.length; i += IMAGE_FETCH_CONCURRENCY) {
     const chunk = urls.slice(i, i + IMAGE_FETCH_CONCURRENCY);
-    const blobs = await Promise.all(chunk.map(async (url) => {
+    const entries = await Promise.all(chunk.map(async (url) => {
       try {
         const response = await fetch(url);
-        return await response.blob();
+        const blob = await response.blob();
+        return { name: cleanImageFilename(filenameFromUrl(url)), blob };
       } catch (e) {
         console.error(`Failed to fetch or process the image from URL: ${url}. Error: ${(e as any).message}`);
         return null;
       }
     }));
-    blobs.forEach((blob, j) => {
-      if (blob) imgFolder.file(cleanImageFilename(filenameFromUrl(chunk[j])), blob);
+    entries.forEach((entry) => {
+      if (entry) imgFolder.file(entry.name, entry.blob);
     });
   }
 }
