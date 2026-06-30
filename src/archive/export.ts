@@ -295,12 +295,11 @@ function rewriteInlineRolls(doc: Document): void {
  * 페이지의 현재 styleSheets를 수집해 doc의 `<head>`에 인라인 `<style>`로 추가한다.
  *
  * @param {Document} doc
- * @param {{ mode?: 'filtered'|'full' }} [options]
  */
-function injectInlineCss(doc: Document, options: { mode?: "filtered" | "full" } = {}): void {
+function injectInlineCss(doc: Document): void {
   const styleElement = doc.createElement("style");
   styleElement.type = "text/css";
-  styleElement.appendChild(doc.createTextNode(createCssList(null, doc, { mode: options.mode ?? "filtered" })));
+  styleElement.appendChild(doc.createTextNode(createCssList(null, doc, { mode: "filtered" })));
 
   const headElement = doc.head || doc.getElementsByTagName("head")[0];
   headElement.appendChild(styleElement);

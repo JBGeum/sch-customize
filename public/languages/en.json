@@ -1,11 +1,8 @@
 {
     "sch-customize.settings.downloadChatArchiveMenu.name": "Download Chat Log",
     "sch-customize.settings.downloadChatArchiveMenu.hint": "Download the chat log as HTML along with image files. Choose between standalone and incremental modes.",
-    "sch-customize.dialog.download.title": "Download Chat Log",
-    "sch-customize.dialog.download.content": "Download the chat log.",
     "sch-customize.dialog.download.button.download": "Download",
     "sch-customize.dialog.download.button.cancel": "Cancel",
-    "sch-customize.dialog.download.error": "Failed to download the chat log.",
     "sch-customize.dialog.export.title": "Export Chat Log",
     "sch-customize.dialog.export.legend": "Export Mode",
     "sch-customize.dialog.export.mode.solo.label": "Standalone (inline CSS, self-contained zip)",

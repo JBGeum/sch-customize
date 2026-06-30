@@ -12,7 +12,7 @@
  *   archive/dialog.js     — 채팅 로그 다운로드/표시 다이얼로그
  *   archive/export.js     — 채팅 → HTML/zip 변환
  *   archive/css.js        — 아카이브 HTML에 인라인할 CSS 수집기
- *   archive/util.js       — 순수 유틸 (saveAs, hexToRgba, 이미지 헬퍼 등)
+ *   archive/util.js       — 순수 유틸 (저장 타깃, hexToRgba, 이미지 헬퍼 등)
  *   archive/df.js         — 구 DF Chat Archive JSON 변환
  *
  * Foundry 라이프사이클 hook 등록 순서:

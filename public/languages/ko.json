@@ -1,11 +1,8 @@
 {
     "sch-customize.settings.downloadChatArchiveMenu.name": "채팅 로그 다운로드",
     "sch-customize.settings.downloadChatArchiveMenu.hint": "html형식의 채팅 로그와 이미지 파일을 다운로드 합니다. 단독/누적 모드를 선택할 수 있습니다.",
-    "sch-customize.dialog.download.title": "채팅 로그 다운로드",
-    "sch-customize.dialog.download.content": "채팅 로그를 다운로드 합니다.",
     "sch-customize.dialog.download.button.download": "다운로드",
     "sch-customize.dialog.download.button.cancel": "취소",
-    "sch-customize.dialog.download.error": "채팅 로그 다운로드에 실패했습니다.",
     "sch-customize.dialog.export.title": "채팅 로그 Export",
     "sch-customize.dialog.export.legend": "Export 모드 선택",
     "sch-customize.dialog.export.mode.solo.label": "단독 (CSS 인라인, 자기완결 zip)",

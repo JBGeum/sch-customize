@@ -54,18 +54,12 @@ export function applyAllCssSettings(): void {
  */
 export function applyUserColorBackgrounds(): void {
   const style = document.createElement("style");
-  style.type = "text/css";
 
   let cssText = "";
   game.users!.forEach(user => {
     cssText += `.user-${user.id} { background: ${user.color} !important; }`;
   });
 
-  const ieStyle = style as unknown as { styleSheet?: { cssText: string } };
-  if (ieStyle.styleSheet) {
-    ieStyle.styleSheet.cssText = cssText;
-  } else {
-    style.appendChild(document.createTextNode(cssText));
-  }
+  style.appendChild(document.createTextNode(cssText));
   document.head.appendChild(style);
 }

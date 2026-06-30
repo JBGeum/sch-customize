@@ -10,8 +10,6 @@
  * 예외: `getChatImageUrl`은 `game.actors`에 의존한다.
  */
 
-/* eslint-disable no-empty */
-
 /**
  * 아카이브 다운로드용 파일명을 빌드한다.
  * 형식: `{prefix}-yyyyMMdd-{worldName}.{ext}`
@@ -110,21 +108,6 @@ export async function writeToSaveTarget(target: {kind: "file-handle", handle: an
   }
   await saveWithDataUriAnchor(blob, target.filename);
   return true;
-}
-
-/**
- * Blob을 지정한 파일명으로 저장한다. (레거시 단축형)
- *
- * 내부적으로 `requestSaveTarget` → `writeToSaveTarget`을 순차 호출한다. 이 함수는
- * blob을 *이미 만든 뒤* 호출되므로, picker 호출 시점이 사용자 제스처 컨텍스트와
- * 분리되어 미지원/오류 시 fallback 경로의 `about:blank#blocked` 차단 위험이 있다.
- * 무거운 export 파이프라인에서는 두 단계 API(`requestSaveTarget`/`writeToSaveTarget`)
- * 를 직접 사용해 picker 호출을 사용자 클릭 직후로 끌어올려야 한다.
- */
-export async function saveAs(blob: Blob, filename: string): Promise<void> {
-  const target = await requestSaveTarget(filename);
-  if (!target) return;
-  await writeToSaveTarget(target, blob);
 }
 
 /**

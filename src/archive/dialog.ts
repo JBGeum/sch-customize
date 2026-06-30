@@ -11,8 +11,6 @@
  * ApplicationV2 형태로 바뀌면 이 래퍼도 함께 갱신해야 한다.
  */
 
-import { MODULE_ID } from "../constants";
-import { SETTINGS } from "../settings/keys";
 import { downloadArchiveFile, downloadIncrementalArchive, openChatArchive } from "./export";
 import { buildExportModeFormHtml, attachExportFormHandlers, readExportFormValues } from "./export-form";
 
@@ -63,39 +61,6 @@ export async function showConfirmDialog({ title, content, confirmLabel, confirmI
   }).render(true);
 }
 
-/**
- * settings.registerMenu의 type 인자용 래퍼.
- * Foundry가 `.render(true)`를 호출하면 showConfirmDialog()를 실행하고
- * FormApplication 자체는 렌더하지 않는다.
- */
-export class DownloadChatArchive extends FormApplication {
-  override render(_force?: boolean, _options?: any): this {
-    showConfirmDialog({
-      title: game.i18n!.localize("sch-customize.dialog.download.title"),
-      content: game.i18n!.localize("sch-customize.dialog.download.content"),
-      confirmLabel: game.i18n!.localize("sch-customize.dialog.download.button.download"),
-      onConfirm: async () => {
-        try {
-          const chats = [...(game.messages!.contents)];
-          const gs = game.settings as any;
-          await downloadArchiveFile(chats, {
-            includeWhisper: gs.get(MODULE_ID, SETTINGS.includeWhisper),
-            hideWhisper: gs.get(MODULE_ID, SETTINGS.hideWhisper),
-          });
-        } catch (error) {
-          console.error("[sch-customize] Failed to download chat archive:", error);
-          ui.notifications?.error(
-            game.i18n!.localize("sch-customize.dialog.download.error") || "Failed to download chat archive."
-          );
-        }
-      },
-    });
-    return this;
-  }
-  override getData(_options?: Partial<FormApplication.Options>): object { return {}; }
-  protected override async _updateObject(_event: Event, _formData?: object): Promise<void> {}
-}
-
 export class openChatArchiveWindow extends FormApplication {
   override render(_force?: boolean, _options?: any): this {
     showConfirmDialog({
@@ -136,9 +101,7 @@ async function dispatchExport({ mode, existingCssText, includeWhisper, hideWhisp
     }
   } catch (error) {
     console.error("[sch-customize] Failed to export chat archive:", error);
-    ui.notifications?.error(
-      game.i18n!.localize("sch-customize.dialog.export.error") || "Failed to export chat archive."
-    );
+    ui.notifications?.error(game.i18n!.localize("sch-customize.dialog.export.error"));
   }
 }
 
