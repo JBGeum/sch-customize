@@ -1,0 +1,23 @@
+/* 잡담 타이핑 표시기 — 입력이 잡담 트리거를 만족할 때만 표시(기본 숨김).
+   채팅 폼 최상단에 prepend되는 작은 pill. 숨김 시 공간 미점유.
+   (정확한 색/위치는 라이브 스모크에서 조정 가능.) */
+.sch-chitchat-indicator {
+  display: none;
+  align-self: flex-start;
+  width: fit-content;
+  margin: 0 0 2px 0;
+  padding: 1px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--color-text-light-highlight, #f0f0e0);
+  background: rgba(122, 73, 153, 0.55);
+  border: 1px solid rgba(180, 130, 210, 0.7);
+  border-radius: 8px;
+  user-select: none;
+  pointer-events: none;
+}
+
+.sch-chitchat-indicator.visible {
+  display: block;
+}

@@ -1,3 +1,4 @@
 // dist/module.css 로 번들되는 단일 스타일 진입점.
 @use "./priv_talk";
 @use "./speaker-bar";
+@use "./chitchat-indicator";

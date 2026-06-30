@@ -25,6 +25,7 @@ import { MODULE_ID } from "./constants";
 import { SETTINGS } from "./settings/keys";
 import { registerAllSettings } from "./settings/index";
 import { registerChitchatCommand } from "./chitchat/command";
+import { registerChitchatIndicator } from "./chitchat/indicator";
 import { registerChitchatRender, resetRenderState } from "./chitchat/render";
 import { registerSpeakerBar } from "./speaker-bar";
 import { applyAllCssSettings, applyUserColorBackgrounds } from "./appearance";
@@ -72,6 +73,7 @@ Hooks.once("setup", () => {
     registerSpeakerBar();
   }
   registerChitchatCommand();
+  registerChitchatIndicator();
 });
 
 Hooks.once("ready", () => {
