@@ -203,11 +203,11 @@ export async function populateChatDoc(doc: Document, chats: any[], settings: { i
 export function extractImageSets(doc: Document): { contentImg: Set<string>; portraitImg: Set<string> } {
   const contentImg = new Set([...doc.querySelectorAll<HTMLImageElement>(".chat-text img")]
     .map(img => img.src ? img.src
-      : window.location.href.replace("game", "") + img?.getAttribute("src")));
+      : window.location.href.replace(/\/game(?=\/|$|\?|#)/, "") + img?.getAttribute("src")));
 
   const portraitImg = new Set([...doc.querySelectorAll<HTMLImageElement>(".chat-image img")]
     .map(img => img.src ? img.src
-      : window.location.href.replace("game", "") + img?.getAttribute("src")));
+      : window.location.href.replace(/\/game(?=\/|$|\?|#)/, "") + img?.getAttribute("src")));
 
   return { contentImg, portraitImg };
 }
