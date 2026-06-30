@@ -105,13 +105,12 @@ describe("mergeCss — user-color / 랜드마인", () => {
     expect(out).toContain("user-B");
   });
 
-  // 랜드마인: categorize switch의 `case 12/13`(@layer)이 `case CSSRule.SUPPORTS_RULE`(=12)
-  // 보다 앞서므로, @supports(type 12, .cssRules 보유)가 @layer "anonymous"로 분류된다.
-  // SUPPORTS→otherRules 분기는 dead. 의도적 미수정 랜드마인(②b와 동일). 현 동작을 핀한다.
-  it("랜드마인: @supports → @layer anonymous 로 출력(미수정 보존)", () => {
+  // 랜드마인 D fix(2026-06-30): @layer는 .type 0, @supports는 .type 12 — case 12/13 제거로
+  // SUPPORTS_RULE 분기가 도달 가능해져 @supports가 더는 @layer anonymous로 오분류되지 않는다.
+  it("@supports 는 그대로 보존(otherRules raw, @layer 오분류 아님)", () => {
     const out = mergeCss(null, "@supports (display: grid) { a { color: rgb(6,6,6) } }");
-    expect(out).toContain("@layer anonymous");
-    expect(out).toContain("rgb(6,6,6)");
-    expect(out).not.toContain("@supports");
+    expect(out).toContain("@supports");
+    expect(out).not.toContain("@layer");
+    expect(out).toMatch(/rgb\(6,\s?6,\s?6\)/); // jsdom 공백 정규화 허용
   });
 });

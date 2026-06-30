@@ -13,6 +13,14 @@ function sheet(rules: unknown[], href?: string) {
   return { href, cssRules: rules } as unknown as CSSStyleSheet;
 }
 
+// 실제 브라우저의 @layer 블록 룰 모사: type 0 + constructor.name === "CSSLayerBlockRule"
+class CSSLayerBlockRule {
+  type = 0;
+  name: string;
+  cssRules: unknown[];
+  constructor(name: string, children: unknown[]) { this.name = name; this.cssRules = children; }
+}
+
 describe("processStyleSheetStructured (characterization)", () => {
   it("STYLE_RULE → rootRules, :root 셀렉터는 변수 정의 수집", () => {
     const collector = new StructuredCssCollector();
@@ -39,14 +47,24 @@ describe("processStyleSheetStructured (characterization)", () => {
     ]);
   });
 
-  it("@layer(type 12) → layer 컨텍스트로 자식 수집 (landmine: SUPPORTS와 동일 코드값, layer 선점)", () => {
+  it("@supports(type 12) → 자식을 rootRules 로 수집 (SUPPORTS_RULE 정상 처리)", () => {
     const collector = new StructuredCssCollector();
     processStyleSheetStructured(
-      sheet([groupRule(12, { name: "base" }, [styleRule(".chat-l", "color: blue")])]),
+      sheet([groupRule(CSSRule.SUPPORTS_RULE, {}, [styleRule(".chat-s", "color: blue")])]),
+      collector, new CssVariableTracker(), new Set<string>(),
+    );
+    expect(collector.rootRules).toEqual([{ selector: ".chat-s", styles: "color: blue" }]);
+    expect(collector.layerRules.size).toBe(0);
+  });
+
+  it("실제 @layer(CSSLayerBlockRule, type 0) → layer 컨텍스트로 자식 수집", () => {
+    const collector = new StructuredCssCollector();
+    processStyleSheetStructured(
+      sheet([new CSSLayerBlockRule("base", [styleRule(".chat-l", "color: green")]) as any]),
       collector, new CssVariableTracker(), new Set<string>(),
     );
     expect(collector.layerRules.get("base")).toEqual([
-      { selector: ".chat-l", styles: "color: blue" },
+      { selector: ".chat-l", styles: "color: green" },
     ]);
   });
 

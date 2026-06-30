@@ -114,23 +114,24 @@ function categorize(rules: CSSRule[]): CategorizedRules {
         case CSSRule.KEYFRAMES_RULE:
           out.keyframeRules.push({ name: (rule as CSSKeyframesRule).name, text: rule.cssText });
           break;
-        case 12:
-        case 13: {
-          const name = (rule as any).name || "anonymous";
-          if (!out.layerRules.has(name)) {
-            out.layerRules.set(name, []);
-            out.layerOrder.push(name);
-          }
-          if ((rule as any).cssRules) {
-            out.layerRules.get(name)!.push(...extractChildStyleRules(rule as unknown as CSSGroupingRule));
-          }
-          break;
-        }
         case CSSRule.SUPPORTS_RULE:
           out.otherRules.push({ text: rule.cssText });
           break;
         default:
-          if (rule.cssText) out.otherRules.push({ text: rule.cssText });
+          // @layer 블록(CSSLayerBlockRule)은 `.type === 0` → constructor.name 으로 식별해 layer 머지.
+          // (CSSLayerStatementRule `@layer a,b;`는 cssRules 없음 → else 가지로 raw 보존.)
+          if (rule.constructor.name === "CSSLayerBlockRule") {
+            const name = (rule as any).name || "anonymous";
+            if (!out.layerRules.has(name)) {
+              out.layerRules.set(name, []);
+              out.layerOrder.push(name);
+            }
+            if ((rule as any).cssRules) {
+              out.layerRules.get(name)!.push(...extractChildStyleRules(rule as unknown as CSSGroupingRule));
+            }
+          } else if (rule.cssText) {
+            out.otherRules.push({ text: rule.cssText });
+          }
       }
     } catch (_e) {
       // 일부 브라우저에서 접근 불가한 룰은 조용히 건너뛴다

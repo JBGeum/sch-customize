@@ -7,7 +7,7 @@
  * 처리 항목:
  *  - CSS 변수(`--xyz`) 정의/사용 추적 후 :root 블록 재생성
  *  - `@media`, `@layer`, `@supports`, `@font-face`, `@keyframes` 보존
- *  - CSS Cascade Layer 룰(CSSRule type 12/13) 처리
+ *  - CSS Cascade Layer 룰(@layer, constructor.name 으로 식별) 처리
  *  - 사용자 색상 기반 메시지 배경 룰 자동 생성
  */
 
@@ -74,15 +74,6 @@ export function processStyleSheetStructured(sheet: CSSStyleSheet, collector: Str
             collectStyleRules((rule as CSSGroupingRule).cssRules, collector, { type: "media", condition });
             break;
           }
-          // 12/13: @layer 룰(CSSLayerBlockRule / CSSLayerStatementRule) — 일부 브라우저에서 상수 미정의
-          case 12:
-          case 13: {
-            const layerName = (rule as any).name || "anonymous";
-            if ((rule as any).cssRules) {
-              collectStyleRules((rule as any).cssRules, collector, { type: "layer", name: layerName });
-            }
-            break;
-          }
           case CSSRule.FONT_FACE_RULE:
             collector.fontFaceRules.push(rule.cssText);
             break;
@@ -91,6 +82,15 @@ export function processStyleSheetStructured(sheet: CSSStyleSheet, collector: Str
             break;
           case CSSRule.SUPPORTS_RULE:
             collectStyleRules((rule as CSSGroupingRule).cssRules, collector, null);
+            break;
+          // @layer 블록 룰(CSSLayerBlockRule)은 `.type === 0`이라 numeric case로 못 잡는다.
+          // constructor.name으로 식별해 layer 컨텍스트로 자식을 수집한다.
+          // (CSSLayerStatementRule `@layer a,b;`는 cssRules가 없어 가드로 무시.)
+          default:
+            if (rule.constructor.name === "CSSLayerBlockRule" && (rule as any).cssRules) {
+              const layerName = (rule as any).name || "anonymous";
+              collectStyleRules((rule as any).cssRules, collector, { type: "layer", name: layerName });
+            }
             break;
         }
       } catch (_ruleError) {}
