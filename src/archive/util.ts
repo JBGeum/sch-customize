@@ -282,18 +282,34 @@ export function updateImageSources(targetDoc: Document): void {
   });
 }
 
+/** zipInsideFolder 이미지 fetch 동시성 상한. 브라우저 host당 ~6 연결 한계와 정합. */
+const IMAGE_FETCH_CONCURRENCY = 6;
+
 /**
  * JSZip 인스턴스의 폴더에 fetch한 이미지를 채워 넣는다.
+ *
+ * 이미지 fetch는 동시성 상한(`IMAGE_FETCH_CONCURRENCY`) 청크 배치로 병렬 처리한다.
+ * 각 fetch는 개별 try/catch로 격리되어, 한 이미지 실패가 나머지를 막지 않는다.
+ * zip에 add하는 순서는 원래 삽입 순서를 유지하므로(파일명 충돌 시 마지막이 승리)
+ * 출력은 직렬 처리와 동일하다.
  */
 export async function zipInsideFolder(zip: any, imgSet: Iterable<string>, folderName: string): Promise<void> {
   const imgFolder = zip.folder(folderName);
-  for (const url of imgSet) {
-    try {
-      const response = await fetch(url);
-      const blob = await response.blob();
-      imgFolder.file(cleanImageFilename(filenameFromUrl(url)), blob);
-    } catch (e) {
-      console.error(`Failed to fetch or process the image from URL: ${url}. Error: ${(e as any).message}`);
-    }
+  const urls = [...imgSet];
+
+  for (let i = 0; i < urls.length; i += IMAGE_FETCH_CONCURRENCY) {
+    const chunk = urls.slice(i, i + IMAGE_FETCH_CONCURRENCY);
+    const blobs = await Promise.all(chunk.map(async (url) => {
+      try {
+        const response = await fetch(url);
+        return await response.blob();
+      } catch (e) {
+        console.error(`Failed to fetch or process the image from URL: ${url}. Error: ${(e as any).message}`);
+        return null;
+      }
+    }));
+    blobs.forEach((blob, j) => {
+      if (blob) imgFolder.file(cleanImageFilename(filenameFromUrl(chunk[j])), blob);
+    });
   }
 }

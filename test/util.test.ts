@@ -13,6 +13,7 @@ import {
   getChatImageUrl,
   requestSaveTarget,
   writeToSaveTarget,
+  zipInsideFolder,
 } from "../src/archive/util";
 
 describe("hexToRgba", () => {
@@ -221,5 +222,86 @@ describe("writeToSaveTarget", () => {
     expect(r).toBe(true);
     expect(writes[0]).toBe(blob);
     expect(writes[1]).toBe("closed");
+  });
+});
+
+describe("zipInsideFolder", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  function makeFakeZip() {
+    const files: Record<string, unknown> = {};
+    let folderCalls = 0;
+    const folder = { file: (name: string, blob: unknown) => { files[name] = blob; } };
+    return {
+      zip: { folder: (_n: string) => { folderCalls++; return folder; } },
+      files,
+      folderCalls: () => folderCalls,
+    };
+  }
+
+  it("모든 이미지를 cleaned filename 으로 fetch·add", async () => {
+    const fetchMock = vi.fn(async (url: string) => ({ blob: async () => `blob:${url}` }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { zip, files, folderCalls } = makeFakeZip();
+
+    await zipInsideFolder(zip, ["http://x/a.png", "http://x/b.jpg"], "images");
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(folderCalls()).toBe(1);
+    expect(files["a.png"]).toBe("blob:http://x/a.png");
+    expect(files["b.jpg"]).toBe("blob:http://x/b.jpg");
+  });
+
+  it("한 이미지 fetch 실패 시 로그+스킵, 나머지는 add", async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.includes("bad")) throw new Error("boom");
+      return { blob: async () => `blob:${url}` };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { zip, files } = makeFakeZip();
+
+    await zipInsideFolder(zip, ["http://x/good.png", "http://x/bad.png", "http://x/good2.png"], "images");
+
+    expect(files["good.png"]).toBe("blob:http://x/good.png");
+    expect(files["good2.png"]).toBe("blob:http://x/good2.png");
+    expect(files["bad.png"]).toBeUndefined();
+    expect(errSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("같은 cleaned filename 충돌 시 삽입 순서상 마지막 blob 이 최종(직렬과 동일)", async () => {
+    const fetchMock = vi.fn(async (url: string) => ({ blob: async () => `blob:${url}` }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { zip, files } = makeFakeZip();
+
+    // 두 url 모두 cleaned filename "img.png" 로 매핑
+    await zipInsideFolder(zip, ["http://a/img.png", "http://b/img.png"], "images");
+
+    expect(files["img.png"]).toBe("blob:http://b/img.png");
+  });
+
+  it("동시 in-flight 가 상한(6) 을 초과하지 않고, 병렬화되어 상한에 도달한다", async () => {
+    let inFlight = 0;
+    let maxInFlight = 0;
+    const fetchMock = vi.fn((_url: string) => {
+      inFlight++;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      return new Promise<{ blob: () => Promise<string> }>((resolve) => {
+        // 마이크로태스크 뒤 resolve — 같은 청크의 fetch 들이 동시에 in-flight 가 되도록
+        queueMicrotask(() => { inFlight--; resolve({ blob: async () => "b" }); });
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const { zip } = makeFakeZip();
+    const urls = Array.from({ length: 13 }, (_, i) => `http://x/img${i}.png`);
+
+    await zipInsideFolder(zip, urls, "images");
+
+    expect(fetchMock).toHaveBeenCalledTimes(13);
+    expect(maxInFlight).toBeLessThanOrEqual(6);
+    expect(maxInFlight).toBe(6); // 13개 → 첫 청크가 정확히 6 동시 in-flight
   });
 });
