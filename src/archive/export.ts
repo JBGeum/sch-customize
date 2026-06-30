@@ -12,8 +12,8 @@
  */
 
 import JSZip from "jszip";
-import { MODULE_ID, TEMPLATE_BASE } from "../constants";
-import { SETTINGS } from "../settings/keys";
+import { TEMPLATE_BASE } from "../constants";
+import { readWhisperSettings } from "../settings/whisper";
 import { renderChatMessageElement, callRenderChatMessageHooks, isPrivTalkMessage } from "../compat/foundry";
 import {
   requestSaveTarget,
@@ -102,9 +102,11 @@ export async function downloadArchiveFile(chats: any[], settings: { includeWhisp
  * 같은 폴더에 챕터별 zip을 차례로 풀면 HTML은 챕터별 보존, CSS와 이미지는 폴더 단위 덮어쓰기로 갱신된다.
  *
  * @param {Array} chats
- * @param {object} [opts]
+ * @param {object} opts
  * @param {'filtered'|'full'} [opts.mode='filtered']
  * @param {string|null} [opts.existingCssText=null] - 머지 대상 기존 chat-styles.css 텍스트
+ * @param {boolean} opts.includeWhisper - 귓속말 포함 여부 (required)
+ * @param {boolean} opts.hideWhisper - 귓속말 수신자 마스킹 여부 (required)
  */
 export async function downloadIncrementalArchive(chats: any[], opts: { mode?: "filtered" | "full"; existingCssText?: string | null; includeWhisper: boolean; hideWhisper: boolean }): Promise<void> {
   const { mode = "filtered", existingCssText = null, includeWhisper, hideWhisper } = opts;
@@ -157,11 +159,7 @@ export async function openChatArchive(chats: any[]): Promise<void> {
   );
   newWindow.document.close();
 
-  const gs = game.settings as any;
-  const settings = {
-    includeWhisper: gs.get(MODULE_ID, SETTINGS.includeWhisper),
-    hideWhisper: gs.get(MODULE_ID, SETTINGS.hideWhisper),
-  };
+  const settings = readWhisperSettings();
 
   let htmlContent: string;
   try {

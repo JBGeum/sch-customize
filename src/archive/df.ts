@@ -8,6 +8,7 @@
 import { MODULE_ID } from "../constants";
 import { downloadArchiveFile } from "./export";
 import { SETTINGS } from "../settings/keys";
+import { readWhisperSettings } from "../settings/whisper";
 
 export async function getDFchatArchive(filepath: string): Promise<void> {
   try {
@@ -17,11 +18,7 @@ export async function getDFchatArchive(filepath: string): Promise<void> {
     }
     const jsonDataArray = await response.json();
     const chats = jsonDataArray.map((data: unknown) => new ChatMessage(data as any));
-    const gs = game.settings as any;
-    await downloadArchiveFile(chats, {
-      includeWhisper: gs.get(MODULE_ID, SETTINGS.includeWhisper),
-      hideWhisper: gs.get(MODULE_ID, SETTINGS.hideWhisper),
-    });
+    await downloadArchiveFile(chats, readWhisperSettings());
   } catch (error) {
     console.error(`Failed to read JSON for archive ${filepath}\n${error}`);
     throw error;

@@ -34,6 +34,7 @@ import {
   downloadArchiveFile,
   downloadIncrementalArchive,
 } from "./archive/export";
+import { readWhisperSettings } from "./settings/whisper";
 
 /**
  * 외부(매크로/타 모듈)에서 호출 가능한 공개 API를 module.api에 노출한다.
@@ -50,19 +51,12 @@ function registerModuleApi() {
   if (!mod) return;
 
   const allChats = () => [...(game.messages?.contents ?? [])];
-  const savedWhisperSettings = () => {
-    const gs = game.settings as any;
-    return {
-      includeWhisper: gs.get(MODULE_ID, SETTINGS.includeWhisper),
-      hideWhisper: gs.get(MODULE_ID, SETTINGS.hideWhisper),
-    };
-  };
 
   (mod as unknown as { api: unknown }).api = {
     openChatArchive: (chats: any) => openChatArchive(chats ?? allChats()),
-    downloadArchiveFile: (chats: any) => downloadArchiveFile(chats ?? allChats(), savedWhisperSettings()),
+    downloadArchiveFile: (chats: any) => downloadArchiveFile(chats ?? allChats(), readWhisperSettings()),
     downloadIncrementalArchive: (chats: any, opts: any) =>
-      downloadIncrementalArchive(chats ?? allChats(), { ...savedWhisperSettings(), ...opts }),
+      downloadIncrementalArchive(chats ?? allChats(), { ...readWhisperSettings(), ...opts }),
   };
 }
 
