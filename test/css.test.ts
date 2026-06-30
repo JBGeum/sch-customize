@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { processStyleSheetStructured } from "../src/archive/css";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { processStyleSheetStructured, createCssList } from "../src/archive/css";
 import { StructuredCssCollector, CssVariableTracker } from "../src/archive/css-collect";
 
 // 가짜 CSSOM 룰/시트 빌더 — jsdom 의 document.styleSheets 가 비어 있어 직접 주입한다.
@@ -89,5 +89,21 @@ describe("processStyleSheetStructured (characterization)", () => {
       collector, new CssVariableTracker(), new Set<string>(), 11,
     );
     expect(collector.rootRules).toHaveLength(0);
+  });
+});
+
+describe("createCssList — user-color 룰 (characterization)", () => {
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  it("각 user 에 div.chat-box.user-{id} 배경 룰(alpha 0.3)을 덧붙인다", () => {
+    vi.stubGlobal("game", {
+      users: [
+        { id: "u1", _id: "u1", color: "#ff0000" },
+        { id: "u2", _id: "u2", color: "#00ff00" },
+      ],
+    });
+    const css = createCssList(null, null, { mode: "filtered" });
+    expect(css).toContain("div.chat-box.user-u1 { background-color: rgba(255, 0, 0, 0.3) !important; }");
+    expect(css).toContain("div.chat-box.user-u2 { background-color: rgba(0, 255, 0, 0.3) !important; }");
   });
 });

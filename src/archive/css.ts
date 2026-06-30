@@ -139,7 +139,7 @@ export function createCssList(selectors: Iterable<string> | null, targetDoc: Doc
   // 사용자 색상 → 메시지 배경 룰 자동 추가
   for (const user of game.users!) {
     const bgColor = hexToRgba(user.color.toString(), 0.3);
-    css += `div.chat-box.user-${(user as any)._id} { background-color: ${bgColor} !important; }\n`;
+    css += `div.chat-box.user-${user.id} { background-color: ${bgColor} !important; }\n`;
   }
 
   if (existingCss) {
