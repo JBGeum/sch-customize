@@ -13,7 +13,6 @@
 
 import { MODULE_ID } from "../constants";
 import { ExportChatArchiveMenu, openChatArchiveWindow } from "../archive/dialog";
-import { getDFchatArchive } from "../archive/df";
 import { updateCssProperty } from "../appearance";
 import { SETTINGS } from "./keys";
 
@@ -65,23 +64,6 @@ export function registerAllSettings(): void {
     config: true,
     default: false,
     type: Boolean,
-  });
-
-  // ─── DF Chat Archive 변환 (GM 전용) ───
-  gs.register(MODULE_ID, SETTINGS.convertDFchatArchive, {
-    name: `${MODULE_ID}.settings.convertDFchatArchive.name`,
-    restricted: true,
-    config: true,
-    type: String,
-    filePicker: "any",
-    default: "",
-    onChange: (value: string) => {
-      if (value.endsWith(".json")) {
-        getDFchatArchive(value);
-      } else if (value.length > 0) {
-        alert(game.i18n!.localize(`${MODULE_ID}.settings.convertDFchatArchive.alert`));
-      }
-    },
   });
 
   // ─── Chitchat 동작 ───

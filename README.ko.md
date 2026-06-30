@@ -60,7 +60,6 @@
 - **채팅 로그 표시**: 전체 채팅 로그를 새 창에서 열기
 - 귓속말 포함/제외 옵션
 - 귓속말 숨김 옵션: 회색 자리표시자로 가리고 클릭 시 내용 표시
-- 구버전 **DF Chat Archive** JSON 변환 지원
 
 ### 🎨 외관 조정
 
@@ -150,7 +149,6 @@ https://github.com/JBGeum/sch-customize/releases/latest/download/module.json
 | 잡담 밝기 조절 | 클라이언트 | 잡담 배경 밝기 (0 – 1) |
 | 채팅 로그 귓속말 포함 | 월드 | 내보내기 시 귓속말 포함 여부 |
 | 채팅 로그 귓속말 숨김 | 클라이언트 | 회색으로 가리고 클릭 시 표시 |
-| DF Chat Archive 변환 | 월드 (GM) | 구버전 DF Chat Archive JSON 변환 |
 
 ---
 

@@ -27,8 +27,6 @@
     "sch-customize.settings.includeWhisper.hint": "Include whispers in the exported chat log. (Applied after saving)",
     "sch-customize.settings.hideWhisper.name": "Hide Whispers in Chat Log",
     "sch-customize.settings.hideWhisper.hint": "Conceal whispers in the chat log. They appear as a gray background and reveal their text when clicked. (Applied after saving)",
-    "sch-customize.settings.convertDFchatArchive.name": "Convert DF Chat Archive",
-    "sch-customize.settings.convertDFchatArchive.alert": "Please select a JSON file.",
     "sch-customize.settings.customPrivTalkAlias.name": "Custom Chitchat Trigger",
     "sch-customize.settings.customPrivTalkAlias.hint": "Register a custom character used at the start of a chitchat message. Some characters may not work due to conflicts with other modules or markdown options. The defaults ('/pt', '!', '`') are always preserved.",
     "sch-customize.chat.privTalkAutocomplete": "Chitchat",

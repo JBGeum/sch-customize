@@ -59,7 +59,6 @@ A speaker indicator above the chat input that shows who you are about to speak a
 - **Show Chat Log**: Open the full chat history in a new window
 - Option to include or hide whispers in exports
 - Hidden whispers appear as gray placeholders that reveal text on click
-- Convert legacy **DF Chat Archive** JSON files
 
 ### 🎨 Appearance
 
@@ -149,7 +148,6 @@ Open **Settings → Module Settings → sch-customize**:
 | Chitchat Brightness | Client | Adjust chitchat background brightness (0 – 1) |
 | Include Whispers in Export | World | Include whispers in archived logs |
 | Hide Whispers in Display | Client | Mask whispers; click to reveal |
-| DF Chat Archive Conversion | World (GM) | Convert legacy DF Chat Archive JSON |
 
 ---
 
