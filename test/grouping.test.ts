@@ -51,6 +51,17 @@ beforeEach(() => {
 });
 
 describe("잡담 연속 그룹화", () => {
+  it("priv_talk user-{id} 는 author-first (v13 정답, .author 우선)", () => {
+    const msg = {
+      flags: { "sch-customize": { priv_talk: true } },
+      author: { id: "A" }, user: { id: "U" },
+      speaker: { alias: "x" }, content: "hi",
+    } as any;
+    const el = render(msg);
+    expect(el.classList.contains("user-A")).toBe(true);
+    expect(el.classList.contains("user-U")).toBe(false);
+  });
+
   it("3연속 잡담은 top / middle / end", () => {
     const e1 = render(priv("1"));
     const e2 = render(priv("1"));
@@ -177,8 +188,7 @@ describe("resolveMessageStyle", () => {
 describe("resolveAuthorId", () => {
   it("author.id 우선", () => expect(resolveAuthorId({ author: { id: "A" }, user: { id: "U" } })).toBe("A"));
   it("author 없으면 user.id", () => expect(resolveAuthorId({ user: { id: "U" } })).toBe("U"));
-  it("스칼라 author 폴백", () => expect(resolveAuthorId({ author: "A" })).toBe("A"));
-  it("스칼라 user 폴백", () => expect(resolveAuthorId({ user: "U" })).toBe("U"));
+  it("둘 다 없으면 undefined", () => expect(resolveAuthorId({})).toBeUndefined());
 });
 
 describe("speakerKey", () => {

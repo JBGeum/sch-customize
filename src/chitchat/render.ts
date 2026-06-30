@@ -11,7 +11,7 @@
 import { MODULE_ID } from "../constants";
 import { toElement, getRenderChatMessageHook, isPrivTalkMessage } from "../compat/foundry";
 import { SETTINGS } from "../settings/keys";
-import { shouldMergeBaseMessage, decideRounding, type RoundingDecision } from "./grouping";
+import { shouldMergeBaseMessage, decideRounding, resolveAuthorId, type RoundingDecision } from "./grouping";
 
 // 모듈 내부에서 직전 메시지 정보를 추적하기 위한 상태.
 // Foundry 렌더 hook은 동기적으로 메시지 순서대로 호출되므로 모듈 스코프 변수로 충분.
@@ -58,7 +58,7 @@ export function onRenderChatMessage(message: ChatMessage, htmlOrEl: HTMLElement 
 
 function handlePrivTalkRender(el: HTMLElement, message: ChatMessage, mergeEnabled: boolean): void {
   el.classList.add("priv_talk");
-  el.classList.add(`user-${(message as any).user?.id ?? (message as any).author?.id}`);
+  el.classList.add(`user-${resolveAuthorId(message)}`);
 
   if (mergeEnabled) {
     if (state.privTalkIndex > 0 && state.lastPrivTalkMsg) {

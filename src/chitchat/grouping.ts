@@ -8,9 +8,9 @@ export function resolveMessageStyle(msg: any): unknown {
   return msg.style ?? msg.type;
 }
 
-/** v13+ `.author` / v12 `.user` 의 최종 author 식별자(객체면 .id, 스칼라면 그대로). */
+/** v13+ `.author` / v12 `.user` 의 author id(둘 다 User 객체이므로 `.id`만 취한다). */
 export function resolveAuthorId(msg: any): unknown {
-  return msg.author?.id ?? msg.user?.id ?? msg.author ?? msg.user;
+  return msg.author?.id ?? msg.user?.id;
 }
 
 /** speaker 비교 키. actor → token → alias → "" 우선순위. */
