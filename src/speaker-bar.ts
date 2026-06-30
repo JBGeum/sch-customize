@@ -3,7 +3,7 @@
  * Foundry VTT v12 ~ v14 호환
  */
 
-import { toElement, getRenderChatMessageHook } from "./compat/foundry";
+import { mountOnChatInput } from "./compat/chat-input-mount";
 import { MODULE_ID } from "./constants";
 import { resolveSpeaker, resolveOverrideSpeaker, DEFAULT_IMG, type LockedSpeaker, type SpeakerContext } from "./speaker-resolve";
 const LOCKED_FLAG_KEY = "lockedSpeaker";
@@ -192,41 +192,6 @@ function placeSpeakerBar(textarea: Element): void {
 }
 
 /**
- * 채팅 폼에 발화자 바 삽입 (DOM 준비 안 됐으면 대기)
- */
-function injectSpeakerBar(html: HTMLElement | JQuery | null): void {
-  // v12: jQuery, v13+: HTMLElement — compat helper로 통일
-  const root = toElement(html);
-
-  // root가 없거나(전체 문서 대상), 또는 root 안에 textarea가 있으면 즉시
-  // toElement() 는 HTMLElement | null 만 반환하므로(jQuery 는 [0] 로 언래핑됨) root 가
-  // non-null 이면 항상 querySelector 가능한 HTMLElement 다 → root ?? document 로 충분.
-  const search: Element | Document = root ?? document;
-  const textarea = search.querySelector("#chat-message")
-                ?? search.querySelector("textarea[name='message']")
-                ?? document.querySelector("#chat-message");
-
-  if (textarea) {
-    placeSpeakerBar(textarea);
-    return;
-  }
-
-  // textarea가 아직 DOM에 없음 → MutationObserver로 등장 대기 (v12 등 폴백)
-  const observer = new MutationObserver(() => {
-    const ta = document.querySelector("#chat-message")
-            ?? document.querySelector("textarea[name='message']");
-    if (ta) {
-      observer.disconnect();
-      placeSpeakerBar(ta);
-    }
-  });
-  observer.observe(document.body, { childList: true, subtree: true });
-
-  // 안전장치: 10초 후 자동 해제
-  setTimeout(() => observer.disconnect(), 10000);
-}
-
-/**
  * pre-create 단계에서 메시지의 speaker를 고정 발화자로 덮어쓰기.
  *
  * Lock이 활성일 때만 `message`와 `data` 양쪽에 speaker를 박는다. Lock이 없으면
@@ -251,25 +216,11 @@ export function overrideSpeaker(message: ChatMessage, data: any): boolean {
  * 모든 훅 등록
  */
 export function registerSpeakerBar() {
-  // v12: chat log 렌더링 시 input part도 같이 들어있음
-  Hooks.on("renderChatLog", (app, html) => injectSpeakerBar(html));
-
-  // v13: input part는 별도로 이동/렌더링됨 (moveChatInput 훅 사용)
-  (Hooks as any).on("moveChatInput", () => injectSpeakerBar(null));
-
-  // 폴백: 일반 채팅 메시지 렌더 시 바가 없으면 다시 삽입
-  (Hooks as any).on(getRenderChatMessageHook(), () => {
-    if (!document.querySelector(".sch-speaker-bar")) {
-      injectSpeakerBar(null);
-    }
-  });
-
-  // 최후 폴백: ready 후 한 번 더 시도
-  Hooks.once("ready", () => {
-    if (!document.querySelector(".sch-speaker-bar")) {
-      injectSpeakerBar(null);
-    }
-  });
+  // 채팅 입력창 (재)등장 시 발화자 바를 (재)삽입 (공유 헬퍼)
+  mountOnChatInput(
+    (ta) => placeSpeakerBar(ta),
+    () => !!document.querySelector(".sch-speaker-bar"),
+  );
 
   // 토큰 선택/해제 → 바 갱신
   Hooks.on("controlToken", () => updateSpeakerBar());
