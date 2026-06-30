@@ -1,60 +1,56 @@
 /**
- * 잡담(chitchat) chat command 등록.
+ * 잡담(chitchat) 트리거를 네이티브로 처리한다.
  *
- * `/pt`, `!`, `` ` ``, 사용자 지정 alias 중 무엇으로 입력해도 본 명령이 받게 된다.
- * 콜백은 messageData의 speaker를 발신자 본인으로 덮어쓰고, style/type을 OOC 또는 OTHER로 분류한 뒤,
- * `sch-customize.priv_talk` flag를 켜서 메시지 객체를 반환한다.
+ * 외부 라이브러리(Chat Command Lib) 없이 Foundry `chatMessage` hook을 직접 가로채:
+ *  - 지정 트리거(`/pt`,`` ` ``,`!`,사용자 alias)로 입력되면 본문을 잡담으로 변환해 생성하고
+ *  - 그렇지 않으면 그대로 통과(다른 처리에 맡긴다).
+ *
+ * `chatMessage` hook은 Foundry가 슬래시 커맨드를 파싱하기 전에 호출되며,
+ * 정확히 `false`를 반환하면 기본 메시지 생성을 막는다(v12/v13 동일).
  */
-
 import { MODULE_ID } from "../constants";
 import { getChatStyles, isV13Plus } from "../compat/foundry";
 import { SETTINGS } from "../settings/keys";
+import { matchChitchatTrigger } from "./trigger";
+import { getChitchatAliases } from "./aliases";
 
 /**
- * Foundry `setup` hook에서 호출. `chatCommands` 라이브러리가 그때 준비된다.
+ * Foundry `setup` hook에서 호출. chatMessage hook을 등록한다.
  */
 export function registerChitchatCommand() {
-  const commands = (game as any).chatCommands;
-  commands.register({
-    name: "/pt",
-    module: "core",
-    aliases: [`${(game.settings as any).get(MODULE_ID, SETTINGS.customPrivTalkAlias)}`, "`", "!"],
-    icon: "<i class='fas fa-dice-d20'></i>",
-    requiredRole: "NONE",
-    callback: async function (_chat: any, parameters: any, messageData: any) {
-      // 마크다운 취소선 옵션이 꺼져 있으면 잡담 본문의 <del>을 ~로 환원해 일반 텍스트로 둠
-      if (!(game.settings as any).get(MODULE_ID, SETTINGS.markdownDelUse)) {
-        parameters = parameters.replace(/<\s*\/?\s*del\s*>/g, "~");
-      }
+  Hooks.on("chatMessage", (_chatLog: any, message: string, chatData: any): boolean | void => {
+    const matched = matchChitchatTrigger(message, getChitchatAliases());
+    if (!matched) return; // 잡담 아님 → 통과(undefined 반환 = 취소 아님)
 
-      const speakUser = (messageData.user instanceof User)
-        ? messageData.user
-        : game.users!.get(messageData.user);
+    let body = matched.body;
+    // 마크다운 취소선 옵션이 꺼져 있으면 <del>을 ~로 환원해 일반 텍스트로 둠
+    if (!(game.settings as any).get(MODULE_ID, SETTINGS.markdownDelUse)) {
+      body = body.replace(/<\s*\/?\s*del\s*>/g, "~");
+    }
 
-      messageData.speaker.actor = speakUser.id;
-      messageData.speaker.token = null;
-      messageData.speaker.alias = speakUser.name;
+    const speakUser = (chatData.user instanceof User)
+      ? chatData.user
+      : game.users!.get(chatData.user);
 
-      const styles = getChatStyles();
-      const styleValue = (game.settings as any).get(MODULE_ID, SETTINGS.privTalkAsOOC)
-        ? styles.OOC : styles.OTHER;
-      // v13+에서 .type은 document subtype 식별자(문자열)로 의미가 바뀌었으므로
-      // 버전에 따라 사용하는 필드를 분리한다.
-      if (isV13Plus()) {
-        messageData.style = styleValue;
-      } else {
-        messageData.type = styleValue;
-      }
+    chatData.speaker = chatData.speaker ?? {};
+    chatData.speaker.actor = speakUser.id;
+    chatData.speaker.token = null;
+    chatData.speaker.alias = speakUser.name;
 
-      return {
-        content: parameters,
-        flags: {
-          [MODULE_ID]: { priv_talk: true },
-        },
-      };
-    },
-    autocompleteCallback: (_menu: any, _alias: any, _parameters: any) =>
-      [(game as any).chatCommands.createInfoElement(game.i18n!.localize("sch-customize.chat.privTalkAutocomplete"))],
-    closeOnComplete: true,
+    const styles = getChatStyles();
+    const styleValue = (game.settings as any).get(MODULE_ID, SETTINGS.privTalkAsOOC)
+      ? styles.OOC : styles.OTHER;
+    // v13+: .style(문자열 subtype), v12: .type
+    if (isV13Plus()) {
+      chatData.style = styleValue;
+    } else {
+      chatData.type = styleValue;
+    }
+
+    chatData.content = body;
+    chatData.flags = { ...(chatData.flags ?? {}), [MODULE_ID]: { priv_talk: true } };
+
+    ChatMessage.create(chatData); // async fire-and-forget
+    return false; // 기본 생성 억제
   });
 }
