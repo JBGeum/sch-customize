@@ -23,6 +23,15 @@ function extractStyles(rule: CSSRule): string {
 /**
  * 그룹 룰(@media/@layer/@supports)의 자식 중 STYLE_RULE만 골라 컨텍스트와 함께 collector에 적재.
  * MEDIA/SUPPORTS/layer 세 분기가 동일하게 쓰던 내부 루프를 모은 것.
+ *
+ * 의도된 한계(audit D8): 그룹 안에 **중첩된 비-STYLE_RULE**(중첩 @media/@layer/@supports/@container,
+ * @font-face/@keyframes)는 수집하지 않는다. collector가 평면 컨텍스트(rule은 media 또는 layer 하나)라
+ * 중첩 컨텍스트를 표현할 수 없기 때문이다. 대안은 모두 부적합 — flatten은 중첩 조건을 잃어 정적
+ * 아카이브에 조건부 스타일을 무조건 적용하고(새 fidelity 버그), raw 보존은 selector별 DOM 필터링과
+ * 충돌한다(bloat 또는 cssText 파싱). 라이브 측정(2026-06-30): 전체 group rule 8125개 중 채팅 selector를
+ * 품은 중첩 drop 서브트리는 4개로 영향이 작아, 코어 수집기 일반화(over-engineering) 대신 현 동작을 둔다.
+ * (css-merge.ts의 extractChildStyleRules는 비-STYLE_RULE를 raw로 보존 → solo/incremental 비대칭은
+ * 의도적 수용. 아카이브 fidelity가 중요해지면 중첩-컨텍스트 지원으로 재검토.)
  */
 function collectStyleRules(rules: Iterable<CSSRule>, collector: StructuredCssCollector, context: CssContext | null): void {
   for (const r of Array.from(rules) as CSSRule[]) {
