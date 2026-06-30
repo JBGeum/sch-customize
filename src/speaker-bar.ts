@@ -218,7 +218,7 @@ export function overrideSpeaker(message: ChatMessage, data: any): boolean {
 export function registerSpeakerBar() {
   // 채팅 입력창 (재)등장 시 발화자 바를 (재)삽입 (공유 헬퍼)
   mountOnChatInput(
-    (ta) => placeSpeakerBar(ta),
+    placeSpeakerBar,
     () => !!document.querySelector(".sch-speaker-bar"),
   );
 

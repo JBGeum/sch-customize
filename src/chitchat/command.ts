@@ -50,7 +50,9 @@ export function registerChitchatCommand() {
     chatData.content = body;
     chatData.flags = { ...(chatData.flags ?? {}), [MODULE_ID]: { priv_talk: true } };
 
-    ChatMessage.create(chatData); // async fire-and-forget
+    ChatMessage.create(chatData).catch((err: unknown) =>
+      console.error(`${MODULE_ID} | 잡담 메시지 생성 실패`, err),
+    );
     return false; // 기본 생성 억제
   });
 }
