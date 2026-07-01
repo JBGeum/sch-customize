@@ -92,7 +92,7 @@ export function attachExportFormHandlers(rootEl: any): void {
   const section = form.querySelector(".sch-existing-css-section");
   const update = () => {
     const value = (form.querySelector("input[name='sch-export-mode']:checked") as HTMLInputElement | null)?.value;
-    if (section) (section as HTMLElement).style.display = (value === "merge" || value === "full") ? "" : "none";
+    if (section) (section as HTMLElement).style.display = value === "merge" ? "" : "none";
   };
   radios.forEach(r => r.addEventListener("change", update));
   update();
@@ -111,7 +111,7 @@ export async function readExportFormValues(rootEl: any): Promise<{ mode: string;
   const fileInput = form.querySelector("input[name='sch-existing-css']") as HTMLInputElement | null;
   const file = fileInput?.files?.[0] ?? null;
   let existingCssText: string | null = null;
-  if (file && (mode === "merge" || mode === "full")) {
+  if (file && mode === "merge") {
     try {
       existingCssText = await file.text();
     } catch (e) {

@@ -86,7 +86,7 @@ describe("attachExportFormHandlers", () => {
     r.checked = true;
     r.dispatchEvent(new Event("change"));
   }
-  it("solo→숨김, merge/full→표시 토글", () => {
+  it("merge만 기존CSS 섹션 표시, solo/full은 숨김", () => {
     const root = buildForm();
     attachExportFormHandlers(root);
     const section = root.querySelector(".sch-existing-css-section") as HTMLElement;
@@ -94,7 +94,7 @@ describe("attachExportFormHandlers", () => {
     setMode(root, "merge");
     expect(section.style.display).toBe("");
     setMode(root, "full");
-    expect(section.style.display).toBe("");
+    expect(section.style.display).toBe("none");
     setMode(root, "solo");
     expect(section.style.display).toBe("none");
   });
@@ -128,6 +128,10 @@ describe("readExportFormValues", () => {
   it("merge + 파일 → 파일 텍스트", async () => {
     const root = buildForm("merge", { text: async () => "css-body" });
     expect(await readExportFormValues(root)).toEqual({ mode: "merge", existingCssText: "css-body", includeWhisper: false, hideWhisper: false });
+  });
+  it("full + 파일 → existingCssText null (누적 안 함)", async () => {
+    const root = buildForm("full", { text: async () => "css-body" });
+    expect(await readExportFormValues(root)).toEqual({ mode: "full", existingCssText: null, includeWhisper: false, hideWhisper: false });
   });
   it("체크박스 켜짐 → includeWhisper/hideWhisper true", async () => {
     const root = buildForm("solo");
