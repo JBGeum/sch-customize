@@ -114,9 +114,38 @@ describe("selectorMatchesDom", () => {
 });
 
 describe("getSelectorsWithAncestors", () => {
-  it("시드 셀렉터 포함", () => {
-    const set = getSelectorsWithAncestors(docFrom(""));
-    for (const seed of [":root", "*", "html", "body"]) expect(set.has(seed)).toBe(true);
+  function docWithContainer(inner: string): Document {
+    return new DOMParser().parseFromString(
+      `<html><head></head><body>` +
+      `<div class="app window-app">CHROME</div>` +
+      `<div class="foundry-chat-container">${inner}</div>` +
+      `</body></html>`,
+      "text/html",
+    );
+  }
+
+  it("씨앗은 :root/* 만 포함(html/body 제외)", () => {
+    const set = getSelectorsWithAncestors(docWithContainer(""));
+    expect(set.has(":root")).toBe(true);
+    expect(set.has("*")).toBe(true);
+    expect(set.has("html")).toBe(false);
+    expect(set.has("body")).toBe(false);
+  });
+
+  it("컨테이너 하위만 수집, 컨테이너 밖(앱-셸)은 제외", () => {
+    const set = getSelectorsWithAncestors(
+      docWithContainer(`<div class="chat-box"><table></table><a></a></div>`),
+    );
+    expect(set.has(".chat-box")).toBe(true);
+    expect(set.has("table")).toBe(true);
+    expect(set.has("a")).toBe(true);
+    expect(set.has(".app")).toBe(false);
+    expect(set.has(".window-app")).toBe(false);
+  });
+
+  it("컨테이너 부재 시 body 폴백(하위 요소 수집)", () => {
+    const set = getSelectorsWithAncestors(docFrom(`<div class="a"></div>`));
+    expect(set.has(".a")).toBe(true);
   });
 
   it("tag/id/class 셀렉터 수집", () => {

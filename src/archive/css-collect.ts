@@ -283,7 +283,8 @@ export function selectorMatchesDom(cssSelector: string, domSelectors: Set<string
  * 가까운 조상 3단계까지의 selector 조합도 같이 만든다.
  */
 export function getSelectorsWithAncestors(targetDoc: Document): Set<string> {
-  const selectorsSet = new Set<string>([":root", "*", "html", "body"]);
+  // html/body 는 씨앗에서 제외 — 문서 루트 환경 룰이 매칭되는 것을 막는다.
+  const selectorsSet = new Set<string>([":root", "*"]);
 
   function getElementSelector(element: Element): string[] {
     const selectors: string[] = [];
@@ -339,6 +340,9 @@ export function getSelectorsWithAncestors(targetDoc: Document): Set<string> {
     }
   }
 
-  if (targetDoc.body) traverse(targetDoc.body, []);
+  // 채팅 콘텐츠 컨테이너 하위만 순회 — 컨테이너 밖(앱-셸/문서 루트)의 셀렉터를 배제.
+  // 컨테이너 부재 시 body 폴백.
+  const root = targetDoc.querySelector(".foundry-chat-container") ?? targetDoc.body;
+  if (root) traverse(root, []);
   return selectorsSet;
 }
