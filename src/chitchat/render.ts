@@ -1,8 +1,11 @@
 /**
  * 잡담 / 일반 채팅 메시지 렌더 후처리.
  *
- * 동일 사용자의 연속 메시지를 top / middle / end 클래스로 묶어 시각적으로 그룹화한다.
- * 잡담(priv_talk)은 본 모듈이 만든 메시지이고, 일반 메시지는 모든 chat type에 대해 적용된다.
+ * 연속 메시지를 top / middle / end 클래스로 묶어 시각적으로 그룹화한다.
+ * - 일반(base) 메시지: author·speaker·style·whisper 수신자가 모두 같을 때만 그룹화
+ *   (공개+귓속, 수신자 다른 귓속말은 분리 — header 의 수신자정보가 가려지는 miss 방지).
+ * - 잡담(priv_talk): 본 모듈이 만든 메시지로, 유저 무관하게 연속이면 그룹화(의도).
+ *   각 메시지는 user 배경색으로 구별되고 header 는 항상 숨김 + alias 를 inline 표시한다.
  * 그룹화 판정은 순수 모듈 `./grouping` 에 위임하고, 여기서는 DOM 적용만 한다.
  *
  * Foundry v12: `renderChatMessage`(jQuery), v13+: `renderChatMessageHTML`(HTMLElement) 둘 다 호환.

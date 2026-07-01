@@ -4,6 +4,7 @@ import {
   resolveMessageStyle,
   resolveAuthorId,
   speakerKey,
+  whisperKey,
   shouldMergeBaseMessage,
   decideRounding,
 } from "../src/chitchat/grouping";
@@ -87,6 +88,18 @@ describe("잡담 연속 그룹화", () => {
     expect(e2.classList.contains("middle")).toBe(true);
     expect(e3.classList.contains("middle")).toBe(true);
     expect(e4.classList.contains("end")).toBe(true);
+  });
+
+  // 특성화(의도 핀): 서로 다른 유저의 잡담도 한 박스로 묶인다.
+  // 잡담은 shouldMergeBaseMessage(=whisper 검사)를 타지 않고 user 무관 연속 그룹화하며,
+  // user 배경색으로 구별된다. 이 동작은 사용자 확정 사항이므로 회귀로 깨지면 안 됨.
+  it("서로 다른 유저의 잡담도 연속이면 top/end 로 merge (cross-user, 의도)", () => {
+    const e1 = render(priv("1"));
+    const e2 = render(priv("2"));
+    expect(e1.classList.contains("top")).toBe(true);
+    expect(e2.classList.contains("end")).toBe(true);
+    expect(e1.classList.contains("user-1")).toBe(true);
+    expect(e2.classList.contains("user-2")).toBe(true);
   });
 });
 
@@ -198,6 +211,13 @@ describe("speakerKey", () => {
   it("전부 없으면 빈 문자열", () => expect(speakerKey({})).toBe(""));
 });
 
+describe("whisperKey", () => {
+  it("공개(whisper 없음)는 빈 문자열", () => expect(whisperKey({})).toBe(""));
+  it("빈 배열도 빈 문자열", () => expect(whisperKey({ whisper: [] })).toBe(""));
+  it("수신자 순서 무관하게 정렬 후 join", () => expect(whisperKey({ whisper: ["b", "a"] })).toBe("a,b"));
+  it("id 를 문자열로 정규화", () => expect(whisperKey({ whisper: [2, 1] })).toBe("1,2"));
+});
+
 describe("shouldMergeBaseMessage", () => {
   const mk = (style: number, author: string, actor: string) =>
     ({ style, author: { id: author }, speaker: { actor } });
@@ -211,6 +231,17 @@ describe("shouldMergeBaseMessage", () => {
     expect(shouldMergeBaseMessage(mk(0, "A", "a"), mk(0, "A", "b"), false)).toBe(false));
   it("prevWasPrivTalk → false", () =>
     expect(shouldMergeBaseMessage(mk(0, "A", "a"), mk(0, "A", "a"), true)).toBe(false));
+});
+
+describe("shouldMergeBaseMessage — 귓속말 수신자", () => {
+  const wmk = (whisper: string[]) =>
+    ({ style: 0, author: { id: "A" }, speaker: { actor: "a" }, whisper });
+  it("공개 + 귓속말은 merge 안 됨 (헤더 수신자정보 보존)", () =>
+    expect(shouldMergeBaseMessage(wmk([]), wmk(["x"]), false)).toBe(false));
+  it("수신자 다른 귓속말끼리 merge 안 됨", () =>
+    expect(shouldMergeBaseMessage(wmk(["x"]), wmk(["y"]), false)).toBe(false));
+  it("같은 수신자 귓속말끼리는 merge (순서 무관)", () =>
+    expect(shouldMergeBaseMessage(wmk(["x", "y"]), wmk(["y", "x"]), false)).toBe(true));
 });
 
 describe("decideRounding", () => {
