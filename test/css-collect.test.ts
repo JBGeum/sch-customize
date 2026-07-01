@@ -67,10 +67,11 @@ describe("CssVariableTracker", () => {
 });
 
 describe("selectorMatchesDom", () => {
-  it("ALWAYS_INCLUDE 패턴 적중 시 DOM 무관 true", () => {
-    expect(selectorMatchesDom(".chat-message", new Set())).toBe(true);
-    expect(selectorMatchesDom(".fa-dice", new Set())).toBe(true);
-    expect(selectorMatchesDom("[data-message-id]", new Set())).toBe(true);
+  it("클래스/속성 셀렉터는 DOM에 있을 때만 true", () => {
+    expect(selectorMatchesDom(".chat-message", new Set([".chat-message"]))).toBe(true);
+    expect(selectorMatchesDom(".chat-message", new Set())).toBe(false);
+    expect(selectorMatchesDom(".fa-dice", new Set([".fa-dice"]))).toBe(true);
+    expect(selectorMatchesDom("[data-message-id]", new Set(["[data-message-id]"]))).toBe(true);
   });
 
   it("DOM에 존재하는 클래스 토큰만 매칭", () => {
@@ -88,9 +89,18 @@ describe("selectorMatchesDom", () => {
     expect(selectorMatchesDom(".a .b", new Set([".a", ".b"]))).toBe(true);
   });
 
-  it("pseudo 제거 후 빈 part / 태그 토큰은 true", () => {
+  it("pseudo-only 셀렉터는 빈 part로 true, 태그-단독은 DOM 실재 시에만 true", () => {
+    // 순수 pseudo/`*`는 콘텐츠 무관 유지(범용 리셋)
     expect(selectorMatchesDom("::before", new Set())).toBe(true);
-    expect(selectorMatchesDom("div:hover", new Set())).toBe(true);
+    expect(selectorMatchesDom("*", new Set())).toBe(true);
+    // 태그 토큰: DOM 집합에 있을 때만 매칭 (환경 크롬 배제의 핵심)
+    expect(selectorMatchesDom("div:hover", new Set(["div"]))).toBe(true);
+    expect(selectorMatchesDom("div:hover", new Set())).toBe(false);
+    expect(selectorMatchesDom("body", new Set(["div"]))).toBe(false);
+    expect(selectorMatchesDom("html", new Set(["div"]))).toBe(false);
+    expect(selectorMatchesDom("table", new Set(["table"]))).toBe(true);
+    // 조상-태그 스코프된 앱-셸 셀렉터도 태그 부재로 드롭
+    expect(selectorMatchesDom("body.game .sheet.app", new Set([".sheet", ".app"]))).toBe(false);
   });
 
   it("combinator 토큰(> + ~)은 매칭 대상에서 제외", () => {
@@ -179,7 +189,7 @@ describe("StructuredCssCollector", () => {
     c.addRule(".chat-x", "color: var(--v)");
     c.addRule(".chat-l", "color: blue", { type: "layer", name: "base" });
     c.addRule(".chat-m", "color: green", { type: "media", condition: "screen" });
-    const css = c.generateCss(new Set(), tracker);
+    const css = c.generateCss(new Set(), tracker, { mode: "full" });
     const idx = (s: string) => css.indexOf(s);
     expect(idx(":root")).toBeLessThan(idx("@font-face"));
     expect(idx("@font-face")).toBeLessThan(idx("@keyframes"));

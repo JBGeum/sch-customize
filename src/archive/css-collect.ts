@@ -255,10 +255,6 @@ const ALWAYS_INCLUDE_PATTERNS = [
 ];
 
 export function selectorMatchesDom(cssSelector: string, domSelectors: Set<string>): boolean {
-  if (ALWAYS_INCLUDE_PATTERNS.some(pattern => pattern.test(cssSelector))) {
-    return true;
-  }
-
   const selectorParts = cssSelector.split(",").map(s => s.trim());
   return selectorParts.some(part => {
     const cleanPart = part.replace(/::?[a-zA-Z-]+(\([^)]*\))?/g, "").trim();
@@ -270,12 +266,9 @@ export function selectorMatchesDom(cssSelector: string, domSelectors: Set<string
       if (!cleanToken) return true;
 
       const parts = cleanToken.match(/[.#]?[a-zA-Z0-9_-]+|\[[^\]]+\]/g) || [];
-      return parts.every(p => {
-        if (!p.startsWith(".") && !p.startsWith("#") && !p.startsWith("[")) {
-          return true;
-        }
-        return domSelectors.has(p);
-      });
+      // 클래스/id/속성뿐 아니라 태그-단독 토큰도 아카이브 DOM에 실재해야 매칭.
+      // (기존엔 태그 토큰을 무조건 통과시켜 Foundry body/html/table 등 환경 룰이 딸려왔다.)
+      return parts.every(p => domSelectors.has(p));
     });
   });
 }
