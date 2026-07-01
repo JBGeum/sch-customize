@@ -32,7 +32,7 @@
 }
 
 :is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message.priv_talk:not(.top):not(.middle):not(.end) {
-  border-radius: 5px 0 0 5px;
+  border-radius: 5px;
 }
 
 :is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message.priv_talk::before {
@@ -124,5 +124,30 @@
 }
 
 :is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message:not(.top):not(.middle):not(.end) {
-  border-radius: 5px 0 0 5px;
+  border-radius: 5px;
+}
+
+/*
+ * 알림(#chat-notifications)은 항상 단일 메시지만 띄운다. 사이드바에서 그룹
+ * 라운딩(top/middle/end)이 붙은 메시지가 알림 안 ol.chat-log 로 복제되면서
+ * 그룹 border-radius / margin collapse / header 숨김이 딸려와, 단일 메시지인데도
+ * 모서리가 각지고 발신자 header 가 사라진다. 알림 스코프에서만 그룹 효과를
+ * 무효화해 독립된 단일 메시지로 되돌린다(사이드바/popout 그룹화는 그대로).
+ *
+ * specificity 주의: 일반 그룹 룰은 (1,4,0), 잡담 그룹 룰은 .priv_talk 가 더 있어
+ * (1,5,0) 이다. 라운딩/margin 리셋은 잡담까지 이겨야 하므로 .priv_talk 를 포함한
+ * 셀렉터를 병기해 (1,5,0) 로 맞추고, 이 블록을 파일 끝에 두어 순서로 이긴다.
+ * (컨테이너는 #chat-notifications 하나만 의존 — 버전별 .chat-log 유무와 무관.)
+ */
+#chat-notifications :is(li, [data-message-id]).chat-message.message.priv_talk:is(.top, .middle, .end),
+#chat-notifications :is(li, [data-message-id]).chat-message.message:is(.top, .middle, .end) {
+  margin-block: revert;          /* 그룹 margin collapse 해제 → Foundry 기본 상하 margin */
+  border-radius: 5px;            /* 단일 메시지 기본 라운딩(:not(.top/.middle/.end)과 동일) */
+}
+/* 발신자 header 복원(그룹 숨김 룰의 display:none 을 덮음). Foundry 채팅 header 는
+   flexrow(이름 + metadata 한 줄)이므로 display:flex 로 되돌린다. revert 를 쓰면
+   author origin 의 flex 까지 롤백돼 header 가 block 이 되고 metadata 가 이름 아래로
+   내려가므로 안 된다. 일반 메시지에만 효과 — 잡담은 render.ts 인라인 display:none 이 유지. */
+#chat-notifications :is(li, [data-message-id]).chat-message.message:is(.middle, .end) > header {
+  display: flex;
 }
