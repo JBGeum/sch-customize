@@ -243,8 +243,8 @@ const ALWAYS_INCLUDE_PATTERNS = [
   /\.name-stacked/, /\.flavor-text/,
   // 시스템 prefix (DnD5e, PF2e 등)
   /\.dnd5e/, /\.pf2e/, /\.pf1/, /\.swade/, /\.cof/, /\.coc7/,
-  // Foundry 코어 / app shell
-  /\.app\b/, /\.window-/, /\.foundryvtt-/, /\.flexrow/, /\.flexcol/,
+  // Foundry 모듈 prefix (앱-셸 크롬 .app/.window-/.flexrow/.flexcol 은 콘텐츠 스코핑에 위임)
+  /\.foundryvtt-/,
   // 폰트 / 아이콘
   /\.fa-/, /\.fas\b/, /\.far\b/, /\.fab\b/, /\.fal\b/, /\.fad\b/,
   /\.roboto/, /font-awesome/,
@@ -255,6 +255,11 @@ const ALWAYS_INCLUDE_PATTERNS = [
 ];
 
 export function selectorMatchesDom(cssSelector: string, domSelectors: Set<string>): boolean {
+  // 콘텐츠 패턴(dnd5e 카드·dice·fa 등)은 DOM 매칭이 불확실해도 강제 포함(카드 fidelity 안전 마진).
+  if (ALWAYS_INCLUDE_PATTERNS.some(pattern => pattern.test(cssSelector))) {
+    return true;
+  }
+
   const selectorParts = cssSelector.split(",").map(s => s.trim());
   return selectorParts.some(part => {
     const cleanPart = part.replace(/::?[a-zA-Z-]+(\([^)]*\))?/g, "").trim();

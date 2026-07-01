@@ -67,11 +67,16 @@ describe("CssVariableTracker", () => {
 });
 
 describe("selectorMatchesDom", () => {
-  it("클래스/속성 셀렉터는 DOM에 있을 때만 true", () => {
-    expect(selectorMatchesDom(".chat-message", new Set([".chat-message"]))).toBe(true);
-    expect(selectorMatchesDom(".chat-message", new Set())).toBe(false);
-    expect(selectorMatchesDom(".fa-dice", new Set([".fa-dice"]))).toBe(true);
-    expect(selectorMatchesDom("[data-message-id]", new Set(["[data-message-id]"]))).toBe(true);
+  it("ALWAYS_INCLUDE 콘텐츠 패턴은 DOM 무관 true, 앱-셸 패턴은 아님", () => {
+    // 콘텐츠 패턴: DOM 매칭 불확실해도 강제 포함(카드 fidelity 안전 마진)
+    expect(selectorMatchesDom(".chat-message", new Set())).toBe(true);
+    expect(selectorMatchesDom(".fa-dice", new Set())).toBe(true);
+    expect(selectorMatchesDom(".dice-roll", new Set())).toBe(true);
+    expect(selectorMatchesDom("[data-message-id]", new Set())).toBe(true);
+    // 앱-셸 패턴: 강제 포함 아님 → DOM에 실재할 때만
+    expect(selectorMatchesDom(".app", new Set())).toBe(false);
+    expect(selectorMatchesDom(".window-header", new Set())).toBe(false);
+    expect(selectorMatchesDom(".flexcol", new Set())).toBe(false);
   });
 
   it("DOM에 존재하는 클래스 토큰만 매칭", () => {
@@ -189,7 +194,7 @@ describe("StructuredCssCollector", () => {
     c.addRule(".chat-x", "color: var(--v)");
     c.addRule(".chat-l", "color: blue", { type: "layer", name: "base" });
     c.addRule(".chat-m", "color: green", { type: "media", condition: "screen" });
-    const css = c.generateCss(new Set(), tracker, { mode: "full" });
+    const css = c.generateCss(new Set(), tracker);
     const idx = (s: string) => css.indexOf(s);
     expect(idx(":root")).toBeLessThan(idx("@font-face"));
     expect(idx("@font-face")).toBeLessThan(idx("@keyframes"));
