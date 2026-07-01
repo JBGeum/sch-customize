@@ -120,7 +120,7 @@ describe("createCssList — user-color 룰 (characterization)", () => {
         { id: "u2", _id: "u2", color: "#00ff00" },
       ],
     });
-    const css = createCssList(null, null, { mode: "filtered" });
+    const css = createCssList(null, null);
     expect(css).toContain("div.chat-box.user-u1 { background-color: rgba(255, 0, 0, 0.3) !important; }");
     expect(css).toContain("div.chat-box.user-u2 { background-color: rgba(0, 255, 0, 0.3) !important; }");
   });

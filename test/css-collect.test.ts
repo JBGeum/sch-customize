@@ -34,14 +34,6 @@ describe("CssVariableTracker", () => {
     expect(css.startsWith(":root {")).toBe(true);
   });
 
-  it("generateRootCss(includeAll): 정의된 모든 변수 출력", () => {
-    const t = new CssVariableTracker();
-    t.collectDefinitions("--a: 1; --b: 2;");
-    const css = t.generateRootCss(true);
-    expect(css).toContain("--a: 1");
-    expect(css).toContain("--b: 2");
-  });
-
   it("resolveTransitiveDependencies: 사용된 변수 값이 var(--x) 참조하면 --x도 포함", () => {
     const t = new CssVariableTracker();
     t.collectDefinitions("--base: #123; --fg: var(--base);");
@@ -194,13 +186,6 @@ describe("StructuredCssCollector", () => {
     const css = c.generateCss(new Set([".known"]), new CssVariableTracker());
     expect(css).toContain(".known { color: red }");
     expect(css).not.toContain(".missing");
-  });
-
-  it("generateCss(full): 필터 우회, 전체 출력", () => {
-    const c = new StructuredCssCollector();
-    c.addRule(".missing", "color: blue");
-    const css = c.generateCss(new Set(), new CssVariableTracker(), { mode: "full" });
-    expect(css).toContain(".missing { color: blue }");
   });
 
   it("generateCss: 변수 추적은 매칭된 룰 styles에만", () => {

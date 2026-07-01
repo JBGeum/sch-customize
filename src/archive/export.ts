@@ -103,13 +103,12 @@ export async function downloadArchiveFile(chats: any[], settings: { includeWhisp
  *
  * @param {Array} chats
  * @param {object} opts
- * @param {'filtered'|'full'} [opts.mode='filtered']
  * @param {string|null} [opts.existingCssText=null] - 머지 대상 기존 chat-styles.css 텍스트
  * @param {boolean} opts.includeWhisper - 귓속말 포함 여부 (required)
  * @param {boolean} opts.hideWhisper - 귓속말 수신자 마스킹 여부 (required)
  */
-export async function downloadIncrementalArchive(chats: any[], opts: { mode?: "filtered" | "full"; existingCssText?: string | null; includeWhisper: boolean; hideWhisper: boolean }): Promise<void> {
-  const { mode = "filtered", existingCssText = null, includeWhisper, hideWhisper } = opts;
+export async function downloadIncrementalArchive(chats: any[], opts: { existingCssText?: string | null; includeWhisper: boolean; hideWhisper: boolean }): Promise<void> {
+  const { existingCssText = null, includeWhisper, hideWhisper } = opts;
 
   // user gesture가 살아있는 동안 picker를 *먼저* 호출 — 사용자가 위치를 선택하는
   // 시간 동안 백그라운드로 무거운 generate/merge/zip 작업이 진행된다.
@@ -118,7 +117,7 @@ export async function downloadIncrementalArchive(chats: any[], opts: { mode?: "f
   if (!target) return;
 
   const [htmlContent, contentImg, portraitImg, cssText] =
-    await generateIncrementalHtmlFromChats(chats, { mode, existingCssText, includeWhisper, hideWhisper });
+    await generateIncrementalHtmlFromChats(chats, { existingCssText, includeWhisper, hideWhisper });
 
   const zip = new JSZip();
   await zipInsideFolder(zip, contentImg, "images");
@@ -232,11 +231,11 @@ async function generateSimpleHtmlFromChats(chats: any[], settings: { includeWhis
  * 누적(외부 CSS) 모드 — 단독 모드와 같은 본문을 만들되 CSS는 doc에 인라인하지 않고 별도 텍스트로 반환한다.
  *
  * 반환: [htmlContent, contentImg, portraitImg, cssText]
- *   - cssText는 단독 템플릿의 baseline + `createCssList(mode)` 결과를 합친 뒤,
+ *   - cssText는 단독 템플릿의 baseline + `createCssList` 결과를 합친 뒤,
  *     `existingCssText`가 있으면 union 머지한 결과.
  */
-async function generateIncrementalHtmlFromChats(chats: any[], opts: { mode?: "filtered" | "full"; existingCssText?: string | null; includeWhisper: boolean; hideWhisper: boolean }): Promise<[string, Set<string>, Set<string>, string]> {
-  const { mode = "filtered", existingCssText = null, includeWhisper, hideWhisper } = opts;
+async function generateIncrementalHtmlFromChats(chats: any[], opts: { existingCssText?: string | null; includeWhisper: boolean; hideWhisper: boolean }): Promise<[string, Set<string>, Set<string>, string]> {
+  const { existingCssText = null, includeWhisper, hideWhisper } = opts;
 
   const response = await fetch(INCREMENTAL_TEMPLATE_PATH);
   const templateHtml = await response.text();
@@ -248,7 +247,7 @@ async function generateIncrementalHtmlFromChats(chats: any[], opts: { mode?: "fi
   const { contentImg, portraitImg } = extractImageSets(doc);
 
   const baselineCss = await getBaselineCss();
-  const dynamicCss = createCssList(null, doc, { mode });
+  const dynamicCss = createCssList(null, doc);
   const freshCss = `${baselineCss}\n${dynamicCss}`;
   const cssText = existingCssText ? mergeCss(existingCssText, freshCss) : freshCss;
 
@@ -297,7 +296,7 @@ function rewriteInlineRolls(doc: Document): void {
 function injectInlineCss(doc: Document): void {
   const styleElement = doc.createElement("style");
   styleElement.type = "text/css";
-  styleElement.appendChild(doc.createTextNode(createCssList(null, doc, { mode: "filtered" })));
+  styleElement.appendChild(doc.createTextNode(createCssList(null, doc)));
 
   const headElement = doc.head || doc.getElementsByTagName("head")[0];
   headElement.appendChild(styleElement);

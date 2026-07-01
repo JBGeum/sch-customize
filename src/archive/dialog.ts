@@ -92,9 +92,9 @@ async function dispatchExport({ mode, existingCssText, includeWhisper, hideWhisp
     if (mode === "solo") {
       await downloadArchiveFile(chats, { includeWhisper, hideWhisper });
     } else {
+      // full = 매번 완전 재추출(기존 CSS 미누적), merge = 기존 CSS에 델타 누적. 추출 필터는 동일.
       await downloadIncrementalArchive(chats, {
-        mode: mode === "full" ? "full" : "filtered",
-        existingCssText,
+        existingCssText: mode === "merge" ? existingCssText : null,
         includeWhisper,
         hideWhisper,
       });

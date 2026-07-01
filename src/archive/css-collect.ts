@@ -73,13 +73,11 @@ export class CssVariableTracker {
   }
 
   /**
-   * @param {boolean} includeAll - true면 사용 여부와 무관하게 정의된 모든 변수를 출력
-   *
    * 출력 정책:
    *  - 값 길이가 `MAX_VAR_LENGTH`를 초과하는 변수는 export에서 제외 (예: base64 data URL)
    *  - 각 변수는 별도 줄로 직렬화하여 한 줄짜리 거대 :root로 인한 잘림을 방지
    */
-  generateRootCss(includeAll = false): string {
+  generateRootCss(): string {
     this.resolveTransitiveDependencies();
     const vars: string[] = [];
     const skipped: Array<{varName: string, length: number}> = [];
@@ -93,15 +91,9 @@ export class CssVariableTracker {
       vars.push(`${varName}: ${value}`);
     };
 
-    if (includeAll) {
-      for (const [varName, value] of this.definitions) {
-        pushVar(varName, value);
-      }
-    } else {
-      for (const varName of this.usages) {
-        if (this.definitions.has(varName)) {
-          pushVar(varName, this.definitions.get(varName));
-        }
+    for (const varName of this.usages) {
+      if (this.definitions.has(varName)) {
+        pushVar(varName, this.definitions.get(varName));
       }
     }
 
@@ -167,18 +159,13 @@ export class StructuredCssCollector {
   /**
    * @param {Set<string>} domSelectors
    * @param {CssVariableTracker} variableTracker
-   * @param {{ mode?: 'filtered' | 'full' }} [options]
-   *   - 'filtered' (기본): selectorMatchesDom 통과한 룰만 출력
-   *   - 'full': 필터 우회, 수집된 모든 룰 출력
    *
    * 변수 사용 추적은 *출력될 룰* 의 styles에 한해서만 수행한다. 채팅 selector에
    * 매칭되지 않아 어차피 제외될 룰의 var(--x) 사용 때문에 :root가 부풀어오르는
-   * 문제를 막기 위함. (filtered 모드에서만 의미가 있으며, full 모드에서는 모든
-   * 룰이 출력 대상이므로 결과적으로 모든 변수가 추적된다.)
+   * 문제를 막기 위함.
    */
-  generateCss(domSelectors: Set<string>, variableTracker: CssVariableTracker, options: { mode?: "filtered" | "full" } = {}): string {
-    const includeAll = options.mode === "full";
-    const matches = (r: CssRule) => includeAll ? true : selectorMatchesDom(r.selector, domSelectors);
+  generateCss(domSelectors: Set<string>, variableTracker: CssVariableTracker): string {
+    const matches = (r: CssRule) => selectorMatchesDom(r.selector, domSelectors);
 
     const matchedRoot = this.rootRules.filter(matches);
     const matchedLayer = new Map<string, CssRule[]>();
@@ -200,7 +187,7 @@ export class StructuredCssCollector {
       for (const r of rules) variableTracker.extractUsages(r.styles);
     }
 
-    let output = variableTracker.generateRootCss(includeAll) + "\n";
+    let output = variableTracker.generateRootCss() + "\n";
     this.fontFaceRules.forEach(r => output += r + "\n");
     this.keyframeRules.forEach(r => output += r + "\n");
 

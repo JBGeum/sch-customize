@@ -116,14 +116,11 @@ export function processStyleSheetStructured(sheet: CSSStyleSheet, collector: Str
  * @param {Iterable<string>|null} selectors - targetDoc가 없을 때 사용할 selector 집합
  * @param {Document|null} targetDoc - 매칭할 대상 doc (있으면 selector 자동 추출)
  * @param {object} [options]
- * @param {'filtered'|'full'} [options.mode='filtered']
- *   - 'filtered': DOM 매칭 + ALWAYS_INCLUDE_PATTERNS 기반 (기본)
- *   - 'full': selectorMatchesDom 우회, 활성 styleSheet 전체 덤프
  * @param {string|null} [options.existingCss=null] - 머지할 기존 CSS 텍스트 (선택)
  * @returns {string} 직렬화된 CSS
  */
-export function createCssList(selectors: Iterable<string> | null, targetDoc: Document | null = null, options: { mode?: "filtered" | "full", existingCss?: string | null } = {}): string {
-  const { mode = "filtered", existingCss = null } = options;
+export function createCssList(selectors: Iterable<string> | null, targetDoc: Document | null = null, options: { existingCss?: string | null } = {}): string {
+  const { existingCss = null } = options;
 
   const collector = new StructuredCssCollector();
   const variableTracker = new CssVariableTracker();
@@ -143,7 +140,7 @@ export function createCssList(selectors: Iterable<string> | null, targetDoc: Doc
     }
   }
 
-  let css = collector.generateCss(domSelectors, variableTracker, { mode });
+  let css = collector.generateCss(domSelectors, variableTracker);
 
   // 사용자 색상 → 메시지 배경 룰 자동 추가
   for (const user of game.users!) {
