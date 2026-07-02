@@ -3,7 +3,7 @@
  *
  * `game.settings.registerMenu`는 클래스 형태의 `type`을 요구한다.
  * Foundry는 버튼 클릭 시 `new Type()` → `.render(true)` 순으로 호출하므로,
- * `render()`를 override해 DialogV2(v13+) 또는 Dialog V1(v12 폴백)을 띄운 뒤
+ * `render()`를 override해 DialogV2(v13+)를 띄운 뒤
  * super.render()를 호출하지 않는다 — FormApplication에 template이 없으므로
  * super.render()를 호출하면 null.startsWith 오류가 발생한다.
  *
@@ -15,7 +15,7 @@ import { downloadArchiveFile, downloadIncrementalArchive, openChatArchive } from
 import { buildExportModeFormHtml, attachExportFormHandlers, readExportFormValues } from "./export-form";
 
 /**
- * v13+ DialogV2 우선, 없으면 v12 Dialog V1로 폴백하는 confirm 다이얼로그.
+ * v13+ DialogV2 confirm 다이얼로그.
  */
 export async function showConfirmDialog({ title, content, confirmLabel, confirmIcon = "fas fa-check", onConfirm }: {
   title: string;
@@ -24,41 +24,20 @@ export async function showConfirmDialog({ title, content, confirmLabel, confirmI
   confirmIcon?: string;
   onConfirm: () => Promise<void>;
 }): Promise<void> {
-  const DialogV2 = (foundry as any).applications?.api?.DialogV2;
-  if (DialogV2) {
-    let ok = false;
-    try {
-      ok = await DialogV2.confirm({
-        window: { title },
-        content: `<p>${content}</p>`,
-        yes: { label: confirmLabel, icon: confirmIcon },
-        no:  { label: game.i18n!.localize("sch-customize.dialog.download.button.cancel") },
-      });
-    } catch (_e) {
-      // 사용자가 창을 닫음/취소 — 조용히 무시
-      return;
-    }
-    if (ok) await onConfirm();
+  const DialogV2 = (foundry as any).applications.api.DialogV2;
+  let ok = false;
+  try {
+    ok = await DialogV2.confirm({
+      window: { title },
+      content: `<p>${content}</p>`,
+      yes: { label: confirmLabel, icon: confirmIcon },
+      no:  { label: game.i18n!.localize("sch-customize.dialog.download.button.cancel") },
+    });
+  } catch (_e) {
+    // 사용자가 창을 닫음/취소 — 조용히 무시
     return;
   }
-
-  // v12 폴백
-  new Dialog({
-    title,
-    content,
-    buttons: {
-      confirm: {
-        icon: `<i class="${confirmIcon}"></i>`,
-        label: confirmLabel,
-        callback: async () => { await onConfirm(); },
-      },
-      cancel: {
-        icon: '<i class="fas fa-times"></i>',
-        label: game.i18n!.localize("sch-customize.dialog.download.button.cancel"),
-      },
-    },
-    default: "cancel",
-  }).render(true);
+  if (ok) await onConfirm();
 }
 
 export class openChatArchiveWindow extends FormApplication {
@@ -106,10 +85,9 @@ async function dispatchExport({ mode, existingCssText, includeWhisper, hideWhisp
 }
 
 /**
- * v13+ DialogV2 우선, v12 Dialog V1 폴백.
+ * v13+ DialogV2 기반 누적 export 모드 선택 다이얼로그.
  *
- * 누적 export 모드 선택 다이얼로그. 라디오 + 파일 input UI를 표시하고, 확인 시
- * `dispatchExport()`를 호출한다.
+ * 라디오 + 파일 input UI를 표시하고, 확인 시 `dispatchExport()`를 호출한다.
  *
  * 구현 메모:
  *  - DialogV2.wait의 `render` 콜백 시그니처는 `(app, html)` (renderDialogV2 Hook과 동일).
@@ -126,71 +104,40 @@ async function showExportModeDialog(): Promise<void> {
   // 렌더된 dialog의 root element를 closure로 보관 — 콜백 시점에 안정적으로 접근하기 위함
   let dialogRoot: any = null;
 
-  const DialogV2 = (foundry as any).applications?.api?.DialogV2;
-  if (DialogV2) {
-    try {
-      const result = await DialogV2.wait({
-        window: { title },
-        content: contentHtml,
-        rejectClose: false,
-        default: "confirm",
-        buttons: [
-          {
-            action: "confirm",
-            label: confirmLabel,
-            icon: "fas fa-download",
-            callback: async (_event: any, _button: any, dialog: any) => {
-              const root = dialogRoot ?? dialog?.element ?? document;
-              return await readExportFormValues(root);
-            },
+  const DialogV2 = (foundry as any).applications.api.DialogV2;
+  try {
+    const result = await DialogV2.wait({
+      window: { title },
+      content: contentHtml,
+      rejectClose: false,
+      default: "confirm",
+      buttons: [
+        {
+          action: "confirm",
+          label: confirmLabel,
+          icon: "fas fa-download",
+          callback: async (_event: any, _button: any, dialog: any) => {
+            const root = dialogRoot ?? dialog?.element ?? document;
+            return await readExportFormValues(root);
           },
-          { action: "cancel", label: cancelLabel, icon: "fas fa-times" },
-        ],
-        // render hook 시그니처: (app, html). html은 HTMLElement.
-        render: (_app: any, html: any) => {
-          // html이 HTMLElement인 경우와 jQuery wrapper인 경우 모두 대응
-          const root = html instanceof HTMLElement
-            ? html
-            : (html?.[0] ?? html?.element ?? html);
-          dialogRoot = root ?? null;
-          attachExportFormHandlers(root);
         },
-      });
-      if (result && typeof result === "object" && result.mode) {
-        await dispatchExport(result);
-      }
-    } catch (e) {
-      console.warn("[sch-customize] export dialog 취소/오류:", e);
+        { action: "cancel", label: cancelLabel, icon: "fas fa-times" },
+      ],
+      // render hook 시그니처: (app, html). html은 HTMLElement.
+      render: (_app: any, html: any) => {
+        const root = html instanceof HTMLElement
+          ? html
+          : (html?.[0] ?? html?.element ?? html);
+        dialogRoot = root ?? null;
+        attachExportFormHandlers(root);
+      },
+    });
+    if (result && typeof result === "object" && result.mode) {
+      await dispatchExport(result);
     }
-    return;
+  } catch (e) {
+    console.warn("[sch-customize] export dialog 취소/오류:", e);
   }
-
-  // v12 폴백 — Dialog V1
-  new Dialog({
-    title,
-    content: contentHtml,
-    buttons: {
-      confirm: {
-        icon: '<i class="fas fa-download"></i>',
-        label: confirmLabel,
-        callback: async (html: any) => {
-          const root = html?.[0] ?? html ?? dialogRoot;
-          const values = await readExportFormValues(root);
-          if (values) await dispatchExport(values);
-        },
-      },
-      cancel: {
-        icon: '<i class="fas fa-times"></i>',
-        label: cancelLabel,
-      },
-    },
-    default: "confirm",
-    render: (html: any) => {
-      const root = html?.[0] ?? html;
-      dialogRoot = root ?? null;
-      attachExportFormHandlers(root);
-    },
-  }).render(true);
 }
 
 /**
