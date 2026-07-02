@@ -14,6 +14,8 @@
 import { downloadArchiveFile, downloadIncrementalArchive, openChatArchive, exportIncrementalToDirectory } from "./export";
 import { buildExportModeFormHtml, attachExportFormHandlers, readExportFormValues } from "./export-form";
 import { clearArchiveDirectory } from "./dir-target";
+import { MODULE_ID } from "../constants";
+import { SETTINGS } from "../settings/keys";
 
 /**
  * v13+ DialogV2 confirm 다이얼로그.
@@ -67,6 +69,7 @@ export class openChatArchiveWindow extends FormApplication {
  * 선택된 모드에 따라 적절한 export 함수로 dispatch.
  */
 async function dispatchExport({ mode, existingCssText, includeWhisper, hideWhisper }: { mode: string; existingCssText: string | null; includeWhisper: boolean; hideWhisper: boolean }): Promise<void> {
+  try { await (game.settings as any).set(MODULE_ID, SETTINGS.lastExportMode, mode); } catch (_) {}
   const chats = [...(game.messages!.contents)];
   try {
     if (mode === "solo") {

@@ -24,9 +24,12 @@ export function buildExportModeFormHtml(): string {
   const gs = game.settings as any;
   const incChecked = gs.get(MODULE_ID, SETTINGS.includeWhisper) ? "checked" : "";
   const hideChecked = gs.get(MODULE_ID, SETTINGS.hideWhisper) ? "checked" : "";
+  const stored = gs.get(MODULE_ID, SETTINGS.lastExportMode);
+  const preferred = (stored === "directory" && !isDirectoryPickerSupported()) ? "solo" : stored;
+  const checkedMode = ["solo", "directory", "file-upload"].includes(preferred) ? preferred : "solo";
   const row = (value: string, labelKey: string) => `
         <label class="sch-mode-row" style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;">
-          <input type="radio" name="sch-export-mode" value="${value}"${value === "solo" ? " checked" : ""}>
+          <input type="radio" name="sch-export-mode" value="${value}"${value === checkedMode ? " checked" : ""}>
           <strong>${t(labelKey)}</strong>
         </label>`;
   const desc = (value: string, inner: string) => `

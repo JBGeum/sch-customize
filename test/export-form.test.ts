@@ -56,6 +56,25 @@ describe("buildExportModeFormHtml", () => {
     const inc = html.match(/<input[^>]*name="sch-include-whisper"[^>]*>/)?.[0] ?? "";
     expect(inc).not.toContain("checked");
   });
+
+  it("저장된 모드(file-upload)를 프리선택(checked)", () => {
+    vi.stubGlobal("game", { i18n: { localize: (k: string) => k },
+      settings: { get: (_m: string, k: string) => (k === "lastExportMode" ? "file-upload" : false) } });
+    (window as any).showDirectoryPicker = () => {};
+    const html = buildExportModeFormHtml();
+    const fu = html.match(/<input[^>]*value="file-upload"[^>]*>/)?.[0] ?? "";
+    const solo = html.match(/<input[^>]*value="solo"[^>]*>/)?.[0] ?? "";
+    expect(fu).toContain("checked");
+    expect(solo).not.toContain("checked");
+  });
+  it("저장 모드 directory인데 미지원 → solo 프리선택(폴백)", () => {
+    vi.stubGlobal("game", { i18n: { localize: (k: string) => k },
+      settings: { get: (_m: string, k: string) => (k === "lastExportMode" ? "directory" : false) } });
+    delete (window as any).showDirectoryPicker;
+    const html = buildExportModeFormHtml();
+    const solo = html.match(/<input[^>]*value="solo"[^>]*>/)?.[0] ?? "";
+    expect(solo).toContain("checked");
+  });
 });
 
 describe("findExportForm", () => {
