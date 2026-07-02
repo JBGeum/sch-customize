@@ -58,9 +58,10 @@ export async function getArchiveDirectory(): Promise<any | null> {
     await idbSet(KEY, handle).catch(() => {});
     return handle;
   } catch (e) {
-    if ((e as any)?.name === "AbortError") return null;
+    if ((e as any)?.name === "AbortError") return null; // 사용자 취소 — 조용히 중단
+    // 그 외 실패(권한/보안/제스처 소실 등)는 상위(dispatchExport try/catch)로 전파해 사용자에게 알린다.
     console.warn("[sch-customize] getArchiveDirectory 실패:", e);
-    return null;
+    throw e;
   }
 }
 

@@ -144,6 +144,8 @@ export async function exportIncrementalToDirectory(chats: any[], settings: { inc
   const [htmlContent, contentImg, portraitImg, cssText] =
     await generateIncrementalHtmlFromChats(chats, { existingCssText, includeWhisper: settings.includeWhisper, hideWhisper: settings.hideWhisper });
 
+  // css를 *먼저* 기록(누적 union의 상위집합) — 이후 html/이미지 기록이 실패해도 기존 챕터 HTML은 유효.
+  // (File System Access는 트랜잭션이 없어 원자적 기록 불가; css-first가 부분실패 시 가장 안전.)
   await writeTextFile(dir, SHARED_CSS_FILENAME, cssText);
   await writeTextFile(dir, buildArchiveFilename("chat-log", "html", { includeTime: true }), htmlContent);
   await writeImagesToDir(dir, contentImg, "images");
