@@ -40,12 +40,14 @@ function base(style: number, authorId: string, speaker: unknown) {
 
 function render(msg: any): HTMLElement {
   const el = makeEl();
+  document.body.appendChild(el); // 실제 Foundry처럼 로그 DOM에 부착(연속 판정의 isConnected 가드용)
   onRenderChatMessage(msg, el);
   return el;
 }
 
 beforeEach(() => {
   resetRenderState();
+  document.body.innerHTML = "";
   settings.privTalkMerge = true;
   settings.baseMessageMerge = true;
   settings.privTalkSpeakerLineChange = false; // false → speaker-inline 부착
@@ -179,6 +181,24 @@ describe("merge 비활성 경로 & 리셋", () => {
     expect(e3.classList.contains("end")).toBe(false);
     expect(e3.classList.contains("top")).toBe(false);
     expect(e3.classList.contains("middle")).toBe(false);
+  });
+});
+
+describe("log clear 후 stale 상태 (직전 엘리먼트 detach)", () => {
+  it("일반: clear 후 같은 화자 첫 메시지는 merge 안 됨 (헤더 유지)", () => {
+    const sp = { actor: "a" };
+    const e1 = render(base(0, "A", sp));
+    e1.remove(); // 로그 clear로 직전 메시지 엘리먼트가 DOM에서 제거됨
+    const e2 = render(base(0, "A", sp)); // 같은 author/speaker
+    expect(e2.classList.contains("end")).toBe(false);
+    expect(e2.classList.contains("middle")).toBe(false);
+  });
+  it("잡담: clear 후 첫 잡담도 stale 엘리먼트와 merge 안 됨", () => {
+    const e1 = render(priv("1"));
+    e1.remove();
+    const e2 = render(priv("1"));
+    expect(e2.classList.contains("end")).toBe(false);
+    expect(e2.classList.contains("top")).toBe(false);
   });
 });
 

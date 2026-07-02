@@ -64,7 +64,9 @@ function handlePrivTalkRender(el: HTMLElement, message: ChatMessage, mergeEnable
   el.classList.add(`user-${resolveAuthorId(message)}`);
 
   if (mergeEnabled) {
-    if (state.privTalkIndex > 0 && state.lastPrivTalkMsg) {
+    // 직전 잡담 엘리먼트가 아직 로그 DOM에 있을 때만 그룹화. 로그 clear/개별 삭제로
+    // detach된 stale 엘리먼트와는 묶지 않는다(가려진 헤더로 새 메시지가 continuation처럼 보이는 버그 방지).
+    if (state.privTalkIndex > 0 && state.lastPrivTalkMsg && state.lastPrivTalkMsg.isConnected) {
       applyRounding(state.lastPrivTalkMsg, el, decideRounding(state.lastPrivTalkMsg.classList.contains("end")));
     }
     state.lastPrivTalkMsg = el;
@@ -87,7 +89,10 @@ function handlePrivTalkRender(el: HTMLElement, message: ChatMessage, mergeEnable
 }
 
 function handleBaseMessageRender(el: HTMLElement, message: ChatMessage, mergeEnabled: boolean): void {
-  if (mergeEnabled && state.lastBaseMsg) {
+  // 직전 base 엘리먼트가 아직 로그 DOM에 있을 때만 그룹화. 로그 clear/개별 삭제 후에는
+  // stale한 lastBaseMsg가 detach돼 있으므로, 화자가 같아도 새 메시지를 continuation으로
+  // 묶어 헤더가 가려지는 버그(삭제 전 화자 == clear 후 첫 화자)를 막는다.
+  if (mergeEnabled && state.lastBaseMsg && state.lastBaseMsg.el.isConnected) {
     const prevWasPrivTalk = state.privTalkIndex > 0;
     if (shouldMergeBaseMessage(state.lastBaseMsg.msg, message, prevWasPrivTalk)) {
       applyRounding(state.lastBaseMsg.el, el, decideRounding(state.lastBaseMsg.el.classList.contains("end")));
