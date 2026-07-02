@@ -12,6 +12,7 @@
 
 import { MODULE_ID } from "../constants";
 import { SETTINGS } from "../settings/keys";
+import { isDirectoryPickerSupported } from "./dir-target";
 
 /**
  * 누적/단독 export 모드 선택 다이얼로그 본문.
@@ -23,6 +24,13 @@ export function buildExportModeFormHtml(): string {
   const gs = game.settings as any;
   const incChecked = gs.get(MODULE_ID, SETTINGS.includeWhisper) ? "checked" : "";
   const hideChecked = gs.get(MODULE_ID, SETTINGS.hideWhisper) ? "checked" : "";
+  const directoryRadio = isDirectoryPickerSupported() ? `
+        <label style="display:flex;align-items:flex-start;gap:0.4rem;">
+          <input type="radio" name="sch-export-mode" value="directory">
+          <span><strong>${t("mode.directory.label")}</strong><br>
+            <small style="opacity:0.8">${t("mode.directory.hint")}</small>
+          </span>
+        </label>` : "";
   return `
     <div class="sch-customize-export-form" style="display:flex;flex-direction:column;gap:0.6rem;">
       <fieldset style="display:flex;flex-direction:column;gap:0.4rem;padding:0.5rem;">
@@ -33,16 +41,11 @@ export function buildExportModeFormHtml(): string {
             <small style="opacity:0.8">${t("mode.solo.hint")}</small>
           </span>
         </label>
+        ${directoryRadio}
         <label style="display:flex;align-items:flex-start;gap:0.4rem;">
-          <input type="radio" name="sch-export-mode" value="merge">
-          <span><strong>${t("mode.merge.label")}</strong><br>
-            <small style="opacity:0.8">${t("mode.merge.hint")}</small>
-          </span>
-        </label>
-        <label style="display:flex;align-items:flex-start;gap:0.4rem;">
-          <input type="radio" name="sch-export-mode" value="full">
-          <span><strong>${t("mode.full.label")}</strong><br>
-            <small style="opacity:0.8">${t("mode.full.hint")}</small>
+          <input type="radio" name="sch-export-mode" value="file-upload">
+          <span><strong>${t("mode.file.label")}</strong><br>
+            <small style="opacity:0.8">${t("mode.file.hint")}</small>
           </span>
         </label>
       </fieldset>
@@ -92,7 +95,7 @@ export function attachExportFormHandlers(rootEl: any): void {
   const section = form.querySelector(".sch-existing-css-section");
   const update = () => {
     const value = (form.querySelector("input[name='sch-export-mode']:checked") as HTMLInputElement | null)?.value;
-    if (section) (section as HTMLElement).style.display = value === "merge" ? "" : "none";
+    if (section) (section as HTMLElement).style.display = value === "file-upload" ? "" : "none";
   };
   radios.forEach(r => r.addEventListener("change", update));
   update();
@@ -111,7 +114,7 @@ export async function readExportFormValues(rootEl: any): Promise<{ mode: string;
   const fileInput = form.querySelector("input[name='sch-existing-css']") as HTMLInputElement | null;
   const file = fileInput?.files?.[0] ?? null;
   let existingCssText: string | null = null;
-  if (file && mode === "merge") {
+  if (file && mode === "file-upload") {
     try {
       existingCssText = await file.text();
     } catch (e) {

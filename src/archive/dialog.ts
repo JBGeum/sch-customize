@@ -11,7 +11,7 @@
  * ApplicationV2 형태로 바뀌면 이 래퍼도 함께 갱신해야 한다.
  */
 
-import { downloadArchiveFile, downloadIncrementalArchive, openChatArchive } from "./export";
+import { downloadArchiveFile, downloadIncrementalArchive, openChatArchive, exportIncrementalToDirectory } from "./export";
 import { buildExportModeFormHtml, attachExportFormHandlers, readExportFormValues } from "./export-form";
 
 /**
@@ -70,13 +70,11 @@ async function dispatchExport({ mode, existingCssText, includeWhisper, hideWhisp
   try {
     if (mode === "solo") {
       await downloadArchiveFile(chats, { includeWhisper, hideWhisper });
+    } else if (mode === "directory") {
+      await exportIncrementalToDirectory(chats, { includeWhisper, hideWhisper });
     } else {
-      // full = 매번 완전 재추출(기존 CSS 미누적), merge = 기존 CSS에 델타 누적. 추출 필터는 동일.
-      await downloadIncrementalArchive(chats, {
-        existingCssText: mode === "merge" ? existingCssText : null,
-        includeWhisper,
-        hideWhisper,
-      });
+      // file-upload: 기존 css 올리면 누적, 없으면 fresh. zip 다운로드.
+      await downloadIncrementalArchive(chats, { existingCssText, includeWhisper, hideWhisper });
     }
   } catch (error) {
     console.error("[sch-customize] Failed to export chat archive:", error);

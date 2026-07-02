@@ -8,18 +8,28 @@ import {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  delete (window as any).showDirectoryPicker;
   document.body.innerHTML = "";
 });
 
 describe("buildExportModeFormHtml", () => {
-  it("radio 3개(solo checked) + 기존 CSS 섹션 + 파일 input", () => {
+  it("지원 시 solo/directory/file-upload 라디오 + 기존 CSS 섹션", () => {
     vi.stubGlobal("game", { i18n: { localize: (k: string) => k }, settings: { get: () => false } });
+    (window as any).showDirectoryPicker = () => {};
     const html = buildExportModeFormHtml();
-    expect(html).toContain(`name="sch-export-mode" value="solo"`);
-    expect(html).toContain(`value="merge"`);
-    expect(html).toContain(`value="full"`);
+    expect(html).toContain(`value="solo"`);
+    expect(html).toContain(`value="directory"`);
+    expect(html).toContain(`value="file-upload"`);
     expect(html).toContain("sch-existing-css-section");
     expect(html).toContain(`name="sch-existing-css"`);
+  });
+
+  it("미지원 시 directory 라디오 없음", () => {
+    vi.stubGlobal("game", { i18n: { localize: (k: string) => k }, settings: { get: () => false } });
+    delete (window as any).showDirectoryPicker;
+    const html = buildExportModeFormHtml();
+    expect(html).not.toContain(`value="directory"`);
+    expect(html).toContain(`value="file-upload"`);
   });
 
   it("귓속말 체크박스 2개 존재", () => {
@@ -75,8 +85,8 @@ describe("attachExportFormHandlers", () => {
     root.innerHTML = `
       <div class="sch-customize-export-form">
         <input type="radio" name="sch-export-mode" value="solo" checked>
-        <input type="radio" name="sch-export-mode" value="merge">
-        <input type="radio" name="sch-export-mode" value="full">
+        <input type="radio" name="sch-export-mode" value="directory">
+        <input type="radio" name="sch-export-mode" value="file-upload">
         <div class="sch-existing-css-section"></div>
       </div>`;
     return root;
@@ -86,14 +96,14 @@ describe("attachExportFormHandlers", () => {
     r.checked = true;
     r.dispatchEvent(new Event("change"));
   }
-  it("merge만 기존CSS 섹션 표시, solo/full은 숨김", () => {
+  it("file-upload만 기존CSS 섹션 표시, solo/directory는 숨김", () => {
     const root = buildForm();
     attachExportFormHandlers(root);
     const section = root.querySelector(".sch-existing-css-section") as HTMLElement;
     expect(section.style.display).toBe("none"); // 초기 solo
-    setMode(root, "merge");
+    setMode(root, "file-upload");
     expect(section.style.display).toBe("");
-    setMode(root, "full");
+    setMode(root, "directory");
     expect(section.style.display).toBe("none");
     setMode(root, "solo");
     expect(section.style.display).toBe("none");
@@ -106,8 +116,8 @@ describe("readExportFormValues", () => {
     root.innerHTML = `
       <div class="sch-customize-export-form">
         <input type="radio" name="sch-export-mode" value="solo">
-        <input type="radio" name="sch-export-mode" value="merge">
-        <input type="radio" name="sch-export-mode" value="full">
+        <input type="radio" name="sch-export-mode" value="directory">
+        <input type="radio" name="sch-export-mode" value="file-upload">
         <input type="checkbox" name="sch-include-whisper">
         <input type="checkbox" name="sch-hide-whisper">
         <input type="file" name="sch-existing-css">
@@ -122,16 +132,16 @@ describe("readExportFormValues", () => {
   it("solo + 무파일 → existingCssText null", async () => {
     expect(await readExportFormValues(buildForm("solo"))).toEqual({ mode: "solo", existingCssText: null, includeWhisper: false, hideWhisper: false });
   });
-  it("merge + 무파일 → existingCssText null", async () => {
-    expect(await readExportFormValues(buildForm("merge"))).toEqual({ mode: "merge", existingCssText: null, includeWhisper: false, hideWhisper: false });
+  it("directory + 무파일 → existingCssText null", async () => {
+    expect(await readExportFormValues(buildForm("directory"))).toEqual({ mode: "directory", existingCssText: null, includeWhisper: false, hideWhisper: false });
   });
-  it("merge + 파일 → 파일 텍스트", async () => {
-    const root = buildForm("merge", { text: async () => "css-body" });
-    expect(await readExportFormValues(root)).toEqual({ mode: "merge", existingCssText: "css-body", includeWhisper: false, hideWhisper: false });
+  it("file-upload + 파일 → 파일 텍스트", async () => {
+    const root = buildForm("file-upload", { text: async () => "css-body" });
+    expect(await readExportFormValues(root)).toEqual({ mode: "file-upload", existingCssText: "css-body", includeWhisper: false, hideWhisper: false });
   });
-  it("full + 파일 → existingCssText null (누적 안 함)", async () => {
-    const root = buildForm("full", { text: async () => "css-body" });
-    expect(await readExportFormValues(root)).toEqual({ mode: "full", existingCssText: null, includeWhisper: false, hideWhisper: false });
+  it("directory + 파일 → existingCssText null (폴더가 소스)", async () => {
+    const root = buildForm("directory", { text: async () => "css-body" });
+    expect(await readExportFormValues(root)).toEqual({ mode: "directory", existingCssText: null, includeWhisper: false, hideWhisper: false });
   });
   it("체크박스 켜짐 → includeWhisper/hideWhisper true", async () => {
     const root = buildForm("solo");
