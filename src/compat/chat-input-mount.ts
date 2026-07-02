@@ -27,23 +27,29 @@ function findChatTextarea(root: Element | Document): Element | null {
       ?? document.querySelector("textarea[name='message']");
 }
 
-export function mountOnChatInput(
-  mountFn: (textarea: Element) => void,
+/**
+ * 채팅 UI 앵커(입력창/컨트롤버튼 등)가 (재)등장할 때마다 mountFn을 호출하는 공유 헬퍼.
+ * findAnchor로 앵커를 찾고, 못 찾으면 MutationObserver로 등장을 대기한다.
+ * mountFn은 멱등이어야 한다(자기 요소 remove 후 재삽입).
+ */
+export function mountOnChatUi(
+  findAnchor: (root: Element | Document) => Element | null,
+  mountFn: (anchor: Element) => void,
   isMounted: () => boolean,
 ): void {
   const tryMount = (htmlRoot: HTMLElement | JQuery | null): void => {
     const root: Element | Document = toElement(htmlRoot) ?? document;
-    const textarea = findChatTextarea(root);
-    if (textarea) {
-      mountFn(textarea);
+    const anchor = findAnchor(root);
+    if (anchor) {
+      mountFn(anchor);
       return;
     }
     // 아직 DOM에 없음 → MutationObserver로 등장 대기(폴백, 10초 후 자동 해제)
     const observer = new MutationObserver(() => {
-      const ta = findChatTextarea(document);
-      if (ta) {
+      const a = findAnchor(document);
+      if (a) {
         observer.disconnect();
-        mountFn(ta);
+        mountFn(a);
       }
     });
     observer.observe(document.body, { childList: true, subtree: true });
@@ -65,4 +71,14 @@ export function mountOnChatInput(
   Hooks.once("ready", () => {
     if (!isMounted()) tryMount(null);
   });
+}
+
+/**
+ * 채팅 입력창(textarea) 앵커용 래퍼. 기존 소비자(speaker-bar, 타이핑표시기) 시그니처 보존.
+ */
+export function mountOnChatInput(
+  mountFn: (textarea: Element) => void,
+  isMounted: () => boolean,
+): void {
+  mountOnChatUi(findChatTextarea, mountFn, isMounted);
 }
