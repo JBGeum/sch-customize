@@ -1,5 +1,6 @@
 {
   "_id": "schDownloadDlg01",
+  "_key": "!macros!schDownloadDlg01",
   "name": "채팅 로그 다운로드",
   "type": "script",
   "img": "icons/svg/download.svg",

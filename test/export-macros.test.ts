@@ -11,11 +11,13 @@ describe("export 매크로 소스", () => {
     expect(m._id).toMatch(/^[A-Za-z0-9]{16}$/);
     expect(m.command).toContain("openChatArchive");
     expect(m.command).toContain("sch-customize");
+    expect(m._key).toBe("!macros!" + m._id);
   });
   it("download: script 타입 + openExportDialog 호출 + 16자 _id", () => {
     const m = load("download.json");
     expect(m.type).toBe("script");
     expect(m._id).toMatch(/^[A-Za-z0-9]{16}$/);
     expect(m.command).toContain("openExportDialog");
+    expect(m._key).toBe("!macros!" + m._id);
   });
 });
