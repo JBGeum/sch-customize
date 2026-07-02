@@ -32,10 +32,12 @@ function extractStyles(rule: CSSRule): string {
  * (css-merge.ts의 extractChildStyleRules는 비-STYLE_RULE를 raw로 보존 → solo/incremental 비대칭은
  * 의도적 수용. 아카이브 fidelity가 중요해지면 중첩-컨텍스트 지원으로 재검토.)
  */
-function collectStyleRules(rules: Iterable<CSSRule>, collector: StructuredCssCollector, context: CssContext | null): void {
+function collectStyleRules(rules: Iterable<CSSRule>, collector: StructuredCssCollector, variableTracker: CssVariableTracker, context: CssContext | null): void {
   for (const r of Array.from(rules) as CSSRule[]) {
     if (r.type === CSSRule.STYLE_RULE) {
-      collector.addRule((r as CSSStyleRule).selectorText, extractStyles(r), context);
+      const styles = extractStyles(r);
+      collector.addRule((r as CSSStyleRule).selectorText, styles, context);
+      variableTracker.collectDefinitions(styles);
     }
   }
 }
@@ -49,7 +51,11 @@ function collectStyleRules(rules: Iterable<CSSRule>, collector: StructuredCssCol
  * 끌어와 4KB+ 한 줄로 부풀어오르는 문제가 있었다. 사용 추적은 `generateCss`에서
  * 매칭된(=실제 출력되는) 룰의 styles에 한해서만 수행한다.
  *
- * 단, `:root` / `html` 룰의 styles에서 변수 *정의*는 수집해 둔다.
+ * 변수 *정의*는 모든 룰(컨텍스트·셀렉터 무관)에서 수집한다. Foundry v13/dnd5e 5.2의
+ * 코어 변수(`--color-*` 등)는 top-level `:root`가 아니라 `@layer variables.*`의
+ * `body`/`.app` 셀렉터에 정의되므로, `:root`/`html`로 한정하면 캡처된 카드 룰의 var()가
+ * 미해소된다(예: 카드 border의 `--color-border-light-2`). 과수집은 무해 —
+ * `generateRootCss`가 *사용된* 변수만 출력한다.
  */
 export function processStyleSheetStructured(sheet: CSSStyleSheet, collector: StructuredCssCollector, variableTracker: CssVariableTracker, processedSheets: Set<string>, depth = 0): void {
   if (depth > 10) return;
@@ -67,9 +73,7 @@ export function processStyleSheetStructured(sheet: CSSStyleSheet, collector: Str
           case CSSRule.STYLE_RULE: {
             const styles = extractStyles(rule);
             collector.addRule((rule as CSSStyleRule).selectorText, styles);
-            if ((rule as CSSStyleRule).selectorText.includes(":root") || (rule as CSSStyleRule).selectorText === "html") {
-              variableTracker.collectDefinitions(styles);
-            }
+            variableTracker.collectDefinitions(styles);
             break;
           }
           case CSSRule.IMPORT_RULE:
@@ -79,7 +83,7 @@ export function processStyleSheetStructured(sheet: CSSStyleSheet, collector: Str
             break;
           case CSSRule.MEDIA_RULE: {
             const condition = (rule as CSSMediaRule).conditionText || (rule as CSSMediaRule).media?.mediaText || "";
-            collectStyleRules((rule as CSSGroupingRule).cssRules, collector, { type: "media", condition });
+            collectStyleRules((rule as CSSGroupingRule).cssRules, collector, variableTracker, { type: "media", condition });
             break;
           }
           case CSSRule.FONT_FACE_RULE:
@@ -89,7 +93,7 @@ export function processStyleSheetStructured(sheet: CSSStyleSheet, collector: Str
             collector.keyframeRules.push(rule.cssText);
             break;
           case CSSRule.SUPPORTS_RULE:
-            collectStyleRules((rule as CSSGroupingRule).cssRules, collector, null);
+            collectStyleRules((rule as CSSGroupingRule).cssRules, collector, variableTracker, null);
             break;
           // @layer 블록 룰(CSSLayerBlockRule)은 `.type === 0`이라 numeric case로 못 잡는다.
           // constructor.name으로 식별해 layer 컨텍스트로 자식을 수집한다.
@@ -97,7 +101,7 @@ export function processStyleSheetStructured(sheet: CSSStyleSheet, collector: Str
           default:
             if (rule.constructor.name === "CSSLayerBlockRule" && (rule as any).cssRules) {
               const layerName = (rule as any).name || "anonymous";
-              collectStyleRules((rule as any).cssRules, collector, { type: "layer", name: layerName });
+              collectStyleRules((rule as any).cssRules, collector, variableTracker, { type: "layer", name: layerName });
             }
             break;
         }

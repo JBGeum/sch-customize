@@ -53,6 +53,41 @@ describe("CssVariableTracker", () => {
     expect(css).not.toContain("--huge");
   });
 
+  it("generateRootCss: 값이 충돌(테마별 상이)하는 변수는 제외 — 정적 아카이브 flattening 방지", () => {
+    const t = new CssVariableTracker();
+    t.collectDefinitions("--color-text-primary: #000;");
+    t.collectDefinitions("--color-text-primary: #fff;"); // 다른 테마의 상이 정의
+    t.collectDefinitions("--color-border-light-2: #c9c7b8;"); // 단일·일관 정의
+    t.extractUsages("color: var(--color-text-primary); border-color: var(--color-border-light-2);");
+    const css = t.generateRootCss();
+    expect(css).toContain("--color-border-light-2: #c9c7b8");
+    expect(css).not.toContain("--color-text-primary");
+  });
+
+  it("generateRootCss: 동일 값 중복 정의는 충돌 아님 → 포함", () => {
+    const t = new CssVariableTracker();
+    t.collectDefinitions("--x: #111;");
+    t.collectDefinitions("--x: #111;"); // 같은 값 재정의
+    t.extractUsages("color: var(--x);");
+    expect(t.generateRootCss()).toContain("--x: #111");
+  });
+
+  it("충돌 변수가 transitive로 사용 표시돼도 :root 정의는 제외 (충돌 필터 회귀 방지)", () => {
+    const t = new CssVariableTracker();
+    // --base 는 테마별 상이(#000 vs #fff) → conflicting 으로 표시
+    t.collectDefinitions("--base: #000;");
+    t.collectDefinitions("--base: #fff;");
+    // --fg 는 단일 정의지만 값이 var(--base) 를 참조
+    t.collectDefinitions("--fg: var(--base);");
+    t.extractUsages("color: var(--fg);");
+    const css = t.generateRootCss();
+    // 단일 정의 --fg 는 emit (값에 var(--base) 참조 그대로 유지)
+    expect(css).toContain("--fg: var(--base)");
+    // resolveTransitiveDependencies 가 --base 를 usages 로 끌어와도,
+    // conflicting 이므로 :root 정의 라인(--base: …)은 실리면 안 됨.
+    expect(css).not.toMatch(/--base\s*:/);
+  });
+
   it("generateRootCss: 출력할 변수 없으면 빈 문자열", () => {
     expect(new CssVariableTracker().generateRootCss()).toBe("");
   });

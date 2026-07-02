@@ -23,14 +23,22 @@ const MAX_VAR_LENGTH = 2000;
 /**
  * `var(--foo)` 사용을 추적하고, :root 등 정의부에서 발견된 `--foo: 값`을 매핑한다.
  * 결과적으로 실제 사용되는 변수만 :root에 다시 박아낸다.
+ *
+ * 값이 서로 다르게 여러 번 정의된 변수(=테마별 상이, 예: `--color-text-primary`가
+ * light/dark/fantasy 테마마다 다른 값)는 `conflicting`으로 표시해 :root 출력에서 제외한다.
+ * 정적 아카이브는 단일 테마이므로 어느 값이 맞는지 알 수 없고, 잘못 flatten하면 (예)
+ * 어두운 테마의 흰 글자색이 밝은 배경 아카이브에 박혀 가시성이 깨진다. 제외 시 베이스라인
+ * 기본값(`body{color:#000}` 등)으로 폴백한다. 단일·일관 정의(border 색 등)만 emit한다.
  */
 export class CssVariableTracker {
   definitions: Map<string, string>;
   usages: Set<string>;
+  conflicting: Set<string>;
 
   constructor() {
     this.definitions = new Map();
     this.usages = new Set();
+    this.conflicting = new Set();
   }
 
   extractUsages(styleText: string): void {
@@ -43,7 +51,14 @@ export class CssVariableTracker {
   collectDefinitions(styleText: string): void {
     const matches = styleText.matchAll(/(--[a-zA-Z0-9-_]+)\s*:\s*([^;]+)/g);
     for (const match of matches) {
-      this.definitions.set(match[1], match[2].trim());
+      const name = match[1];
+      const value = match[2].trim();
+      const existing = this.definitions.get(name);
+      if (existing !== undefined && existing !== value) {
+        // 값이 갈리는 재정의 = 테마별 상이 → :root flatten 제외 대상.
+        this.conflicting.add(name);
+      }
+      this.definitions.set(name, value);
     }
   }
 
@@ -92,7 +107,7 @@ export class CssVariableTracker {
     };
 
     for (const varName of this.usages) {
-      if (this.definitions.has(varName)) {
+      if (this.definitions.has(varName) && !this.conflicting.has(varName)) {
         pushVar(varName, this.definitions.get(varName));
       }
     }

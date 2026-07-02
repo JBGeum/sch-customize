@@ -34,6 +34,28 @@ describe("processStyleSheetStructured (characterization)", () => {
     expect(tracker.definitions.get("--fg")).toBe("blue");
   });
 
+  it("top-level body 등 비-:root 셀렉터의 변수 정의도 수집 (H2)", () => {
+    const collector = new StructuredCssCollector();
+    const tracker = new CssVariableTracker();
+    processStyleSheetStructured(
+      sheet([styleRule("body.game .app", "--color-border-light-2: #c9c7b8")]),
+      collector, tracker, new Set<string>(),
+    );
+    expect(tracker.definitions.get("--color-border-light-2")).toBe("#c9c7b8");
+  });
+
+  it("@layer 안 body/.app 셀렉터의 변수 정의도 수집 (H2 — Foundry 코어 변수 유입 경로)", () => {
+    const collector = new StructuredCssCollector();
+    const tracker = new CssVariableTracker();
+    processStyleSheetStructured(
+      sheet([new CSSLayerBlockRule("variables.base", [
+        styleRule("body.game .app", "--color-border-light-2: #c9c7b8"),
+      ]) as any]),
+      collector, tracker, new Set<string>(),
+    );
+    expect(tracker.definitions.get("--color-border-light-2")).toBe("#c9c7b8");
+  });
+
   it("MEDIA_RULE → media 컨텍스트로 자식 STYLE_RULE 수집", () => {
     const collector = new StructuredCssCollector();
     processStyleSheetStructured(
