@@ -78,6 +78,13 @@ export function registerAllSettings(): void {
     type: Boolean,
   });
 
+  gs.register(MODULE_ID, SETTINGS.lastExportMode, {
+    scope: "client",
+    config: false,
+    default: "solo",
+    type: String,
+  });
+
   // ─── Chitchat 동작 ───
   gs.register(MODULE_ID, SETTINGS.customPrivTalkAlias, {
     name: `${MODULE_ID}.settings.customPrivTalkAlias.name`,

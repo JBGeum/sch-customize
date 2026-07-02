@@ -7,6 +7,7 @@ export const SETTINGS = {
   enableSpeakerBar: "enableSpeakerBar",
   includeWhisper: "includeWhisper",
   hideWhisper: "hideWhisper",
+  lastExportMode: "lastExportMode",
   customPrivTalkAlias: "customPrivTalkAlias",
   markdownDelUse: "markdownDelUse",
   privTalkAsOOC: "privTalkAsOOC",
