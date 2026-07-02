@@ -1,5 +1,13 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { appendChatContents, populateChatDoc, extractImageSets } from "../src/archive/export";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import {
+  appendChatContents,
+  populateChatDoc,
+  extractImageSets,
+  injectRuntimeScript,
+  generateSimpleHtmlFromChats,
+  generateHtmlFromChats,
+  generateIncrementalHtmlFromChats,
+} from "../src/archive/export";
 import { isWhisper, shouldExcludeWhisper, resolveChatMergeFlag, selectBodySource, buildMessageClasses, maskWhisperSpeaker } from "../src/archive/message-view";
 
 // Foundry 전역 스텁 — whisper 수신자명 / actor 조회(초상화 없음 경로)
@@ -225,5 +233,68 @@ describe("appendChatContents — 삭제된 속삭임 수신자(C6)", () => {
     const chat = plain({ alias: "Bob", speaker: { alias: "Bob" }, content: "secret", whisper: ["u1", "u2"] });
     const box = await append(chat, { whisper: true, hideWhisper: true });
     expect(box.querySelector(".chat-name")!.textContent).toBe("Bob\n→[RCP-u1,RCP-u2]");
+  });
+});
+
+describe("injectRuntimeScript", () => {
+  it("head에 인터랙션 <script>를 주입하고 핵심 동작 토큰을 포함한다", () => {
+    const doc = document.implementation.createHTMLDocument("t");
+    injectRuntimeScript(doc);
+    const scripts = doc.head.querySelectorAll("script");
+    expect(scripts.length).toBe(1);
+    const text = scripts[0].textContent ?? "";
+    expect(text).toContain("dice-tooltip");
+    expect(text).toContain("whisper-hidden");
+    expect(text).toContain("collapsible");
+  });
+});
+
+// 회귀 방지: 3개 generate* 경로가 각각 인터랙션 <script>를 정확히 한 번 주입하는지 end-to-end 검증.
+// (<script> 텍스트가 템플릿에서 빠지고 injectRuntimeScript 런타임 주입으로 바뀌었으므로,
+//  향후 어느 한 경로에서 주입 호출이 누락돼도 이 블록이 잡아낸다.)
+describe("generate* 경로 — 인터랙션 <script> 주입 (회귀 방지)", () => {
+  // populateChatDoc 는 .foundry-chat-container 를, getBaselineCss 는 첫 <style> 를 요구한다.
+  const TEMPLATE =
+    '<!DOCTYPE html><html><head><style>html,body{margin:0}</style></head><body><div class="foundry-chat-container"></div></body></html>';
+
+  // createCssList/injectInlineCss 는 game.users 를 for..of 로 순회(사용자 색상 룰)하므로 iterable 필요.
+  // 상단 전역 game.users 는 { get } 객체(비-iterable)라, 이 블록 동안만 빈 배열로 교체 후 복원한다.
+  const origUsers = (globalThis as any).game.users;
+
+  beforeEach(() => {
+    (globalThis as any).game.users = [];
+    // 두 템플릿 URL 모두 동일한 최소 HTML 로 응답. 코드가 쓰는 건 response.text() 뿐.
+    vi.stubGlobal("fetch", vi.fn(async () => ({ text: async () => TEMPLATE })));
+  });
+  afterEach(() => {
+    (globalThis as any).game.users = origUsers;
+    vi.unstubAllGlobals();
+  });
+
+  // outerHTML 을 재파싱해 실제 <script> 엘리먼트 수를 센다. (단순 문자열 매칭은 스크립트 본문
+  // 주석에 들어 있는 리터럴 "<script>" 까지 세어 오탐하므로, 엘리먼트 카운트가 견고하다.)
+  function assertSingleInteractionScript(html: string) {
+    const parsed = new DOMParser().parseFromString(html, "text/html");
+    const scripts = parsed.querySelectorAll("script");
+    expect(scripts.length).toBe(1);
+    const text = scripts[0].textContent ?? "";
+    expect(text).toContain("dice-tooltip");
+    expect(text).toContain("whisper-hidden");
+    expect(text).toContain("collapsible");
+  }
+
+  it("generateSimpleHtmlFromChats (창 열기 경로)", async () => {
+    const [html] = await generateSimpleHtmlFromChats([], { includeWhisper: false, hideWhisper: false });
+    assertSingleInteractionScript(html);
+  });
+
+  it("generateHtmlFromChats (다운로드 경로)", async () => {
+    const [html] = await generateHtmlFromChats([], { includeWhisper: false, hideWhisper: false });
+    assertSingleInteractionScript(html);
+  });
+
+  it("generateIncrementalHtmlFromChats (누적 경로)", async () => {
+    const [html] = await generateIncrementalHtmlFromChats([], { includeWhisper: false, hideWhisper: false });
+    assertSingleInteractionScript(html);
   });
 });

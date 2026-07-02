@@ -4,49 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Chat Log</title>
-  <script>
-    window.addEventListener('load', function() {
-      const diceRollElements = document.querySelectorAll('.dice-roll');
-      diceRollElements.forEach(function (diceRollElement) {
-        diceRollElement.addEventListener('click', function (event) {
-          const clickedElement = event.target;
-          if (clickedElement.matches('.dice-roll, .dice-roll *')) {
-            const diceRoll = event.target.closest('.dice-roll');
-            if (!diceRoll) return;
-            const tooltips = diceRoll.querySelectorAll('.dice-tooltip');
-            tooltips.forEach((tooltip) => {
-              tooltip.classList.toggle('expanded');
-            });
-          }
-        });
-      });
-
-      const whisperElements = document.querySelectorAll('.whisper');
-      whisperElements.forEach(function (whisperElement) {
-        whisperElement.addEventListener('click', function (event) {
-          event.target.closest('.whisper').classList.toggle('whisper-hidden');
-        });
-      });
-
-      const collapsibleElements = document.querySelectorAll('.chat-card .description.collapsible');
-      collapsibleElements.forEach(function (element) {
-        element.classList.add('collapsed');
-        element.addEventListener('click', function (event) {
-          if (event.target.closest('button, a, input')) return;
-          element.classList.toggle('collapsed');
-        });
-      });
-
-      const descriptionElements = document.querySelectorAll('.chat-card .description:not(.collapsible)');
-      descriptionElements.forEach(function (element) {
-        element.style.cursor = 'pointer';
-        element.addEventListener('click', function (event) {
-          if (event.target.closest('button, a, input')) return;
-          element.classList.toggle('collapsed');
-        });
-      });
-    });
-  </script>
+  <!-- 인터랙션 스크립트는 export.ts가 런타임에 주입한다(src/archive/archive-interactive.js). -->
   <link href="/fonts/fontawesome/css/all.min.css" rel="stylesheet" type="text/css" media="all">
   <link rel="stylesheet" href="chat-styles.css">
 </head>

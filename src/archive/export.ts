@@ -31,6 +31,7 @@ import {
 import { createCssList } from "./css";
 import { mergeCss } from "./css-merge";
 import { isWhisper, shouldExcludeWhisper, resolveChatMergeFlag, selectBodySource, buildMessageClasses, maskWhisperSpeaker } from "./message-view";
+import ARCHIVE_INTERACTIVE_SCRIPT from "./archive-interactive.js?raw";
 
 const TEMPLATE_PATH = `${TEMPLATE_BASE}/chat-archive-template.html`;
 const INCREMENTAL_TEMPLATE_PATH = `${TEMPLATE_BASE}/chat-archive-template-incremental.html`;
@@ -214,7 +215,7 @@ export function extractImageSets(doc: Document): { contentImg: Set<string>; port
  * 별도 창 표시용 — 이미지 src를 재매핑하지 않는다.
  * `extractImageSets`가 빠진 경량 버전.
  */
-async function generateSimpleHtmlFromChats(chats: any[], settings: { includeWhisper: boolean; hideWhisper: boolean }): Promise<[string]> {
+export async function generateSimpleHtmlFromChats(chats: any[], settings: { includeWhisper: boolean; hideWhisper: boolean }): Promise<[string]> {
   const response = await fetch(TEMPLATE_PATH);
   const templateHtml = await response.text();
   const parser = new DOMParser();
@@ -223,6 +224,7 @@ async function generateSimpleHtmlFromChats(chats: any[], settings: { includeWhis
   await populateChatDoc(doc, chats, settings);
 
   injectInlineCss(doc);
+  injectRuntimeScript(doc);
   return [doc.documentElement.outerHTML];
 }
 
@@ -233,7 +235,7 @@ async function generateSimpleHtmlFromChats(chats: any[], settings: { includeWhis
  *   - cssText는 단독 템플릿의 baseline + `createCssList` 결과를 합친 뒤,
  *     `existingCssText`가 있으면 union 머지한 결과.
  */
-async function generateIncrementalHtmlFromChats(chats: any[], opts: { existingCssText?: string | null; includeWhisper: boolean; hideWhisper: boolean }): Promise<[string, Set<string>, Set<string>, string]> {
+export async function generateIncrementalHtmlFromChats(chats: any[], opts: { existingCssText?: string | null; includeWhisper: boolean; hideWhisper: boolean }): Promise<[string, Set<string>, Set<string>, string]> {
   const { existingCssText = null, includeWhisper, hideWhisper } = opts;
 
   const response = await fetch(INCREMENTAL_TEMPLATE_PATH);
@@ -250,6 +252,7 @@ async function generateIncrementalHtmlFromChats(chats: any[], opts: { existingCs
   const freshCss = `${baselineCss}\n${dynamicCss}`;
   const cssText = existingCssText ? mergeCss(existingCssText, freshCss) : freshCss;
 
+  injectRuntimeScript(doc);
   updateImageSources(doc);
   return [doc.documentElement.outerHTML, contentImg, portraitImg, cssText];
 }
@@ -257,7 +260,7 @@ async function generateIncrementalHtmlFromChats(chats: any[], opts: { existingCs
 /**
  * 다운로드용 — 이미지 src를 zip 상대경로로 매핑하고, 이미지 URL 집합을 함께 반환한다.
  */
-async function generateHtmlFromChats(chats: any[], settings: { includeWhisper: boolean; hideWhisper: boolean }): Promise<[string, Set<string>, Set<string>]> {
+export async function generateHtmlFromChats(chats: any[], settings: { includeWhisper: boolean; hideWhisper: boolean }): Promise<[string, Set<string>, Set<string>]> {
   const response = await fetch(TEMPLATE_PATH);
   const templateHtml = await response.text();
   const parser = new DOMParser();
@@ -268,6 +271,7 @@ async function generateHtmlFromChats(chats: any[], settings: { includeWhisper: b
   const { contentImg, portraitImg } = extractImageSets(doc);
 
   injectInlineCss(doc);
+  injectRuntimeScript(doc);
   updateImageSources(doc);
   return [doc.documentElement.outerHTML, contentImg, portraitImg];
 }
@@ -299,6 +303,17 @@ function injectInlineCss(doc: Document): void {
 
   const headElement = doc.head || doc.getElementsByTagName("head")[0];
   headElement.appendChild(styleElement);
+}
+
+/**
+ * 아카이브 문서 head에 인터랙션 스크립트(주사위/귓속말/카드 접기 토글)를 주입한다.
+ * 두 템플릿이 복붙하던 `<script>`의 단일 출처 — 모든 생성 모드가 이 함수로 삽입.
+ */
+export function injectRuntimeScript(doc: Document): void {
+  const script = doc.createElement("script");
+  script.textContent = ARCHIVE_INTERACTIVE_SCRIPT;
+  const headElement = doc.head || doc.getElementsByTagName("head")[0];
+  headElement.appendChild(script);
 }
 
 /**
