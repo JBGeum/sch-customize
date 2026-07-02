@@ -23,6 +23,7 @@ describe("buildExportModeFormHtml", () => {
     expect(html).toContain(`class="sch-mode-desc" data-mode="solo"`);
     expect(html).toContain(`data-mode="file-upload"`);
     expect(html).toContain(`name="sch-existing-css"`);
+    expect(html).toContain("width:24rem"); // 다이얼로그 가로 고정(텍스트 줄바꿈)
   });
 
   it("미지원 시 directory 라디오 없음", () => {

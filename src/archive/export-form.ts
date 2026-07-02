@@ -30,13 +30,13 @@ export function buildExportModeFormHtml(): string {
           <strong>${t(labelKey)}</strong>
         </label>`;
   const desc = (value: string, inner: string) => `
-        <div class="sch-mode-desc" data-mode="${value}" style="display:none;padding:0 0 0.3rem 1.5rem;">${inner}</div>`;
+        <div class="sch-mode-desc" data-mode="${value}" style="display:none;padding:0 0 0.3rem 1.5rem;word-break:keep-all;overflow-wrap:break-word;">${inner}</div>`;
   const directoryBlock = isDirectoryPickerSupported()
     ? row("directory", "mode.directory.label")
       + desc("directory", `<small style="opacity:0.85">${t("mode.directory.hint")}</small>`)
     : "";
   return `
-    <div class="sch-customize-export-form" style="display:flex;flex-direction:column;gap:0.5rem;">
+    <div class="sch-customize-export-form" style="display:flex;flex-direction:column;gap:0.5rem;width:24rem;max-width:100%;box-sizing:border-box;">
       <fieldset style="display:flex;flex-direction:column;gap:0.2rem;padding:0.5rem;">
         <legend>${t("legend")}</legend>
         ${row("solo", "mode.solo.label")}
