@@ -14,7 +14,34 @@ import {
   requestSaveTarget,
   writeToSaveTarget,
   zipInsideFolder,
+  fetchImages,
 } from "../src/archive/util";
+
+describe("buildArchiveFilename includeTime", () => {
+  it("기본: 날짜만 (chat-log-YYYYMMDD-world.ext)", () => {
+    vi.stubGlobal("game", { world: { title: "W" } });
+    expect(buildArchiveFilename("chat-log", "html")).toMatch(/^chat-log-\d{8}-W\.html$/);
+    vi.unstubAllGlobals();
+  });
+  it("includeTime: 날짜+시각 (chat-log-YYYYMMDD-HHmm-world.ext)", () => {
+    vi.stubGlobal("game", { world: { title: "W" } });
+    expect(buildArchiveFilename("chat-log", "html", { includeTime: true })).toMatch(/^chat-log-\d{8}-\d{4}-W\.html$/);
+    vi.unstubAllGlobals();
+  });
+});
+
+describe("fetchImages", () => {
+  it("URL을 fetch해 {name, blob} 배열, 실패는 제외", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.includes("bad")) throw new Error("fail");
+      return { blob: async () => new Blob([url]) };
+    }));
+    const out = await fetchImages(["http://x/a.png", "http://x/bad.png", "http://x/b.jpg"]);
+    expect(out.map(e => e.name)).toEqual(["a.png", "b.jpg"]);
+    expect(out[0].blob).toBeInstanceOf(Blob);
+    vi.unstubAllGlobals();
+  });
+});
 
 describe("hexToRgba", () => {
   it("#rrggbb 와 opacity 를 rgba 로 변환", () => {

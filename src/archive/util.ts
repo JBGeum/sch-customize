@@ -18,14 +18,14 @@
  * - 월드명은 `game.world.title` → `game.world.id` → `"world"` 순으로 폴백
  * - 파일시스템 금지 문자(`\ / : * ? " < > |`)는 `_`로 치환
  */
-export function buildArchiveFilename(prefix: string, ext: string): string {
+export function buildArchiveFilename(prefix: string, ext: string, opts: { includeTime?: boolean } = {}): string {
   const date = new Date();
-  const yyyyMMdd = date.getFullYear().toString()
-    + (date.getMonth() + 1).toString().padStart(2, "0")
-    + date.getDate().toString().padStart(2, "0");
+  const p2 = (n: number) => n.toString().padStart(2, "0");
+  const yyyyMMdd = date.getFullYear().toString() + p2(date.getMonth() + 1) + p2(date.getDate());
+  const time = opts.includeTime ? `-${p2(date.getHours())}${p2(date.getMinutes())}` : "";
   const worldName = (game.world?.title ?? game.world?.id ?? "world")
     .replace(/[\\/:*?"<>|]/g, "_");
-  return `${prefix}-${yyyyMMdd}-${worldName}.${ext}`;
+  return `${prefix}-${yyyyMMdd}${time}-${worldName}.${ext}`;
 }
 
 /**
@@ -292,17 +292,13 @@ export function updateImageSources(targetDoc: Document): void {
 const IMAGE_FETCH_CONCURRENCY = 6;
 
 /**
- * JSZip 인스턴스의 폴더에 fetch한 이미지를 채워 넣는다.
- *
- * 이미지 fetch는 동시성 상한(`IMAGE_FETCH_CONCURRENCY`) 청크 배치로 병렬 처리한다.
- * 각 fetch는 개별 try/catch로 격리되어, 한 이미지 실패가 나머지를 막지 않는다.
- * zip에 add하는 순서는 원래 삽입 순서를 유지하므로(파일명 충돌 시 마지막이 승리)
- * 출력은 직렬 처리와 동일하다.
+ * 이미지 URL 집합을 동시성 상한(`IMAGE_FETCH_CONCURRENCY`) 청크로 fetch한다.
+ * 각 fetch는 개별 try/catch로 격리되어 한 이미지 실패가 나머지를 막지 않는다(실패는 제외).
+ * 반환 순서는 입력 순서를 유지한다. zip/디렉터리 sink가 공유한다.
  */
-export async function zipInsideFolder(zip: any, imgSet: Iterable<string>, folderName: string): Promise<void> {
-  const imgFolder = zip.folder(folderName);
+export async function fetchImages(imgSet: Iterable<string>): Promise<Array<{ name: string; blob: Blob }>> {
   const urls = [...imgSet];
-
+  const out: Array<{ name: string; blob: Blob }> = [];
   for (let i = 0; i < urls.length; i += IMAGE_FETCH_CONCURRENCY) {
     const chunk = urls.slice(i, i + IMAGE_FETCH_CONCURRENCY);
     const entries = await Promise.all(chunk.map(async (url) => {
@@ -315,8 +311,18 @@ export async function zipInsideFolder(zip: any, imgSet: Iterable<string>, folder
         return null;
       }
     }));
-    entries.forEach((entry) => {
-      if (entry) imgFolder.file(entry.name, entry.blob);
-    });
+    for (const e of entries) if (e) out.push(e);
+  }
+  return out;
+}
+
+/**
+ * JSZip 인스턴스의 폴더에 fetch한 이미지를 채워 넣는다.
+ * 삽입 순서 보존(파일명 충돌 시 마지막 승리) → 직렬 처리와 동일.
+ */
+export async function zipInsideFolder(zip: any, imgSet: Iterable<string>, folderName: string): Promise<void> {
+  const imgFolder = zip.folder(folderName);
+  for (const { name, blob } of await fetchImages(imgSet)) {
+    imgFolder.file(name, blob);
   }
 }
