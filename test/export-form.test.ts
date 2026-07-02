@@ -13,14 +13,15 @@ afterEach(() => {
 });
 
 describe("buildExportModeFormHtml", () => {
-  it("지원 시 solo/directory/file-upload 라디오 + 기존 CSS 섹션", () => {
+  it("지원 시 solo/directory/file-upload 라디오 + 모드별 설명 div + 파일 input(file-upload 설명 내)", () => {
     vi.stubGlobal("game", { i18n: { localize: (k: string) => k }, settings: { get: () => false } });
     (window as any).showDirectoryPicker = () => {};
     const html = buildExportModeFormHtml();
     expect(html).toContain(`value="solo"`);
     expect(html).toContain(`value="directory"`);
     expect(html).toContain(`value="file-upload"`);
-    expect(html).toContain("sch-existing-css-section");
+    expect(html).toContain(`class="sch-mode-desc" data-mode="solo"`);
+    expect(html).toContain(`data-mode="file-upload"`);
     expect(html).toContain(`name="sch-existing-css"`);
   });
 
@@ -84,10 +85,14 @@ describe("attachExportFormHandlers", () => {
     const root = document.createElement("div");
     root.innerHTML = `
       <div class="sch-customize-export-form">
-        <input type="radio" name="sch-export-mode" value="solo" checked>
-        <input type="radio" name="sch-export-mode" value="directory">
-        <input type="radio" name="sch-export-mode" value="file-upload">
-        <div class="sch-existing-css-section"></div>
+        <label><input type="radio" name="sch-export-mode" value="solo" checked></label>
+        <div class="sch-mode-desc" data-mode="solo" style="display:none"></div>
+        <label><input type="radio" name="sch-export-mode" value="directory"></label>
+        <div class="sch-mode-desc" data-mode="directory" style="display:none"></div>
+        <label><input type="radio" name="sch-export-mode" value="file-upload"></label>
+        <div class="sch-mode-desc" data-mode="file-upload" style="display:none">
+          <input type="file" name="sch-existing-css">
+        </div>
       </div>`;
     return root;
   }
@@ -96,17 +101,30 @@ describe("attachExportFormHandlers", () => {
     r.checked = true;
     r.dispatchEvent(new Event("change"));
   }
-  it("file-upload만 기존CSS 섹션 표시, solo/directory는 숨김", () => {
+  const desc = (root: HTMLElement, mode: string) =>
+    root.querySelector(`.sch-mode-desc[data-mode="${mode}"]`) as HTMLElement;
+
+  it("선택한 모드 설명만 표시(초기 solo)", () => {
     const root = buildForm();
     attachExportFormHandlers(root);
-    const section = root.querySelector(".sch-existing-css-section") as HTMLElement;
-    expect(section.style.display).toBe("none"); // 초기 solo
+    expect(desc(root, "solo").style.display).not.toBe("none");
+    expect(desc(root, "directory").style.display).toBe("none");
+    expect(desc(root, "file-upload").style.display).toBe("none");
+  });
+  it("file-upload 선택 → file-upload 설명만(파일 input 포함)", () => {
+    const root = buildForm();
+    attachExportFormHandlers(root);
     setMode(root, "file-upload");
-    expect(section.style.display).toBe("");
+    expect(desc(root, "file-upload").style.display).not.toBe("none");
+    expect(desc(root, "solo").style.display).toBe("none");
+    expect(desc(root, "file-upload").querySelector(`input[name="sch-existing-css"]`)).not.toBeNull();
+  });
+  it("directory 선택 → directory 설명만", () => {
+    const root = buildForm();
+    attachExportFormHandlers(root);
     setMode(root, "directory");
-    expect(section.style.display).toBe("none");
-    setMode(root, "solo");
-    expect(section.style.display).toBe("none");
+    expect(desc(root, "directory").style.display).not.toBe("none");
+    expect(desc(root, "solo").style.display).toBe("none");
   });
 });
 

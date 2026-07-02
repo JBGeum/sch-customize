@@ -24,30 +24,31 @@ export function buildExportModeFormHtml(): string {
   const gs = game.settings as any;
   const incChecked = gs.get(MODULE_ID, SETTINGS.includeWhisper) ? "checked" : "";
   const hideChecked = gs.get(MODULE_ID, SETTINGS.hideWhisper) ? "checked" : "";
-  const directoryRadio = isDirectoryPickerSupported() ? `
-        <label style="display:flex;align-items:flex-start;gap:0.4rem;">
-          <input type="radio" name="sch-export-mode" value="directory">
-          <span><strong>${t("mode.directory.label")}</strong><br>
-            <small style="opacity:0.8">${t("mode.directory.hint")}</small>
-          </span>
-        </label>` : "";
+  const row = (value: string, labelKey: string) => `
+        <label class="sch-mode-row" style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;">
+          <input type="radio" name="sch-export-mode" value="${value}"${value === "solo" ? " checked" : ""}>
+          <strong>${t(labelKey)}</strong>
+        </label>`;
+  const desc = (value: string, inner: string) => `
+        <div class="sch-mode-desc" data-mode="${value}" style="display:none;padding:0 0 0.3rem 1.5rem;">${inner}</div>`;
+  const directoryBlock = isDirectoryPickerSupported()
+    ? row("directory", "mode.directory.label")
+      + desc("directory", `<small style="opacity:0.85">${t("mode.directory.hint")}</small>`)
+    : "";
   return `
-    <div class="sch-customize-export-form" style="display:flex;flex-direction:column;gap:0.6rem;">
-      <fieldset style="display:flex;flex-direction:column;gap:0.4rem;padding:0.5rem;">
+    <div class="sch-customize-export-form" style="display:flex;flex-direction:column;gap:0.5rem;">
+      <fieldset style="display:flex;flex-direction:column;gap:0.2rem;padding:0.5rem;">
         <legend>${t("legend")}</legend>
-        <label style="display:flex;align-items:flex-start;gap:0.4rem;">
-          <input type="radio" name="sch-export-mode" value="solo" checked>
-          <span><strong>${t("mode.solo.label")}</strong><br>
-            <small style="opacity:0.8">${t("mode.solo.hint")}</small>
-          </span>
-        </label>
-        ${directoryRadio}
-        <label style="display:flex;align-items:flex-start;gap:0.4rem;">
-          <input type="radio" name="sch-export-mode" value="file-upload">
-          <span><strong>${t("mode.file.label")}</strong><br>
-            <small style="opacity:0.8">${t("mode.file.hint")}</small>
-          </span>
-        </label>
+        ${row("solo", "mode.solo.label")}
+        ${desc("solo", `<small style="opacity:0.85">${t("mode.solo.hint")}</small>`)}
+        ${directoryBlock}
+        ${row("file-upload", "mode.file.label")}
+        ${desc("file-upload", `
+          <small style="opacity:0.85">${t("mode.file.hint")}</small>
+          <label style="display:flex;flex-direction:column;gap:0.3rem;margin-top:0.4rem;">
+            <span><strong>${t("existing.label")}</strong></span>
+            <input type="file" name="sch-existing-css" accept=".css,text/css">
+          </label>`)}
       </fieldset>
       <div class="sch-whisper-options" style="display:flex;flex-direction:column;gap:0.3rem;padding:0.4rem 0.6rem;">
         <label style="display:flex;align-items:center;gap:0.4rem;">
@@ -57,13 +58,6 @@ export function buildExportModeFormHtml(): string {
         <label style="display:flex;align-items:center;gap:0.4rem;">
           <input type="checkbox" name="sch-hide-whisper" ${hideChecked}>
           <span>${t("hideWhisper.label")}</span>
-        </label>
-      </div>
-      <div class="sch-existing-css-section" style="display:none;padding:0.4rem 0.6rem;border-top:1px dashed rgba(0,0,0,0.2);">
-        <label style="display:flex;flex-direction:column;gap:0.3rem;">
-          <span><strong>${t("existing.label")}</strong></span>
-          <input type="file" name="sch-existing-css" accept=".css,text/css">
-          <small style="opacity:0.8">${t("existing.hint")}</small>
         </label>
       </div>
     </div>
@@ -83,7 +77,8 @@ export function findExportForm(rootEl: any): Element | null {
 }
 
 /**
- * 모드 선택에 따라 기존 CSS 선택 섹션 표시/숨김 토글.
+ * 아코디언: 선택한 모드의 설명(.sch-mode-desc[data-mode])만 표시, 나머지는 숨김.
+ * (file-upload 설명 안에 기존 CSS 파일 input이 들어 있어 함께 노출/은닉된다.)
  */
 export function attachExportFormHandlers(rootEl: any): void {
   const form = findExportForm(rootEl);
@@ -92,10 +87,10 @@ export function attachExportFormHandlers(rootEl: any): void {
     return;
   }
   const radios = form.querySelectorAll("input[name='sch-export-mode']");
-  const section = form.querySelector(".sch-existing-css-section");
+  const descs = form.querySelectorAll(".sch-mode-desc");
   const update = () => {
     const value = (form.querySelector("input[name='sch-export-mode']:checked") as HTMLInputElement | null)?.value;
-    if (section) (section as HTMLElement).style.display = value === "file-upload" ? "" : "none";
+    descs.forEach(d => { (d as HTMLElement).style.display = (d as HTMLElement).dataset.mode === value ? "" : "none"; });
   };
   radios.forEach(r => r.addEventListener("change", update));
   update();
