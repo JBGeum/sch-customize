@@ -44,6 +44,7 @@ import { readWhisperSettings } from "./settings/whisper";
  * - `openChatArchive(chats?)`            → 새 창에 채팅 로그 표시
  * - `downloadArchiveFile(chats?)`        → 단독 zip 다운로드
  * - `downloadIncrementalArchive(chats?, opts?)` → 누적 zip 다운로드
+ * - `openExportDialog()`                 → export 모드 선택 다이얼로그 열기
  *
  * 인자를 생략하면 현재 월드의 모든 메시지(game.messages.contents)를 사용한다.
  * 매크로 호환성을 위해 wrapper에서 기본값을 채워주는 형태로 둔다.
