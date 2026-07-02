@@ -97,7 +97,7 @@ async function dispatchExport({ mode, existingCssText, includeWhisper, hideWhisp
  *  - 렌더된 폼 element를 closure 변수에 저장해 두면 dialog.element 의존 없이 안정적으로 접근 가능.
  *  - `default`는 dialog 옵션 top-level의 action 이름이며, 버튼 객체에 `default: true`를 두지 않는다.
  */
-async function showExportModeDialog(): Promise<void> {
+export async function showExportModeDialog(): Promise<void> {
   const title = game.i18n!.localize("sch-customize.dialog.export.title");
   const contentHtml = buildExportModeFormHtml();
   const confirmLabel = game.i18n!.localize("sch-customize.dialog.download.button.download");

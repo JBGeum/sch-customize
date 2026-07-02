@@ -35,6 +35,7 @@ import {
   downloadArchiveFile,
   downloadIncrementalArchive,
 } from "./archive/export";
+import { showExportModeDialog } from "./archive/dialog";
 import { readWhisperSettings } from "./settings/whisper";
 
 /**
@@ -58,6 +59,7 @@ function registerModuleApi() {
     downloadArchiveFile: (chats: any) => downloadArchiveFile(chats ?? allChats(), readWhisperSettings()),
     downloadIncrementalArchive: (chats: any, opts: any) =>
       downloadIncrementalArchive(chats ?? allChats(), { ...readWhisperSettings(), ...opts }),
+    openExportDialog: () => showExportModeDialog(),
   };
 }
 
