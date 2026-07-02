@@ -229,6 +229,14 @@ export function extractPrivTalkFromContent(htmlContent: string): string {
 }
 
 /**
+ * chat-portrait 모듈이 주입하는 이름 헤더 제거 — 아카이브는 이름을 chat-name으로 따로 렌더하므로 중복.
+ * 시스템별 suffix(-generic/-dnd5e/-pf2e…)를 접두 매칭으로 모두 제거(하드코딩 suffix rot 방지).
+ */
+function stripRedundantPortraitName(el: Element): void {
+  el.querySelectorAll('[class*="chat-portrait-text-content-name-"]').forEach(node => node.remove());
+}
+
+/**
  * 임시 렌더된 메시지 element에서 아카이브용 콘텐츠 영역을 추출한다.
  * priv_talk인 경우 본문 div만, 일반 메시지인 경우 .flavor-text + .message-content를 복사한다.
  */
@@ -250,17 +258,15 @@ export function extractMessageContent(messageElement: Element, isPrivTalk: boole
   const content = messageElement.querySelector(".message-content");
   if (content) {
     const clone = content.cloneNode(true) as Element;
-    // 아카이브에서 제외할 요소 — 필요 시 여기에 추가
-    const excludeSelectors = [
-      "h4.chat-portrait-text-content-name-generic.chat-portrait-flexrow",
-    ];
-    excludeSelectors.forEach(selector => {
-      clone.querySelectorAll(selector).forEach(el => el.remove());
-    });
+    stripRedundantPortraitName(clone);
     result += clone.innerHTML;
   }
 
-  return result || (messageElement.cloneNode(true) as Element).outerHTML;
+  if (result) return result;
+
+  const fallback = messageElement.cloneNode(true) as Element;
+  stripRedundantPortraitName(fallback);
+  return fallback.outerHTML;
 }
 
 /**

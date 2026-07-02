@@ -134,6 +134,25 @@ describe("extractMessageContent", () => {
     el.textContent = "hi";
     expect(extractMessageContent(el, false)).toContain("lonely");
   });
+  it("일반화: dnd5e/pf2e 등 다른 suffix의 chat-portrait 이름 헤더도 제거", () => {
+    const el = document.createElement("div");
+    el.innerHTML =
+      `<div class="message-content">Body` +
+      `<h4 class="chat-portrait-text-content-name-dnd5e chat-portrait-flexrow">D</h4>` +
+      `<h4 class="chat-portrait-text-content-name-pf2e chat-portrait-flexrow">P</h4></div>`;
+    const out = extractMessageContent(el, false);
+    expect(out).toContain("Body");
+    expect(out).not.toContain("chat-portrait-text-content-name-dnd5e");
+    expect(out).not.toContain("chat-portrait-text-content-name-pf2e");
+  });
+  it("폴백 경로(.message-content 없음)에서도 chat-portrait 헤더 제거", () => {
+    const el = document.createElement("div");
+    el.className = "lonely";
+    el.innerHTML = `keep<h4 class="chat-portrait-text-content-name-dnd5e chat-portrait-flexrow">D</h4>`;
+    const out = extractMessageContent(el, false);
+    expect(out).toContain("keep");
+    expect(out).not.toContain("chat-portrait-text-content-name-dnd5e");
+  });
 });
 
 describe("updateImageSources", () => {
