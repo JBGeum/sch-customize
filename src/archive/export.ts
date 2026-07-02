@@ -32,6 +32,7 @@ import { createCssList } from "./css";
 import { mergeCss } from "./css-merge";
 import { isWhisper, shouldExcludeWhisper, resolveChatMergeFlag, selectBodySource, buildMessageClasses, maskWhisperSpeaker } from "./message-view";
 import ARCHIVE_INTERACTIVE_SCRIPT from "./archive-interactive.js?raw";
+import { getArchiveDirectory, readExistingCss, writeTextFile, writeImagesToDir } from "./dir-target";
 
 const TEMPLATE_PATH = `${TEMPLATE_BASE}/chat-archive-template.html`;
 const INCREMENTAL_TEMPLATE_PATH = `${TEMPLATE_BASE}/chat-archive-template-incremental.html`;
@@ -128,6 +129,27 @@ export async function downloadIncrementalArchive(chats: any[], opts: { existingC
 
   const blob = await zip.generateAsync({ type: "blob" });
   await writeToSaveTarget(target, blob);
+}
+
+/**
+ * 폴더선택 export — File System Access로 선택 폴더에 낱개 파일 직접 기록.
+ * 폴더의 기존 chat-styles.css를 자동 read→merge→write(누적). 재업로드·zip 불필요.
+ * 핸들을 **먼저** 확보(사용자 제스처)한 뒤 무거운 생성/기록을 진행한다.
+ */
+export async function exportIncrementalToDirectory(chats: any[], settings: { includeWhisper: boolean; hideWhisper: boolean }): Promise<void> {
+  const dir = await getArchiveDirectory();
+  if (!dir) return;
+
+  const existingCssText = await readExistingCss(dir);
+  const [htmlContent, contentImg, portraitImg, cssText] =
+    await generateIncrementalHtmlFromChats(chats, { existingCssText, includeWhisper: settings.includeWhisper, hideWhisper: settings.hideWhisper });
+
+  await writeTextFile(dir, SHARED_CSS_FILENAME, cssText);
+  await writeTextFile(dir, buildArchiveFilename("chat-log", "html", { includeTime: true }), htmlContent);
+  await writeImagesToDir(dir, contentImg, "images");
+  await writeImagesToDir(dir, portraitImg, "portraits");
+
+  ui.notifications?.info(game.i18n!.localize("sch-customize.dialog.export.directory.done"));
 }
 
 /**
