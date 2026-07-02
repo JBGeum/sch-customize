@@ -137,7 +137,7 @@ export async function downloadIncrementalArchive(chats: any[], opts: { existingC
  * 핸들을 **먼저** 확보(사용자 제스처)한 뒤 무거운 생성/기록을 진행한다.
  */
 export async function exportIncrementalToDirectory(chats: any[], settings: { includeWhisper: boolean; hideWhisper: boolean }): Promise<void> {
-  const dir = await getArchiveDirectory();
+  const dir = await getArchiveDirectory(game.world!.id);
   if (!dir) return;
 
   const existingCssText = await readExistingCss(dir);

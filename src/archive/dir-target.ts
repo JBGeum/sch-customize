@@ -8,7 +8,7 @@ import { fetchImages } from "./util";
 
 const DB_NAME = "sch-customize-archive";
 const STORE = "handles";
-const KEY = "archiveDir";
+const KEY_PREFIX = "archiveDir:";
 
 function idbOpen(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -46,16 +46,18 @@ async function ensurePermission(handle: any): Promise<boolean> {
 }
 
 /**
- * 아카이브 폴더 핸들 확보. IndexedDB에 기억된 핸들 우선(권한 재확인), 없거나 거부면 picker.
- * **사용자 제스처 안에서 호출**해야 한다. 취소(AbortError)/실패 시 null.
+ * 아카이브 폴더 핸들 확보. **월드별로** IndexedDB에 기억한다(월드마다 저장 경로가 다를 수 있으므로).
+ * 해당 월드의 기억된 핸들 우선(권한 재확인), 없거나 거부면 picker.
+ * **사용자 제스처 안에서 호출**해야 한다. 취소(AbortError) 시 null, 그 외 실패는 상위로 전파.
  * (라이브 전용 — jsdom 미커버.)
  */
-export async function getArchiveDirectory(): Promise<any | null> {
+export async function getArchiveDirectory(worldId: string): Promise<any | null> {
+  const key = KEY_PREFIX + worldId;
   try {
-    const stored = await idbGet(KEY).catch(() => null);
+    const stored = await idbGet(key).catch(() => null);
     if (stored && (await ensurePermission(stored))) return stored;
     const handle = await (window as any).showDirectoryPicker({ mode: "readwrite" });
-    await idbSet(KEY, handle).catch(() => {});
+    await idbSet(key, handle).catch(() => {});
     return handle;
   } catch (e) {
     if ((e as any)?.name === "AbortError") return null; // 사용자 취소 — 조용히 중단

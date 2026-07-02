@@ -34,7 +34,7 @@ describe("exportIncrementalToDirectory", () => {
     const dir = fakeDir();
     (getArchiveDirectory as any).mockResolvedValue(dir);
     vi.stubGlobal("fetch", vi.fn(async () => ({ text: async () => TEMPLATE, blob: async () => new Blob(["x"]) })));
-    vi.stubGlobal("game", { users: [], world: { title: "W" }, i18n: { localize: (k: string) => k } });
+    vi.stubGlobal("game", { users: [], world: { title: "W", id: "w1" }, i18n: { localize: (k: string) => k } });
     (globalThis as any).ui = { notifications: { info: vi.fn() } };
 
     await exportIncrementalToDirectory([], { includeWhisper: false, hideWhisper: false });
@@ -44,6 +44,7 @@ describe("exportIncrementalToDirectory", () => {
   });
 
   it("getArchiveDirectory가 null이면 아무 것도 안 씀(취소)", async () => {
+    vi.stubGlobal("game", { world: { id: "w1" } });
     (getArchiveDirectory as any).mockResolvedValue(null);
     await expect(exportIncrementalToDirectory([], { includeWhisper: false, hideWhisper: false })).resolves.toBeUndefined();
   });
