@@ -12,7 +12,8 @@
  */
 
 import { MODULE_ID } from "../constants";
-import { ExportChatArchiveMenu, openChatArchiveWindow } from "../archive/dialog";
+import { ExportChatArchiveMenu, openChatArchiveWindow, ResetArchiveDirectoryMenu } from "../archive/dialog";
+import { isDirectoryPickerSupported } from "../archive/dir-target";
 import { updateCssProperty } from "../appearance";
 import { SETTINGS } from "./keys";
 
@@ -46,6 +47,17 @@ export function registerAllSettings(): void {
     icon: "fas fa-arrow-up-right-from-square",
     type: openChatArchiveWindow,
   });
+
+  // "폴더에 저장" 모드가 기억한 폴더 선택 초기화(폴더 이동·삭제로 export 실패/크래시 시 복구).
+  // directory 모드 지원 환경(Chromium)에서만 노출.
+  if (isDirectoryPickerSupported()) {
+    gs.registerMenu(MODULE_ID, "resetArchiveDirectory", {
+      name: `${MODULE_ID}.settings.resetArchiveDirectory.name`,
+      hint: `${MODULE_ID}.settings.resetArchiveDirectory.hint`,
+      icon: "fas fa-folder-xmark",
+      type: ResetArchiveDirectoryMenu,
+    });
+  }
 
   // ─── Chat Archive 옵션 ───
   gs.register(MODULE_ID, SETTINGS.includeWhisper, {

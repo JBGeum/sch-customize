@@ -33,6 +33,14 @@ function idbSet(key: string, val: any): Promise<void> {
     tx.onerror = () => reject(tx.error);
   }));
 }
+function idbDelete(key: string): Promise<void> {
+  return idbOpen().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, "readwrite");
+    tx.objectStore(STORE).delete(key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  }));
+}
 
 export function isDirectoryPickerSupported(): boolean {
   return typeof (window as any).showDirectoryPicker === "function";
@@ -65,6 +73,14 @@ export async function getArchiveDirectory(worldId: string): Promise<any | null> 
     console.warn("[sch-customize] getArchiveDirectory 실패:", e);
     throw e;
   }
+}
+
+/**
+ * 해당 월드의 기억된 폴더 핸들을 IndexedDB에서 제거. 다음 export 시 폴더를 다시 고른다.
+ * 저장된 핸들이 가리키는 폴더가 이동·삭제돼 export가 실패/크래시할 때의 복구용.
+ */
+export async function clearArchiveDirectory(worldId: string): Promise<void> {
+  await idbDelete(KEY_PREFIX + worldId).catch(() => {});
 }
 
 /** 폴더의 chat-styles.css 읽기. 없으면 null. */

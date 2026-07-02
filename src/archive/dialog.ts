@@ -13,6 +13,7 @@
 
 import { downloadArchiveFile, downloadIncrementalArchive, openChatArchive, exportIncrementalToDirectory } from "./export";
 import { buildExportModeFormHtml, attachExportFormHandlers, readExportFormValues } from "./export-form";
+import { clearArchiveDirectory } from "./dir-target";
 
 /**
  * v13+ DialogV2 confirm 다이얼로그.
@@ -144,6 +145,32 @@ async function showExportModeDialog(): Promise<void> {
 export class ExportChatArchiveMenu extends FormApplication {
   override render(_force?: boolean, _options?: any): this {
     showExportModeDialog();
+    return this;
+  }
+  override getData(_options?: Partial<FormApplication.Options>): object { return {}; }
+  protected override async _updateObject(_event: Event, _formData?: object): Promise<void> {}
+}
+
+/**
+ * "폴더에 저장" 모드가 기억한 이 월드의 폴더 선택을 초기화하는 settings.registerMenu용 래퍼.
+ * 저장된 핸들의 폴더가 이동·삭제돼 export가 실패/크래시할 때 복구용.
+ */
+export class ResetArchiveDirectoryMenu extends FormApplication {
+  override render(_force?: boolean, _options?: any): this {
+    showConfirmDialog({
+      title: game.i18n!.localize("sch-customize.dialog.resetDir.title"),
+      content: game.i18n!.localize("sch-customize.dialog.resetDir.content"),
+      confirmLabel: game.i18n!.localize("sch-customize.dialog.resetDir.button"),
+      confirmIcon: "fas fa-folder-xmark",
+      onConfirm: async () => {
+        try {
+          await clearArchiveDirectory(game.world!.id);
+          ui.notifications?.info(game.i18n!.localize("sch-customize.dialog.resetDir.done"));
+        } catch (error) {
+          console.error("[sch-customize] Failed to reset archive directory:", error);
+        }
+      },
+    });
     return this;
   }
   override getData(_options?: Partial<FormApplication.Options>): object { return {}; }
