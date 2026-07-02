@@ -12,7 +12,6 @@
  */
 
 import { hexToRgba } from "./util";
-import { mergeCss } from "./css-merge";
 import { CssVariableTracker, StructuredCssCollector, getSelectorsWithAncestors, type CssContext } from "./css-collect";
 
 function extractStyles(rule: CSSRule): string {
@@ -115,13 +114,9 @@ export function processStyleSheetStructured(sheet: CSSStyleSheet, collector: Str
  *
  * @param {Iterable<string>|null} selectors - targetDoc가 없을 때 사용할 selector 집합
  * @param {Document|null} targetDoc - 매칭할 대상 doc (있으면 selector 자동 추출)
- * @param {object} [options]
- * @param {string|null} [options.existingCss=null] - 머지할 기존 CSS 텍스트 (선택)
  * @returns {string} 직렬화된 CSS
  */
-export function createCssList(selectors: Iterable<string> | null, targetDoc: Document | null = null, options: { existingCss?: string | null } = {}): string {
-  const { existingCss = null } = options;
-
+export function createCssList(selectors: Iterable<string> | null, targetDoc: Document | null = null): string {
   const collector = new StructuredCssCollector();
   const variableTracker = new CssVariableTracker();
   const processedSheets = new Set<string>();
@@ -146,10 +141,6 @@ export function createCssList(selectors: Iterable<string> | null, targetDoc: Doc
   for (const user of game.users!) {
     const bgColor = hexToRgba(user.color.toString(), 0.3);
     css += `div.chat-box.user-${user.id} { background-color: ${bgColor} !important; }\n`;
-  }
-
-  if (existingCss) {
-    css = mergeCss(existingCss, css);
   }
 
   return css;

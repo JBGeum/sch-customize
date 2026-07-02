@@ -200,13 +200,12 @@ export async function populateChatDoc(doc: Document, chats: any[], settings: { i
 
 /** Download/Incremental 공통: 본문/초상화 이미지 src 집합 수집. */
 export function extractImageSets(doc: Document): { contentImg: Set<string>; portraitImg: Set<string> } {
-  const contentImg = new Set([...doc.querySelectorAll<HTMLImageElement>(".chat-text img")]
-    .map(img => img.src ? img.src
-      : window.location.href.replace(/\/game(?=\/|$|\?|#)/, "") + img?.getAttribute("src")));
+  const resolveSrc = (img: HTMLImageElement) =>
+    img.src ? img.src
+      : window.location.href.replace(/\/game(?=\/|$|\?|#)/, "") + img?.getAttribute("src");
 
-  const portraitImg = new Set([...doc.querySelectorAll<HTMLImageElement>(".chat-image img")]
-    .map(img => img.src ? img.src
-      : window.location.href.replace(/\/game(?=\/|$|\?|#)/, "") + img?.getAttribute("src")));
+  const contentImg = new Set([...doc.querySelectorAll<HTMLImageElement>(".chat-text img")].map(resolveSrc));
+  const portraitImg = new Set([...doc.querySelectorAll<HTMLImageElement>(".chat-image img")].map(resolveSrc));
 
   return { contentImg, portraitImg };
 }
