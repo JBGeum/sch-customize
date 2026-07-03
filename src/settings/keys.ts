@@ -8,6 +8,7 @@ export const SETTINGS = {
   includeWhisper: "includeWhisper",
   hideWhisper: "hideWhisper",
   lastExportMode: "lastExportMode",
+  excludeGmWhisper: "excludeGmWhisper",
   customPrivTalkAlias: "customPrivTalkAlias",
   markdownDelUse: "markdownDelUse",
   privTalkAsOOC: "privTalkAsOOC",

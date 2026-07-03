@@ -8,6 +8,7 @@ describe("SETTINGS 키 값 고정(리셋 방지)", () => {
       includeWhisper: "includeWhisper",
       hideWhisper: "hideWhisper",
       lastExportMode: "lastExportMode",
+      excludeGmWhisper: "excludeGmWhisper",
       customPrivTalkAlias: "customPrivTalkAlias",
       markdownDelUse: "markdownDelUse",
       privTalkAsOOC: "privTalkAsOOC",

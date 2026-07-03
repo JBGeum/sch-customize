@@ -37,7 +37,7 @@ describe("exportIncrementalToDirectory", () => {
     vi.stubGlobal("game", { users: [], world: { title: "W", id: "w1" }, i18n: { localize: (k: string) => k } });
     (globalThis as any).ui = { notifications: { info: vi.fn() } };
 
-    await exportIncrementalToDirectory([], { includeWhisper: false, hideWhisper: false });
+    await exportIncrementalToDirectory([], { includeWhisper: false, hideWhisper: false, excludeGmWhisper: false });
 
     expect("chat-styles.css" in dir.files).toBe(true);
     expect(Object.keys(dir.files).some(n => /^chat-log-\d{8}-\d{4}-W\.html$/.test(n))).toBe(true);
@@ -46,6 +46,6 @@ describe("exportIncrementalToDirectory", () => {
   it("getArchiveDirectory가 null이면 아무 것도 안 씀(취소)", async () => {
     vi.stubGlobal("game", { world: { id: "w1" } });
     (getArchiveDirectory as any).mockResolvedValue(null);
-    await expect(exportIncrementalToDirectory([], { includeWhisper: false, hideWhisper: false })).resolves.toBeUndefined();
+    await expect(exportIncrementalToDirectory([], { includeWhisper: false, hideWhisper: false, excludeGmWhisper: false })).resolves.toBeUndefined();
   });
 });

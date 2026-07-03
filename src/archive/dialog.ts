@@ -68,17 +68,17 @@ export class openChatArchiveWindow extends FormApplication {
 /**
  * 선택된 모드에 따라 적절한 export 함수로 dispatch.
  */
-async function dispatchExport({ mode, existingCssText, includeWhisper, hideWhisper }: { mode: string; existingCssText: string | null; includeWhisper: boolean; hideWhisper: boolean }): Promise<void> {
+async function dispatchExport({ mode, existingCssText, includeWhisper, hideWhisper, excludeGmWhisper }: { mode: string; existingCssText: string | null; includeWhisper: boolean; hideWhisper: boolean; excludeGmWhisper: boolean }): Promise<void> {
   try { await (game.settings as any).set(MODULE_ID, SETTINGS.lastExportMode, mode); } catch (_) {}
   const chats = [...(game.messages!.contents)];
   try {
     if (mode === "solo") {
-      await downloadArchiveFile(chats, { includeWhisper, hideWhisper });
+      await downloadArchiveFile(chats, { includeWhisper, hideWhisper, excludeGmWhisper });
     } else if (mode === "directory") {
-      await exportIncrementalToDirectory(chats, { includeWhisper, hideWhisper });
+      await exportIncrementalToDirectory(chats, { includeWhisper, hideWhisper, excludeGmWhisper });
     } else {
       // file-upload: 기존 css 올리면 누적, 없으면 fresh. zip 다운로드.
-      await downloadIncrementalArchive(chats, { existingCssText, includeWhisper, hideWhisper });
+      await downloadIncrementalArchive(chats, { existingCssText, includeWhisper, hideWhisper, excludeGmWhisper });
     }
   } catch (error) {
     console.error("[sch-customize] Failed to export chat archive:", error);

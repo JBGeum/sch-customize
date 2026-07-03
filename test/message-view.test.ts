@@ -8,7 +8,7 @@ import {
   generateHtmlFromChats,
   generateIncrementalHtmlFromChats,
 } from "../src/archive/export";
-import { isWhisper, shouldExcludeWhisper, resolveChatMergeFlag, selectBodySource, buildMessageClasses, maskWhisperSpeaker } from "../src/archive/message-view";
+import { isWhisper, shouldExcludeWhisper, resolveChatMergeFlag, selectBodySource, buildMessageClasses, maskWhisperSpeaker, isGmOnlyWhisper } from "../src/archive/message-view";
 
 // Foundry 전역 스텁 — whisper 수신자명 / actor 조회(초상화 없음 경로)
 (globalThis as any).game = {
@@ -95,6 +95,17 @@ describe("isWhisper", () => {
   it("없음", () => expect(isWhisper({})).toBe(false));
 });
 
+describe("isGmOnlyWhisper", () => {
+  const gm = new Set(["gm1", "gm2"]);
+  it("수신자 단일 GM → true", () => expect(isGmOnlyWhisper({ whisper: ["gm1"] }, gm)).toBe(true));
+  it("수신자 복수 전원 GM → true", () => expect(isGmOnlyWhisper({ whisper: ["gm1", "gm2"] }, gm)).toBe(true));
+  it("GM+PL 혼합 → false", () => expect(isGmOnlyWhisper({ whisper: ["gm1", "p1"] }, gm)).toBe(false));
+  it("PL만 → false", () => expect(isGmOnlyWhisper({ whisper: ["p1"] }, gm)).toBe(false));
+  it("빈 whisper → false", () => expect(isGmOnlyWhisper({ whisper: [] }, gm)).toBe(false));
+  it("whisper 없음 → false", () => expect(isGmOnlyWhisper({}, gm)).toBe(false));
+  it("GM 없는 월드(빈 집합) → false", () => expect(isGmOnlyWhisper({ whisper: ["gm1"] }, new Set())).toBe(false));
+});
+
 describe("shouldExcludeWhisper", () => {
   it("비속삭임 → false", () => expect(shouldExcludeWhisper({ whisper: [] }, false)).toBe(false));
   it("속삭임+include off → true", () => expect(shouldExcludeWhisper({ whisper: ["a"], isContentVisible: true }, false)).toBe(true));
@@ -152,7 +163,7 @@ describe("populateChatDoc", () => {
       plain({ content: "b" }), // 같은 alias "Alice" → merge
       plain({ alias: "Eve", speaker: { alias: "Eve" }, whisper: ["u1"], content: "w" }), // 속삭임 → include off 제외
     ];
-    await populateChatDoc(doc, chats, { includeWhisper: false, hideWhisper: false });
+    await populateChatDoc(doc, chats, { includeWhisper: false, hideWhisper: false, excludeGmWhisper: false });
     const boxes = doc.querySelectorAll(".chat-box");
     expect(boxes.length).toBe(2); // 속삭임 1건 제외
     expect(boxes[0].querySelector(".chat-text")!.classList.contains("chat-merge")).toBe(false);
@@ -161,7 +172,7 @@ describe("populateChatDoc", () => {
 
   it("잡담↔일반 전환 시 merge 끊김", async () => {
     const doc = chatDoc();
-    await populateChatDoc(doc, [privtalk(), plain({ content: "x" })], { includeWhisper: false, hideWhisper: false });
+    await populateChatDoc(doc, [privtalk(), plain({ content: "x" })], { includeWhisper: false, hideWhisper: false, excludeGmWhisper: false });
     const boxes = doc.querySelectorAll(".chat-box");
     // 2번째(일반)는 직전이 잡담이라 prevPtFlag(true) !== privTalkFlag(false) → merge 안 됨
     expect(boxes[1].querySelector(".chat-text")!.classList.contains("chat-merge")).toBe(false);
@@ -174,7 +185,7 @@ describe("populateChatDoc", () => {
       plain({ alias: "Eve", speaker: { alias: "Eve" }, whisper: ["u1"], content: "w" }), // 제외됨(includeWhisper=false)
       plain({ content: "c" }),                                                         // Alice 다시
     ];
-    await populateChatDoc(doc, chats, { includeWhisper: false, hideWhisper: false });
+    await populateChatDoc(doc, chats, { includeWhisper: false, hideWhisper: false, excludeGmWhisper: false });
     const boxes = doc.querySelectorAll(".chat-box");
     expect(boxes.length).toBe(2); // 속삭임 1건 제외
     // 제외된 속삭임이 prevSpeaker(continue가 갱신 앞에 위치)를 바꾸지 않으므로 2번째 Alice가 1번째와 merge
@@ -187,11 +198,45 @@ describe("populateChatDoc", () => {
       plain({ content: "a" }),                  // Alice
       plain({ whisper: ["u1"], content: "w" }), // Alice의 속삭임(포함됨)
     ];
-    await populateChatDoc(doc, chats, { includeWhisper: true, hideWhisper: false });
+    await populateChatDoc(doc, chats, { includeWhisper: true, hideWhisper: false, excludeGmWhisper: false });
     const boxes = doc.querySelectorAll(".chat-box");
     expect(boxes.length).toBe(2);                                  // 속삭임 포함
     expect(boxes[1].classList.contains("whisper")).toBe(true);
     expect(boxes[1].querySelector(".chat-text")!.classList.contains("chat-merge")).toBe(false);
+  });
+});
+
+describe("populateChatDoc — GM 전용 whisper 필터", () => {
+  const origUsers = (globalThis as any).game.users;
+  beforeEach(() => {
+    // array(.filter 지원) + .get(수신자명 조회) 둘 다 제공
+    (globalThis as any).game.users = Object.assign(
+      [{ id: "gm1", isGM: true }, { id: "p1", isGM: false }],
+      { get: (id: string) => ({ name: "RCP-" + id }) }
+    );
+  });
+  afterEach(() => { (globalThis as any).game.users = origUsers; });
+
+  it("excludeGmWhisper=true: 수신자 전원 GM 카드 제외, 사용자 귓속말/public 유지", async () => {
+    const doc = chatDoc();
+    const chats = [
+      plain({ content: "public" }),
+      plain({ alias: "Sys", speaker: { alias: "Sys" }, whisper: ["gm1"], content: "gm-only" }),
+      plain({ alias: "Bob", speaker: { alias: "Bob" }, whisper: ["gm1", "p1"], content: "user-whisper" }),
+    ];
+    await populateChatDoc(doc, chats, { includeWhisper: true, hideWhisper: false, excludeGmWhisper: true });
+    const texts = [...doc.querySelectorAll(".chat-text")].map(t => t.innerHTML);
+    expect(texts).toEqual(["public", "user-whisper"]); // gm-only 제외
+  });
+
+  it("excludeGmWhisper=false: GM 전용 카드도 유지", async () => {
+    const doc = chatDoc();
+    const chats = [
+      plain({ content: "public" }),
+      plain({ alias: "Sys", speaker: { alias: "Sys" }, whisper: ["gm1"], content: "gm-only" }),
+    ];
+    await populateChatDoc(doc, chats, { includeWhisper: true, hideWhisper: false, excludeGmWhisper: false });
+    expect(doc.querySelectorAll(".chat-box").length).toBe(2);
   });
 });
 
@@ -284,17 +329,17 @@ describe("generate* 경로 — 인터랙션 <script> 주입 (회귀 방지)", ()
   }
 
   it("generateSimpleHtmlFromChats (창 열기 경로)", async () => {
-    const [html] = await generateSimpleHtmlFromChats([], { includeWhisper: false, hideWhisper: false });
+    const [html] = await generateSimpleHtmlFromChats([], { includeWhisper: false, hideWhisper: false, excludeGmWhisper: false });
     assertSingleInteractionScript(html);
   });
 
   it("generateHtmlFromChats (다운로드 경로)", async () => {
-    const [html] = await generateHtmlFromChats([], { includeWhisper: false, hideWhisper: false });
+    const [html] = await generateHtmlFromChats([], { includeWhisper: false, hideWhisper: false, excludeGmWhisper: false });
     assertSingleInteractionScript(html);
   });
 
   it("generateIncrementalHtmlFromChats (누적 경로)", async () => {
-    const [html] = await generateIncrementalHtmlFromChats([], { includeWhisper: false, hideWhisper: false });
+    const [html] = await generateIncrementalHtmlFromChats([], { includeWhisper: false, hideWhisper: false, excludeGmWhisper: false });
     assertSingleInteractionScript(html);
   });
 });

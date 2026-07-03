@@ -78,6 +78,15 @@ export function registerAllSettings(): void {
     type: Boolean,
   });
 
+  gs.register(MODULE_ID, SETTINGS.excludeGmWhisper, {
+    name: `${MODULE_ID}.settings.excludeGmWhisper.name`,
+    hint: `${MODULE_ID}.settings.excludeGmWhisper.hint`,
+    scope: "client",
+    config: true,
+    default: true,
+    type: Boolean,
+  });
+
   gs.register(MODULE_ID, SETTINGS.lastExportMode, {
     scope: "client",
     config: false,

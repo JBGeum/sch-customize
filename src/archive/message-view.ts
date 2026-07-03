@@ -9,6 +9,14 @@ export function isWhisper(chat: any): boolean {
   return !!(chat.whisper && chat.whisper.length > 0);
 }
 
+/** whisper 수신자가 1명 이상이고 전원 GM이면 true (= PL에게 아예 안 보이는 GM 전용 카드). */
+export function isGmOnlyWhisper(chat: any, gmUserIds: Set<string>): boolean {
+  const w = chat.whisper;
+  if (!w || w.length === 0) return false;   // public → 대상 아님
+  if (gmUserIds.size === 0) return false;    // GM 없는 월드 → 안전하게 미제외
+  return w.every((id: string) => gmUserIds.has(id));
+}
+
 /** 속삭임이면서 (includeWhisper 꺼짐 OR 내용 비가시)면 export에서 제외. */
 export function shouldExcludeWhisper(chat: any, includeWhisper: boolean): boolean {
   return isWhisper(chat) && (!includeWhisper || !chat.isContentVisible);

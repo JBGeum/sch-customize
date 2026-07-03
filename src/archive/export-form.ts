@@ -24,6 +24,7 @@ export function buildExportModeFormHtml(): string {
   const gs = game.settings as any;
   const incChecked = gs.get(MODULE_ID, SETTINGS.includeWhisper) ? "checked" : "";
   const hideChecked = gs.get(MODULE_ID, SETTINGS.hideWhisper) ? "checked" : "";
+  const gmChecked = gs.get(MODULE_ID, SETTINGS.excludeGmWhisper) ? "checked" : "";
   const stored = gs.get(MODULE_ID, SETTINGS.lastExportMode);
   const preferred = (stored === "directory" && !isDirectoryPickerSupported()) ? "solo" : stored;
   const checkedMode = ["solo", "directory", "file-upload"].includes(preferred) ? preferred : "solo";
@@ -61,6 +62,10 @@ export function buildExportModeFormHtml(): string {
         <label style="display:flex;align-items:center;gap:0.4rem;">
           <input type="checkbox" name="sch-hide-whisper" ${hideChecked}>
           <span>${t("hideWhisper.label")}</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:0.4rem;">
+          <input type="checkbox" name="sch-exclude-gm-whisper" ${gmChecked}>
+          <span>${t("excludeGmWhisper.label")}</span>
         </label>
       </div>
     </div>
@@ -102,7 +107,7 @@ export function attachExportFormHandlers(rootEl: any): void {
 /**
  * 폼에서 모드 + 기존 CSS 텍스트 추출. 파일 미선택 시 existingCssText=null.
  */
-export async function readExportFormValues(rootEl: any): Promise<{ mode: string; existingCssText: string | null; includeWhisper: boolean; hideWhisper: boolean } | null> {
+export async function readExportFormValues(rootEl: any): Promise<{ mode: string; existingCssText: string | null; includeWhisper: boolean; hideWhisper: boolean; excludeGmWhisper: boolean } | null> {
   const form = findExportForm(rootEl);
   if (!form) {
     console.error("[sch-customize] export form not found at submit");
@@ -121,5 +126,6 @@ export async function readExportFormValues(rootEl: any): Promise<{ mode: string;
   }
   const includeWhisper = !!(form.querySelector("input[name='sch-include-whisper']") as HTMLInputElement | null)?.checked;
   const hideWhisper = !!(form.querySelector("input[name='sch-hide-whisper']") as HTMLInputElement | null)?.checked;
-  return { mode, existingCssText, includeWhisper, hideWhisper };
+  const excludeGmWhisper = !!(form.querySelector("input[name='sch-exclude-gm-whisper']") as HTMLInputElement | null)?.checked;
+  return { mode, existingCssText, includeWhisper, hideWhisper, excludeGmWhisper };
 }

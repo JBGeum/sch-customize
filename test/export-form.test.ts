@@ -75,6 +75,17 @@ describe("buildExportModeFormHtml", () => {
     const solo = html.match(/<input[^>]*value="solo"[^>]*>/)?.[0] ?? "";
     expect(solo).toContain("checked");
   });
+  it("GM 전용 제외 체크박스 존재", () => {
+    vi.stubGlobal("game", { i18n: { localize: (k: string) => k }, settings: { get: () => false } });
+    const html = buildExportModeFormHtml();
+    expect(html).toContain(`name="sch-exclude-gm-whisper"`);
+  });
+  it("excludeGmWhisper 저장값 true면 프리필(checked)", () => {
+    vi.stubGlobal("game", { i18n: { localize: (k: string) => k }, settings: { get: () => true } });
+    const html = buildExportModeFormHtml();
+    const gm = html.match(/<input[^>]*name="sch-exclude-gm-whisper"[^>]*>/)?.[0] ?? "";
+    expect(gm).toContain("checked");
+  });
 });
 
 describe("findExportForm", () => {
@@ -158,6 +169,7 @@ describe("readExportFormValues", () => {
         <input type="radio" name="sch-export-mode" value="file-upload">
         <input type="checkbox" name="sch-include-whisper">
         <input type="checkbox" name="sch-hide-whisper">
+        <input type="checkbox" name="sch-exclude-gm-whisper">
         <input type="file" name="sch-existing-css">
       </div>`;
     (root.querySelector(`input[value="${mode}"]`) as HTMLInputElement).checked = true;
@@ -168,24 +180,29 @@ describe("readExportFormValues", () => {
     return root;
   }
   it("solo + 무파일 → existingCssText null", async () => {
-    expect(await readExportFormValues(buildForm("solo"))).toEqual({ mode: "solo", existingCssText: null, includeWhisper: false, hideWhisper: false });
+    expect(await readExportFormValues(buildForm("solo"))).toEqual({ mode: "solo", existingCssText: null, includeWhisper: false, hideWhisper: false, excludeGmWhisper: false });
   });
   it("directory + 무파일 → existingCssText null", async () => {
-    expect(await readExportFormValues(buildForm("directory"))).toEqual({ mode: "directory", existingCssText: null, includeWhisper: false, hideWhisper: false });
+    expect(await readExportFormValues(buildForm("directory"))).toEqual({ mode: "directory", existingCssText: null, includeWhisper: false, hideWhisper: false, excludeGmWhisper: false });
   });
   it("file-upload + 파일 → 파일 텍스트", async () => {
     const root = buildForm("file-upload", { text: async () => "css-body" });
-    expect(await readExportFormValues(root)).toEqual({ mode: "file-upload", existingCssText: "css-body", includeWhisper: false, hideWhisper: false });
+    expect(await readExportFormValues(root)).toEqual({ mode: "file-upload", existingCssText: "css-body", includeWhisper: false, hideWhisper: false, excludeGmWhisper: false });
   });
   it("directory + 파일 → existingCssText null (폴더가 소스)", async () => {
     const root = buildForm("directory", { text: async () => "css-body" });
-    expect(await readExportFormValues(root)).toEqual({ mode: "directory", existingCssText: null, includeWhisper: false, hideWhisper: false });
+    expect(await readExportFormValues(root)).toEqual({ mode: "directory", existingCssText: null, includeWhisper: false, hideWhisper: false, excludeGmWhisper: false });
   });
   it("체크박스 켜짐 → includeWhisper/hideWhisper true", async () => {
     const root = buildForm("solo");
     (root.querySelector(`input[name="sch-include-whisper"]`) as HTMLInputElement).checked = true;
     (root.querySelector(`input[name="sch-hide-whisper"]`) as HTMLInputElement).checked = true;
-    expect(await readExportFormValues(root)).toEqual({ mode: "solo", existingCssText: null, includeWhisper: true, hideWhisper: true });
+    expect(await readExportFormValues(root)).toEqual({ mode: "solo", existingCssText: null, includeWhisper: true, hideWhisper: true, excludeGmWhisper: false });
+  });
+  it("GM 전용 체크박스 켜짐 → excludeGmWhisper true", async () => {
+    const root = buildForm("solo");
+    (root.querySelector(`input[name="sch-exclude-gm-whisper"]`) as HTMLInputElement).checked = true;
+    expect(await readExportFormValues(root)).toEqual({ mode: "solo", existingCssText: null, includeWhisper: false, hideWhisper: false, excludeGmWhisper: true });
   });
   it("폼 없으면 null", async () => {
     expect(await readExportFormValues({})).toBeNull();
