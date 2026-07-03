@@ -1,0 +1,498 @@
+<!-- template.html -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>Chat Log</title>
+  <!-- 인터랙션 스크립트는 export.ts가 런타임에 주입한다(src/archive/archive-interactive.js). -->
+  <link href="/fonts/fontawesome/css/all.min.css" rel="stylesheet" type="text/css" media="all">
+  <style>
+    html, body { margin: 0; padding: 0; background: #fff; color: #000; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Malgun Gothic", sans-serif; }
+    img { max-width: 100%; max-height: 100%; }
+    div.chat-box{display: grid;grid-template-columns: 40px 120px 1fr;align-items: stretch;background: white;}
+    div.chat-box.priv-talk{padding-left: 30px;opacity: 0.5;border-radius: var(--sch-radius);}
+    div.chat-name{font-weight: bold;padding-left: 5px;display: flex;align-items: center;}
+    div.chat-text{padding: 10px}
+    div.chat-text.chat-merge{padding-top: 0;}
+    div.chat-image{display: flex;align-items: center;}
+    img.chat-image{width: 40px;height: 40px;}
+    .chat-text>div:not(.roll-dice):not(.inline-roll){width: 300px;}
+    div.inline-roll {background-color: rgba(255,255,255,0.3); border-radius: var(--sch-radius-sm); padding: 3px; width: fit-content; border: 1px solid white;}
+    div.dice-result {position: relative;}
+    .dice-result .dice-tooltip.expanded:nth-child(2){position: absolute;width: 100%;left: 100%; /* top: 25px; */top: 0;background-color: white;padding: 10px 5px;z-index: 99;border: 2px solid grey;border-bottom: none;border-radius : var(--sch-radius) var(--sch-radius) 0 0;}
+    .dice-result .dice-tooltip.expanded:nth-child(3) {position: absolute;width: 100%; /* top: 70px; */left: 100%;top: 45px;background-color: white;padding: 5px;z-index: 99;border: 2px solid grey;border-top: none;border-radius : 0 0 var(--sch-radius) var(--sch-radius);}
+    .dice-roll .dice-formula, .dice-roll .dice-total {flex: 0 0 100%;margin: 0;line-height: 24px;text-align: center;background: rgba(255, 255, 255, 0.7) !important;border: 1px solid #7a7971;border-radius: var(--sch-radius-sm);box-shadow: 0 0 2px #FFF inset;word-break: break-all;}
+    .dice-formula, .dice-total {border: 1px solid #7a7971;box-shadow: none;}
+    .midi-qol-saves-display{margin : 3px;}
+    div.chat-box.whisper>div{background-color:#888888;background-blend-mode: multiply;color:white;}
+    .whisper.whisper-hidden>div.container>div.chat-text{visibility:hidden;}
+
+    /* 본문 콘텐츠 heading 폭주 정규화 — chat-text 내부로 스코프.
+       구조화 카드는 자체 --font-size-*·상위 specificity로 이미 정상이라 미개입. */
+    .chat-text h1 { font-size: 1.35em; }
+    .chat-text h2 { font-size: 1.2em; }
+    .chat-text h3 { font-size: 1.1em; }
+    .chat-text h4, .chat-text h5, .chat-text h6 { font-size: 1em; }
+    .chat-text :is(h1,h2,h3,h4,h5,h6) { margin: .4em 0 .2em; line-height: 1.3; }
+
+    /* Midi-QoL dice roll 표시 */
+    .midi-dice-roll .dice-result { display: flex; flex-direction: column; }
+    .midi-dice-roll .dice-tooltip-collapser { display: none; } /* 툴팁은 기본 숨김 */
+    .midi-dice-roll .dice-tooltip-collapser.expanded { display: block; }
+    .midi-dice-roll .dice-total { display: block !important; font-size: 1.2em; font-weight: bold; padding: 4px 8px; margin: 4px 0; }
+    .midi-dice-roll .dice-formula { display: block; padding: 2px 6px; margin: 2px 0; }
+
+    /* Midi-QoL Activation Card 스타일 */
+    .dnd5e2.chat-card.midi-chat-card.activation-card {
+      border: 1px solid var(--dnd5e-color-gold, #c9a46b);
+      border-radius: var(--sch-radius-sm);
+      background: rgba(255, 255, 255, 0.7);
+      color: var(--dnd5e-color-black, #1c1c1c);
+      padding: 0.5rem;
+    }
+    .dnd5e2.chat-card.midi-chat-card .midi-results {
+      margin-top: 0.5rem;
+    }
+    .dnd5e2.chat-card.midi-chat-card .midi-results .flexrow {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 0.5rem;
+    }
+    .dnd5e2.chat-card.midi-chat-card .midi-results .flexrow > * {
+      flex: 1 1 0%;
+      min-width: 0;
+    }
+    .dnd5e2.chat-card.midi-chat-card .midi-qol-attack-roll,
+    .dnd5e2.chat-card.midi-chat-card .midi-qol-damage-roll {
+      text-align: center;
+      font-size: var(--font-size-12, 12px);
+      font-weight: bold;
+      color: #666;
+    }
+    .dnd5e2.chat-card.midi-chat-card .midi-qol-hits-display {
+      margin-top: 0.5rem;
+    }
+    .dnd5e2.chat-card.midi-chat-card .target {
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.25rem;
+    }
+    .dnd5e2.chat-card.midi-chat-card .target img {
+      width: 22px;
+      height: 22px;
+      border-radius: var(--sch-radius-sm);
+    }
+    .dnd5e2.chat-card.midi-chat-card .target .name-stacked {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .dnd5e2.chat-card.midi-chat-card .target .title {
+      font-size: var(--font-size-12, 12px);
+      font-weight: bold;
+    }
+    .dnd5e2.chat-card.midi-chat-card .midi-qol-ac {
+      font-size: var(--font-size-11, 11px);
+      color: #666;
+    }
+    .midi-qol-hit-symbol.fa-check { color: var(--dnd5e-color-green, #2e6a30); }
+    .midi-qol-hit-symbol.fa-times { color: var(--dnd5e-color-maroon, #6d1414); }
+
+    /* Midi-QoL 롤/평가 영역 - 중앙 정렬 */
+    .dnd5e2.chat-card.midi-chat-card .dnd5e2.evaluation,
+    .dnd5e2.chat-card.midi-chat-card .midi-attack-roll.midi-dice-roll.dice-roll,
+    .dnd5e2.chat-card.midi-chat-card .midi-damage-roll.dice-roll {
+      width: 90%;
+      display: block;
+      margin: 0 auto;
+    }
+    .dnd5e2.chat-card.midi-chat-card .dice-roll .dice-result {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .dnd5e2.chat-card.midi-chat-card .dice-result .dice-formula,
+    .dnd5e2.chat-card.midi-chat-card .dice-result .dice-total {
+      width: 95%;
+      flex: none;
+      display: block;
+      text-align: center;
+      margin: 2px auto;
+      padding: 4px 8px;
+      box-sizing: border-box;
+    }
+
+    /* Foundry VTT / DnD5e 공통 기본 스타일 */
+    .flexrow { display: flex; flex-direction: row; flex-wrap: wrap; }
+    .flexcol { display: flex; flex-direction: column; }
+    .flexrow > *, .flexcol > * { flex: 1 1 0%; }
+    .flex0 { flex: 0; }
+    .flex1 { flex: 1; }
+    .flex2 { flex: 2; }
+    .flex3 { flex: 3; }
+    .unlist { list-style: none; padding: 0; margin: 0; }
+    [hidden] { display: none !important; }
+
+    /* 일반 롤 결과 스타일 */
+    .dice-roll { display: inline-block; }
+    .dice-result {
+      display: flex;
+      flex-direction: column;
+      padding: 0.25em 0.5em;
+      border-radius: var(--sch-radius-sm);
+    }
+
+    .dice-formula { font-family: monospace; color: #666; }
+    .dice-tooltip { display: none; }
+    .dice-tooltip-collapser { display: none; }
+    .dice-tooltip-collapser.expanded,
+    .dice-tooltip.expanded { display: block; }
+    .dice-total { font-weight: bold; margin: 0; font-size: 1em; }
+
+    /* 심플 롤 (tooltip-collapser 없는 경우) - inline-roll 내부 */
+    .inline-roll .dice-result {
+      display: inline-flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 0.5em;
+    }
+    .inline-roll .dice-formula::after { content: ' →'; }
+
+    /* ============================================
+       DnD5e Item Card 스타일
+       ============================================ */
+
+    /* CSS 변수 정의 */
+    :root {
+      --dnd5e-color-gold: #c9a46b;
+      --dnd5e-color-black: #1c1c1c;
+      --dnd5e-color-maroon: #6d1414;
+      --dnd5e-color-green: #2e6a30;
+      --dnd5e-color-tan: #b5a990;
+      --dnd5e-color-parchment: #f5efe0;
+      --dnd5e-color-light-gray: #e0e0e0;
+      --dnd5e-shadow-45: rgba(0, 0, 0, 0.45);
+      --dnd5e-background-card: rgba(255, 255, 255, 0.8);
+      --dnd5e-border-gold: 1px solid var(--dnd5e-color-gold);
+      --font-size-10: 10px;
+      --font-size-11: 11px;
+      --font-size-12: 12px;
+      --font-size-13: 13px;
+      --font-size-14: 14px;
+
+      /* 아카이브 공용 radius 토큰 */
+      --sch-radius: 6px;      /* 카드·컨테이너·팝업급 */
+      --sch-radius-sm: 3px;   /* 칩·버튼·작은 블록 */
+    }
+
+    /* 채팅 카드 기본 구조 */
+    .dnd5e2 .chat-card,
+    .chat-card {
+      display: flex;
+      flex-direction: column;
+      gap: 0.375rem;
+    }
+
+    /* Item Card 전체 컨테이너 스타일 */
+    .chat-card.item-card {
+      border: 1px solid var(--dnd5e-color-gold);
+      border-radius: var(--sch-radius-sm);
+      background: rgba(255, 255, 255, 0.7);
+      color: var(--dnd5e-color-black);
+      padding: 0.5rem;
+    }
+
+    /* Description 섹션 */
+    .chat-card .description {
+      padding: 0.5rem;
+      font-size: var(--font-size-12);
+    }
+
+    .chat-card .description.collapsible {
+      cursor: pointer;
+    }
+
+    .chat-card .description.critical {
+      border: 3px double var(--dnd5e-color-green);
+    }
+
+    /* Summary (헤더) */
+    .chat-card .summary {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .chat-card .summary > img {
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--dnd5e-color-gold);
+      border-radius: var(--sch-radius-sm);
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+
+    .chat-card .summary .name-stacked {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .chat-card .summary .name-stacked .title {
+      font-weight: bold;
+      font-size: var(--font-size-14);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .chat-card .summary .name-stacked .subtitle {
+      font-size: var(--font-size-10);
+      color: #666;
+    }
+
+    .chat-card .summary i.fa-chevron-down {
+      transition: transform 0.2s;
+    }
+
+    .chat-card .collapsed .summary i.fa-chevron-down {
+      transform: rotate(-90deg);
+    }
+
+    /* Details (접을 수 있는 내용) */
+    .chat-card .details {
+      display: grid;
+      grid-template-rows: 1fr;
+      overflow: hidden;
+      transition: grid-template-rows 0.2s, opacity 0.2s;
+      margin-top: 0.5rem;
+      padding-top: 0.5rem;
+      border-top: 1px dashed var(--dnd5e-color-tan);
+    }
+
+    .chat-card .details > .wrapper {
+      overflow: hidden;
+    }
+
+    .chat-card .collapsed .details {
+      grid-template-rows: 0fr;
+      opacity: 0;
+      margin-top: 0;
+      padding-top: 0;
+      border-top: none;
+    }
+
+    /* Pills (태그) */
+    .pills {
+      list-style: none;
+      padding: 0;
+      margin: 0.25rem 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+    }
+
+    .pill {
+      font-weight: bold;
+      font-size: var(--font-size-11);
+      text-transform: uppercase;
+      border: 1px solid var(--dnd5e-color-tan);
+      border-radius: var(--sch-radius-sm);
+      background: var(--dnd5e-background-card);
+      padding: 0.1875rem 0.375rem;
+      display: inline-flex;
+      gap: 0.25rem;
+      margin: 0;
+      align-items: center;
+    }
+
+    .pill.green {
+      color: white;
+      background-color: var(--dnd5e-color-green);
+      border-color: var(--dnd5e-color-green);
+    }
+
+    .pill.maroon {
+      color: white;
+      background-color: var(--dnd5e-color-maroon);
+      border-color: var(--dnd5e-color-maroon);
+    }
+
+    .pill.transparent,
+    .pill.pill-sm {
+      color: #666;
+      border-style: dotted;
+      background-color: transparent;
+    }
+
+    /* Card Buttons */
+    .chat-card .card-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 0.375rem;
+    }
+
+    .chat-card .card-buttons button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.375rem 0.5rem;
+      border: 1px solid var(--dnd5e-color-tan);
+      border-radius: var(--sch-radius-sm);
+      background: linear-gradient(to bottom, #f8f8f8, #e8e8e8);
+      cursor: pointer;
+      font-size: var(--font-size-12);
+    }
+
+    .chat-card .card-buttons button:hover {
+      background: linear-gradient(to bottom, #fff, #f0f0f0);
+      border-color: var(--dnd5e-color-gold);
+    }
+
+    /* Gold Button */
+    .gold-button {
+      position: relative;
+      border: none;
+      border-radius: var(--sch-radius-sm);
+      background: var(--dnd5e-color-black);
+      color: var(--dnd5e-color-gold);
+      width: 30px;
+      height: 30px;
+      box-shadow: 0 0 6px var(--dnd5e-shadow-45);
+      display: grid;
+      place-content: center;
+      cursor: pointer;
+    }
+
+    .gold-button::after {
+      content: "";
+      position: absolute;
+      inset: 3px;
+      border: 1px solid var(--dnd5e-color-gold);
+      border-radius: var(--sch-radius-sm);
+      pointer-events: none;
+    }
+
+    /* Gold Icon */
+    .gold-icon {
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--dnd5e-color-gold);
+      box-shadow: 0 0 4px var(--dnd5e-shadow-45);
+      border-radius: var(--sch-radius-sm);
+      object-fit: cover;
+    }
+
+    /* Card Tray (효과, 대상 등) */
+    .chat-card .card-tray,
+    .chat-card .effects-tray,
+    .chat-card .targets-tray {
+      margin-top: 0.25rem;
+      padding: 0.5rem;
+      background: rgba(0, 0, 0, 0.03);
+      border-radius: var(--sch-radius-sm);
+      border: 1px solid var(--dnd5e-color-light-gray);
+    }
+
+    .chat-card .card-tray h4,
+    .chat-card .effects-tray h4,
+    .chat-card .targets-tray h4 {
+      margin: 0 0 0.25rem 0;
+      font-size: var(--font-size-11);
+      text-transform: uppercase;
+      color: #666;
+      border: none;
+    }
+
+    /* Damage Application */
+    .chat-card .damage-application {
+      display: flex;
+      gap: 0.25rem;
+      margin-top: 0.25rem;
+    }
+
+    .chat-card .damage-application button {
+      flex: 1;
+      padding: 0.25rem;
+      font-size: var(--font-size-10);
+    }
+
+    /* Evaluation (주사위 결과) */
+    .chat-card .evaluation {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+      margin-top: 0.25rem;
+    }
+
+    .chat-card .evaluation .die {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 1.5rem;
+      padding: 0.125rem 0.25rem;
+      border-radius: var(--sch-radius-sm);
+      background: rgba(0, 0, 0, 0.1);
+      font-size: var(--font-size-11);
+    }
+
+    .chat-card .evaluation .die.max {
+      background: var(--dnd5e-color-green);
+      color: white;
+    }
+
+    .chat-card .evaluation .die.min {
+      background: var(--dnd5e-color-maroon);
+      color: white;
+    }
+
+    /* Card Footer */
+    .chat-card .card-footer {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+      padding-top: 0.375rem;
+      border-top: 1px dashed var(--dnd5e-color-tan);
+      font-size: var(--font-size-10);
+      color: #666;
+    }
+
+    /* 일반 카드 요소 (색상 반전: 밝은 배경 + 어두운 글자) */
+    .card .header,
+    .chat-card .card-header {
+      color: var(--dnd5e-color-black);
+      border-radius: var(--sch-radius-sm) var(--sch-radius-sm) 0 0;
+      padding: 0.5rem;
+    }
+
+    .card .header h3,
+    .chat-card .card-header h3 {
+      border: none;
+      margin: 0;
+      font-size: var(--font-size-13);
+      font-weight: bold;
+      color: var(--dnd5e-color-black);
+    }
+
+
+    .chat-card .description a {
+      color: var(--dnd5e-color-maroon);
+    }
+
+
+  </style>
+
+</head>
+<body>
+
+
+<div class="foundry-chat-container">
+  <!-- 여기는 비워두세요. 챗 로그가 여기에 들어갑니다. -->
+</div>
+
+</body>
+</html>

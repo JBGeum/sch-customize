@@ -1,0 +1,88 @@
+/* Speaker Bar - 채팅 컨트롤 바와 입력창 사이에 세로 배치
+   레이아웃: [#chat-controls] → [.sch-speaker-bar] → [textarea]
+   발화자 바와 textarea 사이는 간격 0 */
+
+   .sch-speaker-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 8px;
+    margin: 0;            /* 위아래 간격 제거 — textarea와 붙임 */
+    width: 100%;
+    height: 26px;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--color-border-light-tertiary, #7a7971);
+    border-bottom: none;  /* 아래쪽 테두리 제거 — textarea와 시각적 연결 */
+    border-radius: 3px 3px 0 0;  /* 아래쪽 모서리는 직선 */
+    color: var(--color-text-light-highlight, #f0f0e0);
+    font-size: 12px;
+    user-select: none;
+    box-sizing: border-box;
+  }
+  
+  .sch-speaker-bar.locked {
+    border-color: #d4a017;
+    box-shadow: inset 0 0 0 1px rgba(212, 160, 23, 0.35);
+  }
+  
+  .sch-speaker-bar .sch-speaker-portrait {
+    width: 20px;
+    height: 20px;
+    border-radius: 2px;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    flex-shrink: 0;
+    background: #000;
+  }
+  
+  .sch-speaker-bar .sch-speaker-portrait:hover {
+    border-color: #ffaa00;
+  }
+  
+  .sch-speaker-bar .sch-speaker-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+  }
+  
+  .sch-speaker-bar .sch-speaker-lock {
+    cursor: pointer;
+    padding: 2px 4px;
+    opacity: 0.7;
+    transition: opacity 0.15s, color 0.15s;
+    flex-shrink: 0;
+    font-size: 12px;
+  }
+  
+  .sch-speaker-bar .sch-speaker-lock:hover {
+    opacity: 1;
+  }
+  
+  .sch-speaker-bar.locked .sch-speaker-lock {
+    color: #d4a017;
+    opacity: 1;
+  }
+  
+  /* textarea와 발화자 바를 시각적으로 한 덩어리로 묶기.
+     form이 display:flex + gap:8px이므로, 음수 margin으로 gap을 상쇄 */
+  form.chat-form .sch-speaker-bar,
+  #chat-form .sch-speaker-bar {
+    margin-bottom: -8px !important;   /* form gap 상쇄 */
+    padding-bottom: 3px !important;
+  }
+  
+  .sch-speaker-bar + #chat-message,
+  .sch-speaker-bar + textarea[name="message"],
+  .sch-speaker-bar + textarea.chat-input,
+  form.chat-form .sch-speaker-bar + textarea,
+  #chat-form .sch-speaker-bar + textarea {
+    margin-top: 0 !important;
+    border-top: none !important;
+    border-top-left-radius: 0 !important;
+    border-top-right-radius: 0 !important;
+  }

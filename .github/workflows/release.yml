@@ -1,0 +1,57 @@
+name: Release
+
+# vX.Y.Z 형태의 태그를 푸시하면: 빌드 → dist/module.json에 버전·download URL 주입 →
+# sch-customize.zip 패키징 → GitHub Release(module.json + zip)를 자동 생성한다.
+# Foundry는 manifest(= releases/latest/download/module.json)로 업데이트를 확인하고,
+# 각 릴리스 module.json의 download는 그 태그의 zip을 가리킨다(버전 고정).
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      # macro pack을 packs/_source에서 재컴파일해 dist에 신선한 pack이 실리도록 한다
+      # (compile-packs.mjs가 매크로 개수 2개를 검증 — 깨진 pack이면 릴리스가 실패).
+      - run: npm run packs
+      - run: npm run build
+
+      - name: Inject version and download URL into dist/module.json
+        env:
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          VERSION="${TAG#v}"
+          node -e "
+            const fs = require('fs');
+            const path = 'dist/module.json';
+            const m = JSON.parse(fs.readFileSync(path, 'utf8'));
+            const base = 'https://github.com/' + process.env.REPO + '/releases/download/' + process.env.TAG;
+            m.version = '${VERSION}';
+            m.download = base + '/sch-customize.zip';
+            fs.writeFileSync(path, JSON.stringify(m, null, 2));
+          "
+
+      - name: Package sch-customize.zip
+        run: cd dist && zip -r ../sch-customize.zip .
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/module.json
+            sch-customize.zip
+          generate_release_notes: true

@@ -1,0 +1,55 @@
+// 편집된 메시지의 "(수정됨)" 배지 — 본문 끝에 작고 흐리게.
+.sch-edited-badge {
+  margin-inline-start: 0.4em;
+  font-size: 0.75em;
+  font-style: italic;
+  opacity: 0.6;
+}
+
+// 편집 다이얼로그의 ProseMirror 에디터.
+// 문제 1: bare DialogV2엔 시트 같은 flex 레이아웃이 없어 내부 .editor-container가 0높이로
+//   붕괴 → 클릭/편집 불가.
+// 문제 2: 리사이즈로 창을 키우면 여분 높이가 에디터가 아니라 버튼 아래로 흘러 세로 리사이즈가
+//   무의미. → 다이얼로그(.sch-edit-dialog)의 window-content부터 form/.dialog-content 래퍼,
+//   우리 폼, 에디터 내부(.editor-container/.ProseMirror)까지 flex 체인으로 이어 여분 높이를
+//   전부 에디터로 흘려보낸다. min-height:0은 flex 자식이 줄어들 수 있게 해 내부 스크롤을 살린다.
+.sch-edit-dialog {
+  .window-content {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  // content+buttons를 감싸는 form / content 래퍼(구조 방어적: 둘 중 무엇이 있든 채운다).
+  form,
+  .dialog-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+}
+
+.sch-edit-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 12rem;
+
+  prose-mirror {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+
+    .editor-container {
+      flex: 1;
+      min-height: 6rem;
+      overflow-y: auto;
+    }
+
+    .editor-content,
+    .ProseMirror {
+      min-height: 6rem;
+    }
+  }
+}

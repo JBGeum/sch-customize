@@ -1,0 +1,11 @@
+{
+  "_id": "schOpenLogWin001",
+  "_key": "!macros!schOpenLogWin001",
+  "name": "채팅 로그 새 창에서 열기",
+  "type": "script",
+  "img": "icons/svg/book.svg",
+  "scope": "global",
+  "command": "game.modules.get(\"sch-customize\")?.api?.openChatArchive?.();",
+  "ownership": { "default": 0 },
+  "flags": {}
+}

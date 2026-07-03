@@ -1,0 +1,153 @@
+:root{
+  --priv-talk-font-color: ;
+  --priv-talk-font-size: ;
+  --priv-talk-margin-left: ;
+  --priv-talk-bg-brightness: ;
+  --sch-chat-font-size: 14px;
+}
+
+/*
+ * Foundry v12/v13/v14 호환을 위한 채팅 컨테이너·메시지 셀렉터 표준화
+ * - 컨테이너: v12 #chat-log / v13+ .chat-log / popout 모두 :is(...)로 매칭
+ * - 메시지 노드: v12 li.chat-message / v13+ .chat-message[data-message-id] —
+ *   :is(li, [data-message-id]).chat-message.message 형태로 둘 다 매칭
+ */
+
+/*
+ * priv_talk 메시지에 한해 시스템 기본 ::before 텍스처/배경을 비활성화한다.
+ * 일반 메시지는 Foundry/시스템 기본 장식을 유지한다.
+ * 아래 흰색 오버레이 룰(content/background-color)이 같은 셀렉터로 다시 등장하므로,
+ * 캐스케이드 순서상 이 리셋 룰이 먼저 와야 흰색 오버레이가 그대로 살아남는다.
+ */
+:is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message.priv_talk::before {
+  background: none;
+  border-radius: 0;
+}
+
+:is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message.priv_talk {
+  border: none;
+  margin-left: var(--priv-talk-margin-left);
+  padding: 5px;
+  position: relative;
+}
+
+:is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message.priv_talk:not(.top):not(.middle):not(.end) {
+  border-radius: 5px;
+}
+
+:is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message.priv_talk::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: white;
+  opacity:var(--priv-talk-bg-brightness);
+  pointer-events: none;
+  z-index: 0;
+  border-radius: inherit;
+}
+
+:is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message.priv_talk > * {
+  position: relative;
+  z-index: 1;
+}
+:is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message.priv_talk > div.message-content>:not(div.pt) {
+  display:none;
+}
+
+:is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message > div.message-content {
+  font-size: var(--sch-chat-font-size);
+}
+
+
+:is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message.priv_talk > div.message-content {
+  color: var(--priv-talk-font-color);
+  font-size: var(--priv-talk-font-size);
+  padding: 0;
+}
+
+.priv_user {
+  font-weight: bold;
+}
+
+.priv_talk.speaker-inline .message-content {
+  display: grid;
+  grid-template-columns: 2fr 5fr;
+}
+
+:is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message.priv_talk.top {
+  margin-bottom: 0;
+  border-radius: 5px 5px 0 0;
+}
+
+:is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message.priv_talk.middle {
+  margin-bottom: 0;
+  margin-top: 0;
+  border-radius: 0;
+}
+
+:is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message.priv_talk.end {
+  margin-top: 0;
+  border-radius: 0 0 5px 5px;
+}
+
+:is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message.middle>header {
+  display: none;
+}
+
+:is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message.end>header {
+  display: none;
+}
+
+:is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message.top {
+  margin-bottom: 0;
+  border-radius: 5px 5px 0 0;
+}
+
+:is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message.middle {
+  margin-bottom: 0;
+  margin-top: 0;
+  border-radius: 0;
+}
+
+:is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message.end {
+  margin-top: 0;
+  border-radius: 0 0 5px 5px;
+}
+
+:is(.chat-popout, #chat-log, .chat-log) .message {
+  border-width: 0;
+  border-left: 0;
+  border-color: var(--user-color);
+}
+
+:is(.chat-popout, #chat-log, .chat-log) :is(li, [data-message-id]).chat-message.message:not(.top):not(.middle):not(.end) {
+  border-radius: 5px;
+}
+
+/*
+ * 알림(#chat-notifications)은 항상 단일 메시지만 띄운다. 사이드바에서 그룹
+ * 라운딩(top/middle/end)이 붙은 메시지가 알림 안 ol.chat-log 로 복제되면서
+ * 그룹 border-radius / margin collapse / header 숨김이 딸려와, 단일 메시지인데도
+ * 모서리가 각지고 발신자 header 가 사라진다. 알림 스코프에서만 그룹 효과를
+ * 무효화해 독립된 단일 메시지로 되돌린다(사이드바/popout 그룹화는 그대로).
+ *
+ * specificity 주의: 일반 그룹 룰은 (1,4,0), 잡담 그룹 룰은 .priv_talk 가 더 있어
+ * (1,5,0) 이다. 라운딩/margin 리셋은 잡담까지 이겨야 하므로 .priv_talk 를 포함한
+ * 셀렉터를 병기해 (1,5,0) 로 맞추고, 이 블록을 파일 끝에 두어 순서로 이긴다.
+ * (컨테이너는 #chat-notifications 하나만 의존 — 버전별 .chat-log 유무와 무관.)
+ */
+#chat-notifications :is(li, [data-message-id]).chat-message.message.priv_talk:is(.top, .middle, .end),
+#chat-notifications :is(li, [data-message-id]).chat-message.message:is(.top, .middle, .end) {
+  margin-block: revert;          /* 그룹 margin collapse 해제 → Foundry 기본 상하 margin */
+  border-radius: 5px;            /* 단일 메시지 기본 라운딩(:not(.top/.middle/.end)과 동일) */
+}
+/* 발신자 header 복원(그룹 숨김 룰의 display:none 을 덮음). Foundry 채팅 header 는
+   flexrow(이름 + metadata 한 줄)이므로 display:flex 로 되돌린다. revert 를 쓰면
+   author origin 의 flex 까지 롤백돼 header 가 block 이 되고 metadata 가 이름 아래로
+   내려가므로 안 된다. 일반 메시지에만 효과 — 잡담은 render.ts 인라인 display:none 이 유지. */
+#chat-notifications :is(li, [data-message-id]).chat-message.message:is(.middle, .end) > header {
+  display: flex;
+}
