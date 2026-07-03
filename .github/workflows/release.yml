@@ -24,6 +24,9 @@ jobs:
           cache: npm
 
       - run: npm ci
+      # macro pack을 packs/_source에서 재컴파일해 dist에 신선한 pack이 실리도록 한다
+      # (compile-packs.mjs가 매크로 개수 2개를 검증 — 깨진 pack이면 릴리스가 실패).
+      - run: npm run packs
       - run: npm run build
 
       - name: Inject version and download URL into dist/module.json
