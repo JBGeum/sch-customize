@@ -27,6 +27,7 @@ import {
   extractPrivTalkFromContent,
   extractMessageContent,
   updateImageSources,
+  stripInteractiveElements,
 } from "./util";
 import { createCssList } from "./css";
 import { mergeCss } from "./css-merge";
@@ -227,7 +228,7 @@ export async function populateChatDoc(doc: Document, chats: any[], settings: { i
     if (settings.excludeGmWhisper && isGmOnlyWhisper(chat, gmIds)) continue;
 
     const chatMergeFlag = prevSpeaker === chat.alias;
-    prevPtFlag = await appendChatContents(chat, chatMergeFlag, prevPtFlag, whisperFlag, container, settings.hideWhisper);
+    prevPtFlag = await appendChatContents(chat, chatMergeFlag, prevPtFlag, whisperFlag, container, settings.hideWhisper, settings.excludeGmWhisper);
     prevSpeaker = chat.alias;
   }
 
@@ -357,7 +358,7 @@ export function injectRuntimeScript(doc: Document): void {
  *
  * @returns {Promise<boolean>} 현재 메시지가 priv_talk인지 여부 (다음 루프의 `prevPtFlag`로 전달)
  */
-export async function appendChatContents(chat: any, chatMergeFlag: boolean, prevPtFlag: boolean | undefined, whisperFlag: boolean, container: Element, hideWhisperSetting: any): Promise<boolean> {
+export async function appendChatContents(chat: any, chatMergeFlag: boolean, prevPtFlag: boolean | undefined, whisperFlag: boolean, container: Element, hideWhisperSetting: any, stripInteractive: boolean): Promise<boolean> {
   const { author } = chat;
   let speaker: string = chat.alias;
 
@@ -390,6 +391,9 @@ export async function appendChatContents(chat: any, chatMergeFlag: boolean, prev
 
   const textDivClasses = ["chat-text", mergeFlag ? "chat-merge" : null];
   const textDiv = createDivWithClasses(textDivClasses, text, true);
+  // 최종 렌더 DOM에서 조작 버튼 제거 — roll/plain/잡담 모든 경로 커버(plain 경로의
+  // MidiQOL 카드처럼 chat.content에 버튼이 그대로 들어오는 경우까지 잡는다).
+  if (stripInteractive) stripInteractiveElements(textDiv);
 
   appendChildren(div, [imageDiv, nameDiv, textDiv]);
   container.appendChild(div);

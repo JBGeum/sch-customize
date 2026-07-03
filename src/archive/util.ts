@@ -326,3 +326,15 @@ export async function zipInsideFolder(zip: any, imgSet: Iterable<string>, folder
     imgFolder.file(name, blob);
   }
 }
+
+/**
+ * 아카이브용: 렌더된 메시지 element에서 클릭 불가한 GM 조작 버튼(`data-action`)만 제거한다(in-place).
+ *
+ * ★ `.card-buttons`/`button` 통째 제거 금지: MidiQOL 카드는 `.card-buttons` 컨테이너 안에
+ *   조작 버튼뿐 아니라 굴림 결과(`.midi-results`)·주문 속성 footer(`.card-footer`)까지 담고,
+ *   dnd5e2는 타겟 칩(`button.unbutton`)·pill 등 정보성 요소도 `<button>`으로 렌더한다.
+ *   따라서 조작 버튼의 식별자인 `data-action`을 가진 button만 제거해 정보를 보존한다.
+ */
+export function stripInteractiveElements(element: Element): void {
+  element.querySelectorAll("button[data-action]").forEach((el) => el.remove());
+}

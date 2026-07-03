@@ -15,6 +15,7 @@ import {
   writeToSaveTarget,
   zipInsideFolder,
   fetchImages,
+  stripInteractiveElements,
 } from "../src/archive/util";
 
 describe("buildArchiveFilename includeTime", () => {
@@ -363,5 +364,36 @@ describe("zipInsideFolder", () => {
     expect(fetchMock).toHaveBeenCalledTimes(13);
     expect(maxInFlight).toBeLessThanOrEqual(6);
     expect(maxInFlight).toBe(6); // 13개 → 첫 청크가 정확히 6 동시 in-flight
+  });
+});
+
+describe("stripInteractiveElements", () => {
+  it("button[data-action](조작 버튼)만 제거하고 컨테이너·결과·정보성 요소는 보존한다", () => {
+    // MidiQOL 카드는 .card-buttons 안에 조작 버튼 + 굴림 결과(.midi-results) + 속성 footer(.card-footer)를
+    // 함께 담으므로, 컨테이너 통째 제거는 정보를 지운다 → data-action 조작 버튼만 겨냥한다.
+    const el = document.createElement("div");
+    el.innerHTML =
+      '<div class="card-buttons midi-buttons">' +
+      '<button data-action="rollDamage">Damage</button>' +
+      '<button data-action="midiApplyEffects">적용</button>' +
+      '<div class="midi-results"><h4 class="dice-total">18</h4></div>' +
+      '<ul class="card-footer pills unlist"><li class="pill"><span class="label">V, S</span></li></ul>' +
+      '</div>' +
+      '<button class="unbutton">Targeted</button>' +   // data-action 없음 = 정보성(타겟명)
+      '<a class="inline-roll">1d6</a>';
+    stripInteractiveElements(el);
+    expect(el.querySelector("button[data-action]")).toBeNull();                       // 조작 버튼 제거
+    expect(el.querySelector(".card-buttons")).not.toBeNull();                          // 컨테이너 보존
+    expect(el.querySelector(".midi-results .dice-total")!.textContent).toBe("18");     // 굴림 결과 보존
+    expect(el.querySelector(".card-footer")).not.toBeNull();                           // 속성 footer 보존
+    expect(el.querySelector("button.unbutton")).not.toBeNull();                        // data-action 없는 button 보존
+    expect(el.querySelector("a.inline-roll")).not.toBeNull();                          // inline-roll 보존
+  });
+
+  it("조작 버튼(data-action)이 없으면 무변경", () => {
+    const el = document.createElement("div");
+    el.innerHTML = '<div class="dice-roll">10</div>';
+    stripInteractiveElements(el);
+    expect(el.querySelector(".dice-roll")!.textContent).toBe("10");
   });
 });

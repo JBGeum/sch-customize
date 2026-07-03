@@ -29,9 +29,9 @@ function privtalk(over: any = {}) {
 }
 
 // 현 시그니처로 호출 → 컨테이너의 .chat-box 반환
-async function append(chat: any, opts: { merge?: boolean; prevPt?: boolean | undefined; whisper?: boolean; hideWhisper?: boolean } = {}) {
+async function append(chat: any, opts: { merge?: boolean; prevPt?: boolean | undefined; whisper?: boolean; hideWhisper?: boolean; stripInteractive?: boolean } = {}) {
   const container = document.createElement("div");
-  await appendChatContents(chat, opts.merge ?? false, opts.prevPt, opts.whisper ?? false, container, opts.hideWhisper ?? false);
+  await appendChatContents(chat, opts.merge ?? false, opts.prevPt, opts.whisper ?? false, container, opts.hideWhisper ?? false, opts.stripInteractive ?? false);
   return container.querySelector(".chat-box") as HTMLElement;
 }
 
@@ -86,6 +86,21 @@ describe("appendChatContents — 속삭임", () => {
     const box = await append(chat, { whisper: true, hideWhisper: false });
     expect(box.classList.contains("whisper")).toBe(true);
     expect(box.classList.contains("whisper-hidden")).toBe(false);
+  });
+});
+
+describe("appendChatContents — 조작 버튼 제거(stripInteractive)", () => {
+  it("stripInteractive=true: plain 경로 content의 조작 버튼만 제거, 컨테이너·결과 보존", async () => {
+    const chat = plain({ content: '<div class="card-buttons midi-buttons"><button data-action="midiApplyEffects">적용</button><div class="midi-results"><span class="value">18</span></div></div>' });
+    const box = await append(chat, { stripInteractive: true });
+    expect(box.querySelector("button[data-action]")).toBeNull();                  // 조작 버튼 제거
+    expect(box.querySelector(".card-buttons")).not.toBeNull();                     // 컨테이너 보존
+    expect(box.querySelector(".midi-results .value")!.textContent).toBe("18");     // 굴림 결과 보존
+  });
+  it("stripInteractive=false: 버튼 유지", async () => {
+    const chat = plain({ content: '<button data-action="midiApplyEffects">적용</button>' });
+    const box = await append(chat, { stripInteractive: false });
+    expect(box.querySelector("button[data-action]")).not.toBeNull();
   });
 });
 
