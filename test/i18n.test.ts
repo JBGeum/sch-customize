@@ -37,3 +37,15 @@ describe("i18n: dialog.export.whisper 라벨 키", () => {
     }
   }
 });
+
+describe("i18n: edit.* 키", () => {
+  for (const key of ["contextLabel", "dialogTitle", "save", "cancel", "editedBadge", "errorNoPermission"]) {
+    for (const lang of ["en", "ko"]) {
+      it(`${lang}.json 의 edit.${key} 존재`, () => {
+        const v = load(lang)[`sch-customize.edit.${key}`];
+        expect(typeof v).toBe("string");
+        expect(v.trim().length).toBeGreaterThan(0);
+      });
+    }
+  }
+});

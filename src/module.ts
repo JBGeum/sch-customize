@@ -29,6 +29,7 @@ import { registerChitchatIndicator } from "./chitchat/indicator";
 import { registerChitchatRender, resetRenderState } from "./chitchat/render";
 import { registerSpeakerBar } from "./speaker-bar";
 import { registerOpenLogButton } from "./open-log-button";
+import { registerChatEdit } from "./chat-edit";
 import { applyAllCssSettings, applyUserColorBackgrounds } from "./appearance";
 import {
   openChatArchive,
@@ -79,6 +80,7 @@ Hooks.once("setup", () => {
   registerChitchatCommand();
   registerChitchatIndicator();
   registerOpenLogButton();
+  registerChatEdit();
 });
 
 Hooks.once("ready", () => {

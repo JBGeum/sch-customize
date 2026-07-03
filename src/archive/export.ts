@@ -15,6 +15,8 @@ import JSZip from "jszip";
 import { TEMPLATE_BASE } from "../constants";
 import { readWhisperSettings } from "../settings/whisper";
 import { renderChatMessageElement, callRenderChatMessageHooks, isPrivTalkMessage } from "../compat/foundry";
+import { isEditedMessage } from "../chat-edit/predicate";
+import { injectEditedBadge } from "../chat-edit/badge";
 import {
   requestSaveTarget,
   writeToSaveTarget,
@@ -365,7 +367,8 @@ export async function appendChatContents(chat: any, chatMergeFlag: boolean, prev
   const privTalkFlag = isPrivTalkMessage(chat);
 
   let text: string;
-  switch (selectBodySource(chat)) {
+  const bodySource = selectBodySource(chat);
+  switch (bodySource) {
     case "roll":     text = await getRollResultContent(chat); break;
     case "privtalk": text = extractPrivTalkFromContent(chat.content); break;
     default:         text = chat.content;
@@ -394,6 +397,12 @@ export async function appendChatContents(chat: any, chatMergeFlag: boolean, prev
   // 최종 렌더 DOM에서 조작 버튼 제거 — roll/plain/잡담 모든 경로 커버(plain 경로의
   // MidiQOL 카드처럼 chat.content에 버튼이 그대로 들어오는 경우까지 잡는다).
   if (stripInteractive) stripInteractiveElements(textDiv);
+
+  // 편집된 메시지에 "(수정됨)" 배지 — roll 경로는 renderChatMessageHTML 훅(getRollResultContent)이
+  // 이미 배지를 태우므로, 중복 방지를 위해 plain/privtalk 경로에서만 직접 추가한다.
+  if (isEditedMessage(chat) && bodySource !== "roll") {
+    injectEditedBadge(textDiv, game.i18n!.localize("sch-customize.edit.editedBadge"));
+  }
 
   appendChildren(div, [imageDiv, nameDiv, textDiv]);
   container.appendChild(div);
