@@ -7,6 +7,7 @@ import {
   whisperKey,
   shouldMergeBaseMessage,
   decideRounding,
+  classForGrouping,
 } from "../src/chitchat/grouping";
 
 // game.settings.get 스텁 — 키별 설정값을 settings 맵에서 반환
@@ -146,6 +147,91 @@ describe("일반 메시지 그룹화", () => {
   });
 });
 
+describe("편집 재렌더(in-place) — stale state merge 방지 (헤더 유지)", () => {
+  function baseId(id: string, style: number, authorId: string, speaker: unknown) {
+    return { id, flags: {}, style, author: { id: authorId }, speaker } as any;
+  }
+  function renderId(msg: any): HTMLElement {
+    const el = makeEl();
+    el.setAttribute("data-message-id", msg.id);
+    document.body.appendChild(el);
+    onRenderChatMessage(msg, el);
+    return el;
+  }
+
+  it("편집 재렌더는 detached 훅→삽입 후 실제 이웃으로 재그룹(stale merge로 헤더 안 사라짐)", async () => {
+    const m1 = baseId("m1", 0, "A", { actor: "a" }); // 화자 A (단독)
+    const m2 = baseId("m2", 0, "B", { actor: "b" }); // 화자 B (그룹 시작)
+    const m3 = baseId("m3", 0, "B", { actor: "b" }); // 화자 B (그룹 끝)
+    (globalThis as any).game.messages = { get: (id: string) => ({ m1, m2, m3 } as any)[id] };
+
+    const e1 = renderId(m1);
+    const e2 = renderId(m2);
+    const e3 = renderId(m3);
+    // 초기 순차 렌더: e2=top, e3=end (B 그룹 시작/끝). state.lastBaseMsg=e3(B).
+    expect(e2.classList.contains("top")).toBe(true);
+    expect(e3.classList.contains("end")).toBe(true);
+
+    // m2 편집 → Foundry는 새 엘리먼트를 detached(로그 밖)에서 렌더하며 훅 발화.
+    const fresh = makeEl();
+    fresh.setAttribute("data-message-id", "m2");
+    document.createElement("div").appendChild(fresh); // temp 컨테이너 = 로그에 미연결
+    onRenderChatMessage(m2, fresh);
+    // 훅 시점엔 stale merge로 end가 붙지 않아야 한다(즉시 클래스 없음).
+    expect(fresh.classList.contains("end")).toBe(false);
+
+    // Foundry가 로그의 e2 자리에 삽입.
+    e2.replaceWith(fresh);
+    await Promise.resolve(); // microtask flush → 지연 재그룹 실행
+    await Promise.resolve();
+
+    // 실제 이웃(e1=A 비머지, e3=B 머지)으로 재그룹 → top → 헤더 표시.
+    expect(fresh.classList.contains("end")).toBe(false);
+    expect(fresh.classList.contains("top")).toBe(true);
+
+    (globalThis as any).game.messages = undefined; // 다른 테스트 격리
+  });
+});
+
+describe("새로고침(detached 배치 렌더) — 삽입 후 그룹화 유지", () => {
+  // Foundry는 새로고침 시 메시지를 로그 밖(detached)에서 렌더하며 훅을 발화한 뒤 삽입한다.
+  // 훅 시점 isConnected=false라 예전엔 merge가 스킵돼 그룹이 다 풀렸다 — 삽입 후 판정으로 수정.
+  function renderDetached(msg: any): HTMLElement {
+    const el = makeEl();
+    document.createElement("div").appendChild(el); // 로그 밖 임시 컨테이너(미연결)
+    onRenderChatMessage(msg, el);
+    return el;
+  }
+
+  it("일반: detached로 훅 발화된 연속 같은 화자, 삽입 후 top/end merge", async () => {
+    const sp = { actor: "a" };
+    const e1 = renderDetached(base(0, "A", sp));
+    const e2 = renderDetached(base(0, "A", sp));
+    // 삽입 전에는 그룹 클래스 미적용
+    expect(e1.classList.contains("top")).toBe(false);
+    expect(e2.classList.contains("end")).toBe(false);
+    // Foundry가 로그에 순서대로 삽입
+    document.body.appendChild(e1);
+    document.body.appendChild(e2);
+    await Promise.resolve();
+    await Promise.resolve();
+    // 삽입 후 그룹화 적용(라이브와 동일)
+    expect(e1.classList.contains("top")).toBe(true);
+    expect(e2.classList.contains("end")).toBe(true);
+  });
+
+  it("잡담: detached 연속 잡담도 삽입 후 top/end", async () => {
+    const e1 = renderDetached(priv("1"));
+    const e2 = renderDetached(priv("1"));
+    document.body.appendChild(e1);
+    document.body.appendChild(e2);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(e1.classList.contains("top")).toBe(true);
+    expect(e2.classList.contains("end")).toBe(true);
+  });
+});
+
 describe("merge 비활성 경로 & 리셋", () => {
   it("privTalkMerge=false → 잡담 연속에도 그룹 클래스 미부착", () => {
     settings.privTalkMerge = false;
@@ -262,6 +348,13 @@ describe("shouldMergeBaseMessage — 귓속말 수신자", () => {
     expect(shouldMergeBaseMessage(wmk(["x"]), wmk(["y"]), false)).toBe(false));
   it("같은 수신자 귓속말끼리는 merge (순서 무관)", () =>
     expect(shouldMergeBaseMessage(wmk(["x", "y"]), wmk(["y", "x"]), false)).toBe(true));
+});
+
+describe("classForGrouping", () => {
+  it("앞뒤 모두 머지 → middle", () => expect(classForGrouping(true, true)).toBe("middle"));
+  it("앞만 머지 → end", () => expect(classForGrouping(true, false)).toBe("end"));
+  it("뒤만 머지 → top", () => expect(classForGrouping(false, true)).toBe("top"));
+  it("둘 다 아님 → null(단독)", () => expect(classForGrouping(false, false)).toBeNull());
 });
 
 describe("decideRounding", () => {

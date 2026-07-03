@@ -54,3 +54,17 @@ export function decideRounding(prevHasEnd: boolean): RoundingDecision {
   }
   return { prevRemove: [], prevAdd: ["top"], currAdd: ["end"] };
 }
+
+/**
+ * 앞/뒤 이웃과의 merge 여부로 한 메시지의 그룹 라운딩 클래스를 결정한다(순수).
+ * 순차 스트리밍(decideRounding)과 달리 양쪽 이웃을 모두 알 때 쓰며, 이웃을 수정하지
+ * 않고 자기 클래스만 완결적으로 정한다 — 편집 등 제자리 재렌더 시 재그룹에 사용.
+ *   prev&next → middle(헤더 숨김), prev만 → end(헤더 숨김),
+ *   next만 → top(헤더 표시=그룹 시작), 둘 다 아님 → null(단독=헤더 표시).
+ */
+export function classForGrouping(mergePrev: boolean, mergeNext: boolean): "top" | "middle" | "end" | null {
+  if (mergePrev && mergeNext) return "middle";
+  if (mergePrev) return "end";
+  if (mergeNext) return "top";
+  return null;
+}
