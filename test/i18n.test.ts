@@ -73,3 +73,15 @@ describe("i18n: settings.favoriteChipMode 키", () => {
     }
   }
 });
+
+describe("i18n: settings.ignorePcTokenSpeaker 키", () => {
+  for (const key of ["name", "hint"]) {
+    for (const lang of ["en", "ko"]) {
+      it(`${lang}.json 의 settings.ignorePcTokenSpeaker.${key} 존재`, () => {
+        const v = load(lang)[`sch-customize.settings.ignorePcTokenSpeaker.${key}`];
+        expect(typeof v).toBe("string");
+        expect(v.trim().length).toBeGreaterThan(0);
+      });
+    }
+  }
+});

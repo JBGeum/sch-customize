@@ -70,6 +70,8 @@
     "sch-customize.settings.favoriteChipMode.hint": "Choose whether favorite-speaker chips show the portrait or the name.",
     "sch-customize.settings.favoriteChipMode.choices.portrait": "Portrait",
     "sch-customize.settings.favoriteChipMode.choices.name": "Name",
+    "sch-customize.settings.ignorePcTokenSpeaker.name": "Don't Speak as PC Tokens",
+    "sch-customize.settings.ignorePcTokenSpeaker.hint": "When you select a player-owned PC token, don't display or send as that PC; fall back to your assigned character, or your user (OOC) if none. Mainly for GMs.",
     "sch-customize.settings.baseMessageMerge.name": "Merge Regular Messages",
     "sch-customize.settings.baseMessageMerge.hint": "Visually combine consecutive regular chat messages from the same player into a single group (applies top/middle/end styles). When disabled, regular messages are shown as individual bubbles. The page reloads when this setting changes.",
     "sch-customize.settings.privTalkMerge.name": "Merge Chitchat Messages",

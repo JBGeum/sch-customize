@@ -7,6 +7,7 @@ export const SETTINGS = {
   enableSpeakerBar: "enableSpeakerBar",
   enableSpeakerFavorites: "enableSpeakerFavorites",
   favoriteChipMode: "favoriteChipMode",
+  ignorePcTokenSpeaker: "ignorePcTokenSpeaker",
   includeWhisper: "includeWhisper",
   hideWhisper: "hideWhisper",
   lastExportMode: "lastExportMode",

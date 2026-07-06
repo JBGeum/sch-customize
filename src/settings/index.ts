@@ -57,6 +57,16 @@ export function registerAllSettings(): void {
     onChange: () => updateSpeakerBar(),
   });
 
+  gs.register(MODULE_ID, SETTINGS.ignorePcTokenSpeaker, {
+    name: `${MODULE_ID}.settings.ignorePcTokenSpeaker.name`,
+    hint: `${MODULE_ID}.settings.ignorePcTokenSpeaker.hint`,
+    scope: "client",
+    config: true,
+    default: false,
+    type: Boolean,
+    onChange: () => updateSpeakerBar(),
+  });
+
   // ─── Chat Archive 메뉴 ───
   // 단일 진입점에서 단독 / 누적+머지 / 누적+전체덤프 3 모드를 선택한다.
   gs.registerMenu(MODULE_ID, "downloadChatArchiveMenu", {
