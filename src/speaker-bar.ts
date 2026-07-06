@@ -370,6 +370,26 @@ export function updateSpeakerBar() {
 /**
  * 발화자 바 본체를 textarea 앞에 삽입
  */
+/**
+ * 접힌 사이드바의 간이 입력창(hover popout)에선 lock·즐겨찾기 줄이 hover 이탈로
+ * 클릭되지 않으므로, 클릭이 필요한 요소만 숨긴다(화자 표시=초상화·이름은 유지).
+ */
+export function applyCollapsedState(collapsed: boolean): void {
+  document.querySelector(".sch-speaker-bar")?.classList.toggle("sch-collapsed", collapsed);
+}
+
+/** 사이드바 접힘 여부(경계 read; 미지원·오류 시 false). */
+function readSidebarCollapsed(): boolean {
+  try {
+    const s: any = (ui as any)?.sidebar;
+    if (s && typeof s.expanded === "boolean") return !s.expanded;
+    if (s && typeof s.collapsed === "boolean") return s.collapsed;
+    return !!document.querySelector("#sidebar.collapsed");
+  } catch (_) {
+    return false;
+  }
+}
+
 function placeSpeakerBar(textarea: Element): void {
   // 기존 바 제거 후 새로 삽입 (재렌더 대응)
   const existing = document.querySelector(".sch-speaker-bar");
@@ -378,6 +398,7 @@ function placeSpeakerBar(textarea: Element): void {
   const bar = createSpeakerBarElement();
   textarea.before(bar);
   updateSpeakerBar();
+  applyCollapsedState(readSidebarCollapsed());
 }
 
 /**
@@ -465,4 +486,10 @@ export function registerSpeakerBar() {
 
   // 캔버스 준비 후 갱신
   Hooks.on("canvasReady", () => updateSpeakerBar());
+
+  // 사이드바 접힘/펼침 → 접힌 간이 입력창(hover popout)에선 lock·즐겨찾기 줄(hover 이탈로
+  // 클릭 불가)을 숨긴다. 화자 표시(초상화·이름)는 유지.
+  (Hooks as any).on("collapseSidebar", (_sidebar: any, collapsed: boolean) => {
+    applyCollapsedState(!!collapsed);
+  });
 }

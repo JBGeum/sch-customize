@@ -25,8 +25,11 @@ interface RenderState {
   // 이미 렌더된 일반 메시지 id 집합. 재렌더(편집 등) 감지에 쓴다 — Foundry는 편집 시
   // 메시지를 detached 상태로 렌더해 훅을 발화하므로 DOM 위치로는 재렌더를 알 수 없다.
   seenBaseIds: Set<string>;
+  // 잡담도 동일한 이유로 재렌더 감지가 필요하다. Foundry는 초기 로드 시에도 일부 메시지를
+  // 재렌더하는데, 잡담이 순차 state 로만 처리되면 재렌더가 첫 렌더처럼 취급돼 라운딩이 꼬인다.
+  seenPrivTalkIds: Set<string>;
 }
-const state: RenderState = { lastPrivTalkMsg: null, lastBaseMsg: null, privTalkIndex: 0, seenBaseIds: new Set() };
+const state: RenderState = { lastPrivTalkMsg: null, lastBaseMsg: null, privTalkIndex: 0, seenBaseIds: new Set(), seenPrivTalkIds: new Set() };
 
 /**
  * 외부에서 상태를 리셋해야 할 때(예: setup 후 새 세션 시작) 호출.
@@ -36,6 +39,7 @@ export function resetRenderState() {
   state.lastBaseMsg = null;
   state.privTalkIndex = 0;
   state.seenBaseIds.clear();
+  state.seenPrivTalkIds.clear();
 }
 
 /** 라운딩 결정을 prev/curr 엘리먼트에 적용. */
@@ -56,6 +60,14 @@ export function onRenderChatMessage(message: ChatMessage, htmlOrEl: HTMLElement 
   const baseMessageMergeEnabled = (game.settings as any).get(MODULE_ID, SETTINGS.baseMessageMerge);
 
   if (isPrivTalkMessage(message)) {
+    // base와 동일: 이미 본 잡담이 재렌더되면 순차 state가 stale하므로, 삽입 후 실제 DOM
+    // 이웃으로부터 재그룹한다. 훅 시점 detached라 재렌더는 DOM이 아니라 본 id로만 판별.
+    const id = String((message as any).id ?? "");
+    if (id !== "" && state.seenPrivTalkIds.has(id)) {
+      regroupPrivTalkAfterInsertion(el, message, privTalkMergeEnabled);
+      return;
+    }
+    if (id !== "") state.seenPrivTalkIds.add(id);
     handlePrivTalkRender(el, message, privTalkMergeEnabled);
     return;
   }
@@ -134,20 +146,16 @@ function regroupBaseMessage(el: HTMLElement, message: any, mergeEnabled: boolean
   if (cls) el.classList.add(cls);
 }
 
-function handlePrivTalkRender(el: HTMLElement, message: ChatMessage, mergeEnabled: boolean): void {
+/**
+ * 잡담 전용 마크업(priv_talk·user 클래스, 헤더 숨김, 본문 교체, speaker-inline)을 적용한다.
+ * 첫 렌더와 재렌더가 공유한다 — 재렌더 시 새 el 은 원본 마크업이라 매번 다시 적용해야 한다.
+ */
+function applyPrivTalkMarkup(el: HTMLElement, message: any): void {
   el.classList.add("priv_talk");
   el.classList.add(`user-${resolveAuthorId(message)}`);
 
-  // 직전 잡담 엘리먼트를 훅 시점에 캡처하고, 그룹 라운딩은 삽입 이후로 미룬다(base와 동일 이유:
-  // 재렌더·새로고침 시 detached라 훅 시점 isConnected가 신뢰 불가). 삽입 후 직전이 연결돼 있으면
-  // 그룹화, 로그 clear로 제거됐으면 미연결이라 자동 제외.
-  const prev = (mergeEnabled && state.privTalkIndex > 0) ? state.lastPrivTalkMsg : null;
-  if (mergeEnabled) state.lastPrivTalkMsg = el;
-  state.privTalkIndex++;
-
-  // 헤더 숨김 + 본문 영역을 잡담 전용 마크업으로 교체 (동기 — 즉시 반영돼야 함)
   const header = el.querySelector("header");
-  if (header) header.style.display = "none";
+  if (header) (header as HTMLElement).style.display = "none";
 
   const content = el.querySelector(".message-content");
   if (content) {
@@ -158,6 +166,45 @@ function handlePrivTalkRender(el: HTMLElement, message: ChatMessage, mergeEnable
   if (!(game.settings as any).get(MODULE_ID, SETTINGS.privTalkSpeakerLineChange)) {
     el.classList.add("speaker-inline");
   }
+}
+
+/**
+ * 잡담 한 개의 그룹 클래스를 실제 DOM 이웃(연속 priv_talk)으로부터 재계산한다(자기 완결).
+ * 잡담은 유저 무관 연속 그룹화이므로 이웃이 priv_talk 클래스면 곧 같은 묶음이다.
+ * regroupBaseMessage 의 잡담판 — 이웃은 건드리지 않고 자기 클래스만 정한다.
+ */
+function regroupPrivTalk(el: HTMLElement, mergeEnabled: boolean): void {
+  el.classList.remove("top", "middle", "end");
+  if (!mergeEnabled) return;
+  const prev = adjacentMessageEl(el, "prev");
+  const next = adjacentMessageEl(el, "next");
+  const mergePrev = !!prev?.classList.contains("priv_talk");
+  const mergeNext = !!next?.classList.contains("priv_talk");
+  const cls = classForGrouping(mergePrev, mergeNext);
+  if (cls) el.classList.add(cls);
+}
+
+/**
+ * 재렌더(편집·초기 로드 재렌더)된 잡담을, stale 한 순차 state 가 아니라 실제 DOM 이웃으로부터
+ * 재그룹한다(삽입 이후). 마크업을 다시 적용하고 그룹 클래스만 자기 완결적으로 정한다 —
+ * 이웃은 건드리지 않고 순차 state(lastPrivTalkMsg/privTalkIndex)도 갱신하지 않는다.
+ */
+function regroupPrivTalkAfterInsertion(el: HTMLElement, message: any, mergeEnabled: boolean): void {
+  applyPrivTalkMarkup(el, message);
+  el.classList.remove("top", "middle", "end");
+  runAfterConnected(el, () => regroupPrivTalk(el, mergeEnabled));
+}
+
+function handlePrivTalkRender(el: HTMLElement, message: ChatMessage, mergeEnabled: boolean): void {
+  // 헤더 숨김 + 본문 영역을 잡담 전용 마크업으로 교체 (동기 — 즉시 반영돼야 함)
+  applyPrivTalkMarkup(el, message);
+
+  // 직전 잡담 엘리먼트를 훅 시점에 캡처하고, 그룹 라운딩은 삽입 이후로 미룬다(base와 동일 이유:
+  // 재렌더·새로고침 시 detached라 훅 시점 isConnected가 신뢰 불가). 삽입 후 직전이 연결돼 있으면
+  // 그룹화, 로그 clear로 제거됐으면 미연결이라 자동 제외.
+  const prev = (mergeEnabled && state.privTalkIndex > 0) ? state.lastPrivTalkMsg : null;
+  if (mergeEnabled) state.lastPrivTalkMsg = el;
+  state.privTalkIndex++;
 
   if (prev) {
     runAfterConnected(el, () => {

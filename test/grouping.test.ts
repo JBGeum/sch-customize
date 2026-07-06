@@ -193,6 +193,84 @@ describe("편집 재렌더(in-place) — stale state merge 방지 (헤더 유지
   });
 });
 
+describe("잡담 편집/재렌더(in-place) — 실제 DOM 이웃 기준 재그룹", () => {
+  function privId(id: string, userId: string) {
+    return {
+      id,
+      flags: { "sch-customize": { priv_talk: true } },
+      user: { id: userId },
+      speaker: { alias: "U" + userId },
+      content: "hi",
+    } as any;
+  }
+  function renderPrivId(msg: any): HTMLElement {
+    const el = makeEl();
+    el.setAttribute("data-message-id", msg.id);
+    document.body.appendChild(el);
+    onRenderChatMessage(msg, el);
+    return el;
+  }
+
+  it("가운데 잡담 재렌더는 순차 state가 아니라 실제 이웃 기준으로 middle 유지", async () => {
+    const p1 = privId("p1", "1");
+    const p2 = privId("p2", "1");
+    const p3 = privId("p3", "1");
+    (globalThis as any).game.messages = { get: (id: string) => ({ p1, p2, p3 } as any)[id] };
+
+    const e1 = renderPrivId(p1);
+    const e2 = renderPrivId(p2);
+    const e3 = renderPrivId(p3);
+    expect(e1.classList.contains("top")).toBe(true);
+    expect(e2.classList.contains("middle")).toBe(true);
+    expect(e3.classList.contains("end")).toBe(true);
+
+    // p2 재렌더(편집 / 초기 로드 시 Foundry 재렌더): 새 el을 detached로 렌더한 뒤 e2 자리에 삽입.
+    const fresh = makeEl();
+    fresh.setAttribute("data-message-id", "p2");
+    document.createElement("div").appendChild(fresh); // 로그 밖 임시 컨테이너(미연결)
+    onRenderChatMessage(p2, fresh);
+    e2.replaceWith(fresh);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // 실제 이웃(e1·e3 모두 priv_talk) → middle. 순차 state 오염으로 end/none 받으면 회귀.
+    expect(fresh.classList.contains("priv_talk")).toBe(true);
+    expect(fresh.classList.contains("middle")).toBe(true);
+    expect(fresh.classList.contains("end")).toBe(false);
+    // 잡담 마크업도 재적용(헤더 숨김 + 본문 교체).
+    expect(fresh.querySelector(".pt.priv_user")?.textContent).toBe("U1");
+    expect((fresh.querySelector("header") as HTMLElement)?.style.display).toBe("none");
+
+    (globalThis as any).game.messages = undefined;
+  });
+
+  it("끝 잡담 재렌더는 end 유지(top/middle 오염 없음)", async () => {
+    const p1 = privId("p1", "1");
+    const p2 = privId("p2", "1");
+    (globalThis as any).game.messages = { get: (id: string) => ({ p1, p2 } as any)[id] };
+
+    const e1 = renderPrivId(p1);
+    const e2 = renderPrivId(p2);
+    expect(e1.classList.contains("top")).toBe(true);
+    expect(e2.classList.contains("end")).toBe(true);
+
+    // e2 재렌더 → 실제 이웃(prev=e1 priv_talk, next=none) → end.
+    const fresh = makeEl();
+    fresh.setAttribute("data-message-id", "p2");
+    document.createElement("div").appendChild(fresh);
+    onRenderChatMessage(p2, fresh);
+    e2.replaceWith(fresh);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(fresh.classList.contains("end")).toBe(true);
+    expect(fresh.classList.contains("top")).toBe(false);
+    expect(fresh.classList.contains("middle")).toBe(false);
+
+    (globalThis as any).game.messages = undefined;
+  });
+});
+
 describe("새로고침(detached 배치 렌더) — 삽입 후 그룹화 유지", () => {
   // Foundry는 새로고침 시 메시지를 로그 밖(detached)에서 렌더하며 훅을 발화한 뒤 삽입한다.
   // 훅 시점 isConnected=false라 예전엔 merge가 스킵돼 그룹이 다 풀렸다 — 삽입 후 판정으로 수정.
