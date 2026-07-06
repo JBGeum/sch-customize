@@ -31,6 +31,7 @@ function setupFoundry(opts: any = {}) {
       get: (_m: string, key: string) =>
         key === "enableSpeakerFavorites" ? (opts.favEnabled ?? true)
         : key === "favoriteChipMode" ? (opts.favChipMode ?? "portrait")
+        : key === "ignorePcTokenSpeaker" ? (opts.ignorePc ?? false)
         : opts.cgmpMode,
     },
   };
@@ -116,6 +117,43 @@ describe("overrideSpeaker (characterization)", () => {
     const result = overrideSpeaker({ updateSource } as any, data);
     expect(result).toBe(false);
     expect(data.speaker).toEqual({ alias: "x" });
+    expect(updateSource).not.toHaveBeenCalled();
+  });
+
+  it("무잠금 + 옵션 on + PC 토큰(배정캐릭터 없음) → user OOC override + true", () => {
+    setupFoundry({
+      locked: undefined, ignorePc: true, userName: "GM",
+      controlled: [{ document: { id: "t1", name: "PCTok" }, actor: { id: "a1", name: "PCAct", hasPlayerOwner: true } }],
+    });
+    const updateSource = vi.fn();
+    const data: any = { speaker: { alias: "PCTok" }, flags: {} };
+    const result = overrideSpeaker({ updateSource } as any, data);
+    expect(result).toBe(true);
+    expect(data.speaker).toEqual({ scene: null, actor: null, token: null, alias: "GM" });
+    expect(updateSource).toHaveBeenCalledWith({ speaker: { scene: null, actor: null, token: null, alias: "GM" } });
+  });
+
+  it("무잠금 + 옵션 on + PC 토큰 + 배정캐릭터 → 배정캐릭터로 override", () => {
+    setupFoundry({
+      locked: undefined, ignorePc: true, character: { id: "char1", name: "Char" },
+      controlled: [{ document: { id: "t1", name: "PCTok" }, actor: { id: "a1", name: "PCAct", hasPlayerOwner: true } }],
+    });
+    const updateSource = vi.fn();
+    const data: any = { speaker: { alias: "PCTok" }, flags: {} };
+    const result = overrideSpeaker({ updateSource } as any, data);
+    expect(result).toBe(true);
+    expect(data.speaker).toEqual({ scene: null, actor: "char1", token: null, alias: "Char" });
+  });
+
+  it("무잠금 + 옵션 on + NPC 토큰 → no-op(false, CGMP 보존)", () => {
+    setupFoundry({
+      locked: undefined, ignorePc: true,
+      controlled: [{ document: { id: "t1", name: "NPCTok" }, actor: { id: "a1", name: "NPCAct", hasPlayerOwner: false } }],
+    });
+    const updateSource = vi.fn();
+    const data: any = { speaker: { alias: "x" }, flags: {} };
+    const result = overrideSpeaker({ updateSource } as any, data);
+    expect(result).toBe(false);
     expect(updateSource).not.toHaveBeenCalled();
   });
 });

@@ -5,7 +5,7 @@
 
 import { mountOnChatInput } from "./compat/chat-input-mount";
 import { MODULE_ID } from "./constants";
-import { resolveSpeaker, resolveOverrideSpeaker, resolveFavoriteDisplay, matchesLocked, DEFAULT_IMG, addFavorite, removeFavorite, FAV_MAX, type LockedSpeaker, type FavoriteLookups, type SpeakerContext } from "./speaker-resolve";
+import { resolveSpeaker, resolveOverrideSpeaker, resolveFavoriteDisplay, matchesLocked, DEFAULT_IMG, addFavorite, removeFavorite, speakerInfoToOverride, FAV_MAX, type LockedSpeaker, type FavoriteLookups, type SpeakerContext } from "./speaker-resolve";
 import { SETTINGS } from "./settings/keys";
 const LOCKED_FLAG_KEY = "lockedSpeaker";
 const FAVORITES_FLAG_KEY = "favoriteSpeakers";
@@ -141,7 +141,26 @@ function readSpeakerContext(): SpeakerContext {
     assignedCharacter: game.user!.character,
     userName: game.user!.name,
     userAvatar: (game.user as any).avatar || DEFAULT_IMG,
+    ignorePcToken: readIgnorePcToken(),
   };
+}
+
+/** "PC 토큰으로 발화 안 함" 설정값(미등록·오류 시 false). */
+function readIgnorePcToken(): boolean {
+  try {
+    return (game.settings as any).get(MODULE_ID, SETTINGS.ignorePcTokenSpeaker) === true;
+  } catch (_) {
+    return false;
+  }
+}
+
+/** 무-lock 상태에서 PC 스킵 옵션이 발신 개입을 요구하는가. */
+function shouldOverrideForPcSkip(data: any): boolean {
+  if (!readIgnorePcToken()) return false;
+  if (data.flags?.[MODULE_ID]?.priv_talk) return false;
+  const controlled = (canvas as any)?.tokens?.controlled?.[0];
+  if (!controlled) return false;
+  return !!controlled.actor?.hasPlayerOwner;
 }
 
 /**
@@ -362,24 +381,38 @@ function placeSpeakerBar(textarea: Element): void {
 }
 
 /**
- * pre-create 단계에서 메시지의 speaker를 고정 발화자로 덮어쓰기.
+ * pre-create 단계에서 메시지의 speaker를 고정 발화자(또는 PC 스킵 옵션 결과)로 덮어쓰기.
  *
- * Lock이 활성일 때만 `message`와 `data` 양쪽에 speaker를 박는다. Lock이 없으면
- * **아무것도 하지 않는다** — 특히 `message.updateSource`도 호출하지 말 것.
+ * Lock이 활성일 때만 `message`와 `data` 양쪽에 speaker를 박는다. Lock이 없고 PC 스킵
+ * 옵션도 개입하지 않으면 **아무것도 하지 않는다** — 특히 `message.updateSource`도
+ * 호출하지 말 것.
  *
  * 이유: CGMP 등 다른 모듈이 같은 훅에서 `message.updateSource({ speaker })`로 OOC
  * 변환을 적용하더라도, 그 변경은 *`message` 인스턴스*에만 반영되고 *`data` 객체*는
- * 변경되지 않는다. 우리가 lock 없는 상태에서도 `data.speaker`를 message에 다시 박으면
- * CGMP의 변환이 원본 PC speaker로 원복되어 chat log에 PC portrait이 그대로 표시된다.
+ * 변경되지 않는다. 우리가 lock/PC 스킵 없는 상태에서도 `data.speaker`를 message에
+ * 다시 박으면 CGMP의 변환이 원본 PC speaker로 원복되어 chat log에 PC portrait이
+ * 그대로 표시된다. PC 스킵 옵션 경로는 원본 PC speaker가 아니라 CGMP를 반영한
+ * `resolveCurrentSpeaker()` 결과를 박으므로 이 랜드마인을 회피한다.
  *
- * @returns {boolean} lock이 적용되어 message가 변경되었는지 여부
+ * @returns {boolean} lock 또는 PC 스킵 옵션이 적용되어 message가 변경되었는지 여부
  */
 export function overrideSpeaker(message: ChatMessage, data: any): boolean {
-  const speaker = resolveOverrideSpeaker(getLockedSpeaker(), data);
-  if (!speaker) return false;
-  data.speaker = speaker;
-  (message as any).updateSource({ speaker });
-  return true;
+  // 1) Lock 우선 (기존)
+  const lockedSpeaker = resolveOverrideSpeaker(getLockedSpeaker(), data);
+  if (lockedSpeaker) {
+    data.speaker = lockedSpeaker;
+    (message as any).updateSource({ speaker: lockedSpeaker });
+    return true;
+  }
+  // 2) Lock 없음: PC 스킵 옵션이 발신 개입을 요구하면 resolveCurrentSpeaker 결과로 발신.
+  //    (원본 PC를 되박는 게 아니라 CGMP를 반영한 스킵 결과를 박으므로 CGMP 원복 랜드마인 회피.)
+  if (shouldOverrideForPcSkip(data)) {
+    const speaker = speakerInfoToOverride(resolveCurrentSpeaker());
+    data.speaker = speaker;
+    (message as any).updateSource({ speaker });
+    return true;
+  }
+  return false;
 }
 
 /**
