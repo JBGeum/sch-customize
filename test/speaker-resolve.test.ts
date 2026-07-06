@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   resolveSpeaker, resolveCgmpForcedSpeaker, userSpeakerInfo, assignedCharacterSpeakerInfo,
   resolveOverrideSpeaker, CGMP_SPEAKER_MODE, DEFAULT_IMG, type SpeakerContext,
-  resolveFavoriteDisplay, matchesLocked,
+  resolveFavoriteDisplay, matchesLocked, addFavorite, removeFavorite, FAV_MAX,
 } from "../src/speaker-resolve";
 import { MODULE_ID } from "../src/constants";
 
@@ -146,4 +146,41 @@ describe("matchesLocked", () => {
     expect(matchesLocked(fav, { sceneId: "s", tokenId: "t", actorId: "a", alias: "다른별칭" })).toBe(true));
   it("일부 불일치 → false", () =>
     expect(matchesLocked(fav, { sceneId: "s", tokenId: "other", actorId: "a", alias: "H" })).toBe(false));
+});
+
+describe("addFavorite", () => {
+  const cand = { sceneId: "s", tokenId: "t", actorId: "a", alias: "H" };
+  it("정상 추가 → ok, next에 append", () => {
+    expect(addFavorite([], cand, 12)).toEqual({ ok: true, next: [cand] });
+  });
+  it("candidate null → empty", () => {
+    expect(addFavorite([], null, 12)).toEqual({ ok: false, reason: "empty" });
+  });
+  it("token·actor 모두 null(순수 사용자) → empty", () => {
+    expect(addFavorite([], { sceneId: "s", tokenId: null, actorId: null, alias: "U" }, 12)).toEqual({ ok: false, reason: "empty" });
+  });
+  it("같은 조합 존재 → duplicate", () => {
+    expect(addFavorite([cand], { ...cand, alias: "다른" }, 12)).toEqual({ ok: false, reason: "duplicate" });
+  });
+  it("상한 도달 → full", () => {
+    const list = Array.from({ length: 12 }, (_, i) => ({ sceneId: "s", tokenId: `t${i}`, actorId: "a", alias: `n${i}` }));
+    expect(addFavorite(list, cand, 12)).toEqual({ ok: false, reason: "full" });
+  });
+  it("max 기본값 = FAV_MAX(12)", () => {
+    expect(FAV_MAX).toBe(12);
+  });
+});
+
+describe("removeFavorite", () => {
+  const list = [
+    { sceneId: "s", tokenId: "t1", actorId: "a", alias: "1" },
+    { sceneId: "s", tokenId: "t2", actorId: "a", alias: "2" },
+  ];
+  it("인덱스 항목 제거(불변)", () => {
+    expect(removeFavorite(list, 0)).toEqual([list[1]]);
+    expect(list.length).toBe(2); // 원본 불변
+  });
+  it("범위 밖 인덱스 → 원본 그대로", () => {
+    expect(removeFavorite(list, 5)).toBe(list);
+  });
 });

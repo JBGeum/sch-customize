@@ -139,3 +139,29 @@ export function matchesLocked(fav: LockedSpeaker, current: LockedSpeaker | null)
   if (!current) return false;
   return fav.sceneId === current.sceneId && fav.tokenId === current.tokenId && fav.actorId === current.actorId;
 }
+
+/** 즐겨찾기 최대 개수(칩 줄이 과도하게 길어지는 것을 방지). */
+export const FAV_MAX = 12;
+
+export type AddFavoriteResult =
+  | { ok: true; next: LockedSpeaker[] }
+  | { ok: false; reason: "empty" | "duplicate" | "full" };
+
+/**
+ * 즐겨찾기 배열에 candidate 추가(불변). 가드:
+ *  - candidate 없음 또는 token·actor 모두 null → "empty"
+ *  - 같은 (sceneId,tokenId,actorId) 존재 → "duplicate"
+ *  - 상한(max) 도달 → "full"
+ */
+export function addFavorite(list: LockedSpeaker[], candidate: LockedSpeaker | null, max: number = FAV_MAX): AddFavoriteResult {
+  if (!candidate || (candidate.tokenId == null && candidate.actorId == null)) return { ok: false, reason: "empty" };
+  if (list.some((f) => matchesLocked(f, candidate))) return { ok: false, reason: "duplicate" };
+  if (list.length >= max) return { ok: false, reason: "full" };
+  return { ok: true, next: [...list, candidate] };
+}
+
+/** index 항목 제거(불변). 범위 밖이면 원본 그대로 반환. */
+export function removeFavorite(list: LockedSpeaker[], index: number): LockedSpeaker[] {
+  if (index < 0 || index >= list.length) return list;
+  return list.filter((_, i) => i !== index);
+}
