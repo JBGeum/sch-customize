@@ -34,6 +34,8 @@ export interface SpeakerContext {
   assignedCharacter: any | null;
   userName: string;
   userAvatar: string;
+  /** true면 선택 토큰이 PC(hasPlayerOwner)일 때 그 토큰을 화자로 쓰지 않는다. */
+  ignorePcToken?: boolean;
 }
 
 export const CGMP_SPEAKER_MODE = {
@@ -84,7 +86,7 @@ export function resolveSpeaker(ctx: SpeakerContext): SpeakerInfo {
   const cgmpForced = resolveCgmpForcedSpeaker(ctx);
   if (cgmpForced) return cgmpForced;
 
-  if (ctx.controlled) {
+  if (ctx.controlled && !(ctx.ignorePcToken && ctx.controlled.isPc)) {
     const token = ctx.controlled.token;
     const actor = ctx.controlled.actor;
     return {
@@ -113,5 +115,65 @@ export function resolveOverrideSpeaker(locked: LockedSpeaker | null, data: any):
     actor: locked.actorId ?? null,
     token: locked.tokenId ?? null,
     alias: locked.alias ?? data.speaker?.alias,
+  };
+}
+
+/** 즐겨찾기 칩 렌더용 조회 결과(경계 reader가 scene/actor를 조회해 넘긴다). */
+export interface FavoriteLookups {
+  token: any | null;
+  actor: any | null;
+}
+
+/**
+ * 즐겨찾기 칩 한 개의 표시 정보 결정. resolveSpeaker의 locked 분기 폴백을 재사용.
+ * token·actor 모두 없으면 stale=true(삭제된 항목 → 흐리게 표시).
+ */
+export function resolveFavoriteDisplay(fav: LockedSpeaker, lookups: FavoriteLookups): { img: string; name: string; stale: boolean } {
+  const { token, actor } = lookups;
+  const img = (token as any)?.texture?.src ?? (actor as any)?.img ?? DEFAULT_IMG;
+  const name = fav.alias ?? token?.name ?? actor?.name ?? "";
+  const stale = token == null && actor == null;
+  return { img, name, stale };
+}
+
+/** 즐겨찾기 항목이 현재 lock과 같은 화자인지(하이라이트용). alias는 비교하지 않는다. */
+export function matchesLocked(fav: LockedSpeaker, current: LockedSpeaker | null): boolean {
+  if (!current) return false;
+  return fav.sceneId === current.sceneId && fav.tokenId === current.tokenId && fav.actorId === current.actorId;
+}
+
+/** 즐겨찾기 최대 개수(칩 줄이 과도하게 길어지는 것을 방지). */
+export const FAV_MAX = 12;
+
+export type AddFavoriteResult =
+  | { ok: true; next: LockedSpeaker[] }
+  | { ok: false; reason: "empty" | "duplicate" | "full" };
+
+/**
+ * 즐겨찾기 배열에 candidate 추가(불변). 가드:
+ *  - candidate 없음 또는 token·actor 모두 null → "empty"
+ *  - 같은 (sceneId,tokenId,actorId) 존재 → "duplicate"
+ *  - 상한(max) 도달 → "full"
+ */
+export function addFavorite(list: LockedSpeaker[], candidate: LockedSpeaker | null, max: number = FAV_MAX): AddFavoriteResult {
+  if (!candidate || (candidate.tokenId == null && candidate.actorId == null)) return { ok: false, reason: "empty" };
+  if (list.some((f) => matchesLocked(f, candidate))) return { ok: false, reason: "duplicate" };
+  if (list.length >= max) return { ok: false, reason: "full" };
+  return { ok: true, next: [...list, candidate] };
+}
+
+/** index 항목 제거(불변). 범위 밖이면 원본 그대로 반환. */
+export function removeFavorite(list: LockedSpeaker[], index: number): LockedSpeaker[] {
+  if (index < 0 || index >= list.length) return list;
+  return list.filter((_, i) => i !== index);
+}
+
+/** SpeakerInfo를 발신용 speaker 객체로 변환(actor/token은 id, alias는 표시명). */
+export function speakerInfoToOverride(info: SpeakerInfo): { scene: string | null; actor: string | null; token: string | null; alias: any } {
+  return {
+    scene: null,
+    actor: (info.actor as any)?.id ?? null,
+    token: (info.token as any)?.id ?? null,
+    alias: info.name,
   };
 }

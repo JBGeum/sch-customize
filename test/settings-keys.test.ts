@@ -5,6 +5,9 @@ describe("SETTINGS 키 값 고정(리셋 방지)", () => {
   it("등록 문자열과 정확히 일치", () => {
     expect(SETTINGS).toEqual({
       enableSpeakerBar: "enableSpeakerBar",
+      enableSpeakerFavorites: "enableSpeakerFavorites",
+      favoriteChipMode: "favoriteChipMode",
+      ignorePcTokenSpeaker: "ignorePcTokenSpeaker",
       includeWhisper: "includeWhisper",
       hideWhisper: "hideWhisper",
       lastExportMode: "lastExportMode",

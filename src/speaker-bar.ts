@@ -5,8 +5,10 @@
 
 import { mountOnChatInput } from "./compat/chat-input-mount";
 import { MODULE_ID } from "./constants";
-import { resolveSpeaker, resolveOverrideSpeaker, DEFAULT_IMG, type LockedSpeaker, type SpeakerContext } from "./speaker-resolve";
+import { resolveSpeaker, resolveOverrideSpeaker, resolveFavoriteDisplay, matchesLocked, DEFAULT_IMG, addFavorite, removeFavorite, speakerInfoToOverride, FAV_MAX, type LockedSpeaker, type FavoriteLookups, type SpeakerContext } from "./speaker-resolve";
+import { SETTINGS } from "./settings/keys";
 const LOCKED_FLAG_KEY = "lockedSpeaker";
+const FAVORITES_FLAG_KEY = "favoriteSpeakers";
 
 /**
  * Cautious Gamemaster's Pack (CGMP) 호환 상수.
@@ -60,6 +62,60 @@ async function setLockedSpeaker(speaker: LockedSpeaker | null): Promise<void> {
   updateSpeakerBar();
 }
 
+/** 현재 사용자의 즐겨찾기 발화자 목록. 없으면 빈 배열. */
+export function getFavorites(): LockedSpeaker[] {
+  return ((game.user as any).getFlag(MODULE_ID, FAVORITES_FLAG_KEY) as LockedSpeaker[] | null) ?? [];
+}
+
+/** 즐겨찾기 목록 저장 후 바 갱신(best-effort). */
+async function setFavorites(list: LockedSpeaker[]): Promise<void> {
+  try {
+    await (game.user as any).setFlag(MODULE_ID, FAVORITES_FLAG_KEY, list);
+  } catch (_) {
+    // flag 쓰기 실패는 UI를 깨지 않는다.
+  }
+  updateSpeakerBar();
+}
+
+/** 현재 화자를 LockedSpeaker 스냅샷으로. (onLockToggle과 동일 패턴) */
+export function snapshotCurrentSpeaker(): LockedSpeaker {
+  const { name, token, actor } = resolveCurrentSpeaker();
+  return {
+    sceneId: (canvas as any)?.scene?.id ?? null,
+    tokenId: token?.id ?? null,
+    actorId: actor?.id ?? null,
+    alias: name,
+  };
+}
+
+/** [+] 현재 화자를 즐겨찾기에 추가(가드: empty/duplicate/full). */
+export async function addCurrentToFavorites(): Promise<void> {
+  const result = addFavorite(getFavorites(), snapshotCurrentSpeaker(), FAV_MAX);
+  if (!result.ok) {
+    const msg = result.reason === "full" ? "즐겨찾기가 가득 찼습니다."
+      : result.reason === "duplicate" ? "이미 즐겨찾기에 있는 발화자입니다."
+      : "즐겨찾기에 추가할 발화자가 없습니다.";
+    ui.notifications!.warn(msg);
+    return;
+  }
+  await setFavorites(result.next);
+}
+
+/** 즐겨찾기 칩 클릭 → 그 화자로 lock 전환(기존 인프라 재사용). */
+export async function switchToFavorite(fav: LockedSpeaker): Promise<void> {
+  await setLockedSpeaker(fav);
+}
+
+/** 즐겨찾기 항목 삭제. */
+export async function removeFavoriteAt(index: number): Promise<void> {
+  await setFavorites(removeFavorite(getFavorites(), index));
+}
+
+/** 기본 발화자로 복귀(고정 해제). */
+export async function resetToDefaultSpeaker(): Promise<void> {
+  await setLockedSpeaker(null);
+}
+
 /**
  * 경계 reader: game/canvas 전역을 1회 읽어 SpeakerContext로 모은다.
  * 순수 결정(resolveSpeaker)은 이 결과만 소비한다. (전역 읽기 격리 지점, 미테스트.)
@@ -85,7 +141,26 @@ function readSpeakerContext(): SpeakerContext {
     assignedCharacter: game.user!.character,
     userName: game.user!.name,
     userAvatar: (game.user as any).avatar || DEFAULT_IMG,
+    ignorePcToken: readIgnorePcToken(),
   };
+}
+
+/** "PC 토큰으로 발화 안 함" 설정값(미등록·오류 시 false). */
+function readIgnorePcToken(): boolean {
+  try {
+    return (game.settings as any).get(MODULE_ID, SETTINGS.ignorePcTokenSpeaker) === true;
+  } catch (_) {
+    return false;
+  }
+}
+
+/** 무-lock 상태에서 PC 스킵 옵션이 발신 개입을 요구하는가. */
+function shouldOverrideForPcSkip(data: any): boolean {
+  if (!readIgnorePcToken()) return false;
+  if (data.flags?.[MODULE_ID]?.priv_talk) return false;
+  const controlled = (canvas as any)?.tokens?.controlled?.[0];
+  if (!controlled) return false;
+  return !!controlled.actor?.hasPlayerOwner;
 }
 
 /**
@@ -101,13 +176,14 @@ export function resolveCurrentSpeaker() {
 /**
  * 발화자 바 HTML 생성
  */
-function createSpeakerBarElement() {
+export function createSpeakerBarElement() {
   const bar = document.createElement("div");
   bar.className = "sch-speaker-bar";
   bar.innerHTML = `
     <img class="sch-speaker-portrait" src="${DEFAULT_IMG}" alt="" />
     <span class="sch-speaker-name">—</span>
     <i class="sch-speaker-lock fas fa-lock-open" title="발화자 고정 (클릭하여 토글)"></i>
+    <div class="sch-fav-strip"></div>
   `;
 
   // 잠금 토글
@@ -117,6 +193,29 @@ function createSpeakerBarElement() {
   bar.querySelector(".sch-speaker-portrait")!.addEventListener("click", () => {
     const { actor } = resolveCurrentSpeaker();
     (actor as any)?.sheet?.render(true);
+  });
+
+  // 즐겨찾기 칩 줄 이벤트 위임: [+] 추가 / x 삭제 / 칩 클릭 전환
+  bar.querySelector(".sch-fav-strip")!.addEventListener("click", (ev) => {
+    const target = ev.target as HTMLElement;
+    if (target.closest(".sch-fav-reset")) {
+      void resetToDefaultSpeaker();
+      return;
+    }
+    if (target.closest(".sch-fav-add")) {
+      void addCurrentToFavorites();
+      return;
+    }
+    const chip = target.closest(".sch-fav-chip") as HTMLElement | null;
+    if (!chip) return;
+    const index = Number(chip.dataset.index);
+    if (target.closest(".sch-fav-chip-remove")) {
+      ev.stopPropagation();
+      void removeFavoriteAt(index);
+      return;
+    }
+    const favs = getFavorites();
+    if (favs[index]) void switchToFavorite(favs[index]);
   });
 
   return bar;
@@ -152,6 +251,93 @@ async function onLockToggle() {
   ui.notifications!.info(`'${token?.name ?? actor?.name}'(으)로 발화자가 고정되었습니다.`);
 }
 
+/** 즐겨찾기 칩 줄 사용 여부(미등록·오류 시 기본 true). */
+function readFavoritesEnabled(): boolean {
+  try {
+    return (game.settings as any).get(MODULE_ID, SETTINGS.enableSpeakerFavorites) !== false;
+  } catch (_) {
+    return true;
+  }
+}
+
+/** 즐겨찾기 칩 표시 모드(미등록·오류 시 "portrait"). */
+function readFavoriteChipMode(): "portrait" | "name" {
+  try {
+    return (game.settings as any).get(MODULE_ID, SETTINGS.favoriteChipMode) === "name" ? "name" : "portrait";
+  } catch (_) {
+    return "portrait";
+  }
+}
+
+/** fav 항목의 scene/actor를 전역에서 조회(경계 read). */
+function readFavoriteLookups(fav: LockedSpeaker): FavoriteLookups {
+  const scene = fav.sceneId ? game.scenes!.get(fav.sceneId) : null;
+  const token = scene && fav.tokenId ? (scene as any).tokens.get(fav.tokenId) : null;
+  const actor = fav.actorId ? game.actors!.get(fav.actorId) : null;
+  return { token, actor };
+}
+
+/** 즐겨찾기 칩 줄 재렌더. 설정 off면 숨기고 비운다. */
+function renderFavStrip(strip: HTMLElement): void {
+  if (!readFavoritesEnabled()) {
+    strip.style.display = "none";
+    strip.innerHTML = "";
+    return;
+  }
+  strip.style.display = "";
+  strip.innerHTML = "";
+
+  // 기본 발화자 복귀 버튼 (맨 앞, 항상 표시)
+  const reset = document.createElement("div");
+  reset.className = "sch-fav-reset" + (getLockedSpeaker() == null ? " active" : "");
+  reset.title = "기본 발화자로 (고정 해제)";
+  const resetIcon = document.createElement("i");
+  resetIcon.className = "fas fa-arrow-rotate-left";
+  reset.appendChild(resetIcon);
+  strip.appendChild(reset);
+
+  const favs = getFavorites();
+  const locked = getLockedSpeaker();
+  const mode = readFavoriteChipMode();
+  favs.forEach((fav, index) => {
+    const { img, name, stale } = resolveFavoriteDisplay(fav, readFavoriteLookups(fav));
+    const chip = document.createElement("div");
+    chip.className = "sch-fav-chip"
+      + (mode === "name" ? " mode-name" : "")
+      + (matchesLocked(fav, locked) ? " active" : "")
+      + (stale ? " stale" : "");
+    chip.title = name;
+    chip.dataset.index = String(index);
+
+    let content: HTMLElement;
+    if (mode === "name") {
+      const label = document.createElement("span");
+      label.className = "sch-fav-chip-label";
+      label.textContent = name;
+      content = label;
+    } else {
+      const chipImg = document.createElement("img");
+      chipImg.className = "sch-fav-chip-img";
+      chipImg.src = img;
+      chipImg.alt = "";
+      content = chipImg;
+    }
+
+    const remove = document.createElement("span");
+    remove.className = "sch-fav-chip-remove";
+    remove.title = "삭제";
+    remove.textContent = "×";
+    chip.append(content, remove);
+    strip.appendChild(chip);
+  });
+
+  const add = document.createElement("div");
+  add.className = "sch-fav-add";
+  add.title = "현재 발화자를 즐겨찾기에 추가";
+  add.textContent = "+";
+  strip.appendChild(add);
+}
+
 /**
  * 발화자 바 갱신
  */
@@ -176,6 +362,9 @@ export function updateSpeakerBar() {
     lockEl.classList.remove("fa-lock");
     lockEl.classList.add("fa-lock-open");
   }
+
+  const strip = bar.querySelector(".sch-fav-strip") as HTMLElement | null;
+  if (strip) renderFavStrip(strip);
 }
 
 /**
@@ -192,24 +381,38 @@ function placeSpeakerBar(textarea: Element): void {
 }
 
 /**
- * pre-create 단계에서 메시지의 speaker를 고정 발화자로 덮어쓰기.
+ * pre-create 단계에서 메시지의 speaker를 고정 발화자(또는 PC 스킵 옵션 결과)로 덮어쓰기.
  *
- * Lock이 활성일 때만 `message`와 `data` 양쪽에 speaker를 박는다. Lock이 없으면
- * **아무것도 하지 않는다** — 특히 `message.updateSource`도 호출하지 말 것.
+ * Lock이 활성일 때만 `message`와 `data` 양쪽에 speaker를 박는다. Lock이 없고 PC 스킵
+ * 옵션도 개입하지 않으면 **아무것도 하지 않는다** — 특히 `message.updateSource`도
+ * 호출하지 말 것.
  *
  * 이유: CGMP 등 다른 모듈이 같은 훅에서 `message.updateSource({ speaker })`로 OOC
  * 변환을 적용하더라도, 그 변경은 *`message` 인스턴스*에만 반영되고 *`data` 객체*는
- * 변경되지 않는다. 우리가 lock 없는 상태에서도 `data.speaker`를 message에 다시 박으면
- * CGMP의 변환이 원본 PC speaker로 원복되어 chat log에 PC portrait이 그대로 표시된다.
+ * 변경되지 않는다. 우리가 lock/PC 스킵 없는 상태에서도 `data.speaker`를 message에
+ * 다시 박으면 CGMP의 변환이 원본 PC speaker로 원복되어 chat log에 PC portrait이
+ * 그대로 표시된다. PC 스킵 옵션 경로는 원본 PC speaker가 아니라 CGMP를 반영한
+ * `resolveCurrentSpeaker()` 결과를 박으므로 이 랜드마인을 회피한다.
  *
- * @returns {boolean} lock이 적용되어 message가 변경되었는지 여부
+ * @returns {boolean} lock 또는 PC 스킵 옵션이 적용되어 message가 변경되었는지 여부
  */
 export function overrideSpeaker(message: ChatMessage, data: any): boolean {
-  const speaker = resolveOverrideSpeaker(getLockedSpeaker(), data);
-  if (!speaker) return false;
-  data.speaker = speaker;
-  (message as any).updateSource({ speaker });
-  return true;
+  // 1) Lock 우선 (기존)
+  const lockedSpeaker = resolveOverrideSpeaker(getLockedSpeaker(), data);
+  if (lockedSpeaker) {
+    data.speaker = lockedSpeaker;
+    (message as any).updateSource({ speaker: lockedSpeaker });
+    return true;
+  }
+  // 2) Lock 없음: PC 스킵 옵션이 발신 개입을 요구하면 resolveCurrentSpeaker 결과로 발신.
+  //    (원본 PC를 되박는 게 아니라 CGMP를 반영한 스킵 결과를 박으므로 CGMP 원복 랜드마인 회피.)
+  if (shouldOverrideForPcSkip(data)) {
+    const speaker = speakerInfoToOverride(resolveCurrentSpeaker());
+    data.speaker = speaker;
+    (message as any).updateSource({ speaker });
+    return true;
+  }
+  return false;
 }
 
 /**

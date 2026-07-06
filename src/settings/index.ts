@@ -15,6 +15,7 @@ import { MODULE_ID } from "../constants";
 import { ExportChatArchiveMenu, openChatArchiveWindow, ResetArchiveDirectoryMenu } from "../archive/dialog";
 import { isDirectoryPickerSupported } from "../archive/dir-target";
 import { updateCssProperty } from "../appearance";
+import { updateSpeakerBar } from "../speaker-bar";
 import { SETTINGS } from "./keys";
 
 export function registerAllSettings(): void {
@@ -30,6 +31,40 @@ export function registerAllSettings(): void {
     default: true,
     type: Boolean,
     onChange: () => window.location.reload(),
+  });
+
+  gs.register(MODULE_ID, SETTINGS.enableSpeakerFavorites, {
+    name: `${MODULE_ID}.settings.enableSpeakerFavorites.name`,
+    hint: `${MODULE_ID}.settings.enableSpeakerFavorites.hint`,
+    scope: "client",
+    config: true,
+    default: true,
+    type: Boolean,
+    onChange: () => updateSpeakerBar(),
+  });
+
+  gs.register(MODULE_ID, SETTINGS.favoriteChipMode, {
+    name: `${MODULE_ID}.settings.favoriteChipMode.name`,
+    hint: `${MODULE_ID}.settings.favoriteChipMode.hint`,
+    scope: "client",
+    config: true,
+    default: "portrait",
+    type: String,
+    choices: {
+      portrait: `${MODULE_ID}.settings.favoriteChipMode.choices.portrait`,
+      name: `${MODULE_ID}.settings.favoriteChipMode.choices.name`,
+    },
+    onChange: () => updateSpeakerBar(),
+  });
+
+  gs.register(MODULE_ID, SETTINGS.ignorePcTokenSpeaker, {
+    name: `${MODULE_ID}.settings.ignorePcTokenSpeaker.name`,
+    hint: `${MODULE_ID}.settings.ignorePcTokenSpeaker.hint`,
+    scope: "client",
+    config: true,
+    default: false,
+    type: Boolean,
+    onChange: () => updateSpeakerBar(),
   });
 
   // ─── Chat Archive 메뉴 ───

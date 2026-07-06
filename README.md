@@ -49,6 +49,8 @@ A speaker indicator above the chat input that shows who you are about to speak a
 - Click the lock icon to **pin** a speaker — the speaker stays fixed regardless of token selection until you unlock it
 - Lock state persists across reloads (stored as a user flag)
 - The whole speaker bar can be disabled in settings if you prefer the vanilla layout
+- **Favorite speakers**: Pin frequently-used speakers as chips below the bar. Click a chip to instantly switch the lock to that speaker; hover a chip and click × to remove; use **[+]** to add the current speaker. Great for GMs juggling several NPCs. Toggle the chip row in settings. Chips can show either the portrait or the name (pill) via settings, and a reset button at the start of the row returns you to the default speaker (clears the lock).
+- **Don't speak as PC tokens** (GM-friendly): optionally, selecting a player-owned PC token won't make you speak as that PC — it falls back to your assigned character, or your user (OOC). Toggle in settings.
 
 ### 📥 Chat Log Archive
 
@@ -135,6 +137,9 @@ Open **Settings → Module Settings → sch-customize**:
 | Setting | Scope | Description |
 | --- | --- | --- |
 | Enable Speaker Bar | Client | Show / hide the speaker bar above the chat input (reloads on change) |
+| Enable Speaker Favorites | Client | Show the favorite-speakers chip row in the speaker bar |
+| Favorite Chip Display | Client | Show favorite chips as portrait or name (pill) |
+| Don't Speak as PC Tokens | Client | Selecting a player-owned PC token won't speak as that PC (falls back to assigned character / user) |
 | Custom Chitchat Trigger | Client | Single character to start a chitchat message |
 | Markdown Strikethrough in Chitchat | Client | Render `~text~` with strikethrough |
 | Create Chitchat as OOC | World | Classify chitchat as OOC instead of Other |
