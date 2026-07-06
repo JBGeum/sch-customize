@@ -111,6 +111,11 @@ export async function removeFavoriteAt(index: number): Promise<void> {
   await setFavorites(removeFavorite(getFavorites(), index));
 }
 
+/** 기본 발화자로 복귀(고정 해제). */
+export async function resetToDefaultSpeaker(): Promise<void> {
+  await setLockedSpeaker(null);
+}
+
 /**
  * 경계 reader: game/canvas 전역을 1회 읽어 SpeakerContext로 모은다.
  * 순수 결정(resolveSpeaker)은 이 결과만 소비한다. (전역 읽기 격리 지점, 미테스트.)
@@ -174,6 +179,10 @@ export function createSpeakerBarElement() {
   // 즐겨찾기 칩 줄 이벤트 위임: [+] 추가 / x 삭제 / 칩 클릭 전환
   bar.querySelector(".sch-fav-strip")!.addEventListener("click", (ev) => {
     const target = ev.target as HTMLElement;
+    if (target.closest(".sch-fav-reset")) {
+      void resetToDefaultSpeaker();
+      return;
+    }
     if (target.closest(".sch-fav-add")) {
       void addCurrentToFavorites();
       return;
@@ -258,6 +267,15 @@ function renderFavStrip(strip: HTMLElement): void {
   }
   strip.style.display = "";
   strip.innerHTML = "";
+
+  // 기본 발화자 복귀 버튼 (맨 앞, 항상 표시)
+  const reset = document.createElement("div");
+  reset.className = "sch-fav-reset" + (getLockedSpeaker() == null ? " active" : "");
+  reset.title = "기본 발화자로 (고정 해제)";
+  const resetIcon = document.createElement("i");
+  resetIcon.className = "fas fa-arrow-rotate-left";
+  reset.appendChild(resetIcon);
+  strip.appendChild(reset);
 
   const favs = getFavorites();
   const locked = getLockedSpeaker();

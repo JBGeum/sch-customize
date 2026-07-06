@@ -290,4 +290,35 @@ describe("칩 줄 렌더 (DOM 통합)", () => {
     expect(label!.textContent).toBe("고블린");
     expect(chip.querySelector(".sch-fav-chip-img")).toBeNull();
   });
+
+  it("복귀 버튼: strip 첫 자식이 .sch-fav-reset", () => {
+    setupFoundry({ favorites: [{ sceneId: "sc1", tokenId: "t1", actorId: "a1", alias: "고블린" }],
+      scenes: { sc1: { tokens: { get: () => ({ name: "고블린", texture: { src: "g.png" } }) } } } });
+    const bar = mountBar();
+    updateSpeakerBar();
+    const strip = bar.querySelector(".sch-fav-strip")!;
+    expect((strip.firstElementChild as HTMLElement).classList.contains("sch-fav-reset")).toBe(true);
+  });
+
+  it("복귀 버튼: lock 해제 상태면 .active, lock 상태면 아님", () => {
+    setupFoundry({ favorites: [] });
+    let bar = mountBar();
+    updateSpeakerBar();
+    expect(bar.querySelector(".sch-fav-reset")!.classList.contains("active")).toBe(true);
+
+    setupFoundry({ favorites: [], locked: { sceneId: "sc1", tokenId: "t1", actorId: "a1", alias: "고블린" } });
+    bar = mountBar();
+    updateSpeakerBar();
+    expect(bar.querySelector(".sch-fav-reset")!.classList.contains("active")).toBe(false);
+  });
+
+  it("복귀 버튼 클릭 → setLockedSpeaker(null) 경유(unsetFlag lockedSpeaker)", () => {
+    const { unsetFlag } = setupFoundry({
+      favorites: [], locked: { sceneId: "sc1", tokenId: "t1", actorId: "a1", alias: "고블린" },
+    });
+    const bar = mountBar();
+    updateSpeakerBar();
+    (bar.querySelector(".sch-fav-reset") as HTMLElement).click();
+    expect(unsetFlag).toHaveBeenCalledWith(MODULE_ID, "lockedSpeaker");
+  });
 });
