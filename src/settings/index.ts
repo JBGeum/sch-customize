@@ -43,6 +43,20 @@ export function registerAllSettings(): void {
     onChange: () => updateSpeakerBar(),
   });
 
+  gs.register(MODULE_ID, SETTINGS.favoriteChipMode, {
+    name: `${MODULE_ID}.settings.favoriteChipMode.name`,
+    hint: `${MODULE_ID}.settings.favoriteChipMode.hint`,
+    scope: "client",
+    config: true,
+    default: "portrait",
+    type: String,
+    choices: {
+      portrait: `${MODULE_ID}.settings.favoriteChipMode.choices.portrait`,
+      name: `${MODULE_ID}.settings.favoriteChipMode.choices.name`,
+    },
+    onChange: () => updateSpeakerBar(),
+  });
+
   // ─── Chat Archive 메뉴 ───
   // 단일 진입점에서 단독 / 누적+머지 / 누적+전체덤프 3 모드를 선택한다.
   gs.registerMenu(MODULE_ID, "downloadChatArchiveMenu", {

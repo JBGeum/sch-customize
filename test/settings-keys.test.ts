@@ -6,6 +6,7 @@ describe("SETTINGS 키 값 고정(리셋 방지)", () => {
     expect(SETTINGS).toEqual({
       enableSpeakerBar: "enableSpeakerBar",
       enableSpeakerFavorites: "enableSpeakerFavorites",
+      favoriteChipMode: "favoriteChipMode",
       includeWhisper: "includeWhisper",
       hideWhisper: "hideWhisper",
       lastExportMode: "lastExportMode",

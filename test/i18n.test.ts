@@ -61,3 +61,15 @@ describe("i18n: settings.enableSpeakerFavorites 키", () => {
     }
   }
 });
+
+describe("i18n: settings.favoriteChipMode 키", () => {
+  for (const key of ["name", "hint", "choices.portrait", "choices.name"]) {
+    for (const lang of ["en", "ko"]) {
+      it(`${lang}.json 의 settings.favoriteChipMode.${key} 존재`, () => {
+        const v = load(lang)[`sch-customize.settings.favoriteChipMode.${key}`];
+        expect(typeof v).toBe("string");
+        expect(v.trim().length).toBeGreaterThan(0);
+      });
+    }
+  }
+});
