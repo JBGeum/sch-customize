@@ -64,6 +64,8 @@
     "sch-customize.settings.setPrivTalkBgBrightness.hint": "Brighten the chitchat background color (matches the user color). Adjustment may be needed when other modules override the chat background color (default: 0.7).",
     "sch-customize.settings.enableSpeakerBar.name": "Enable Speaker Bar",
     "sch-customize.settings.enableSpeakerBar.hint": "Show a speaker bar above the chat input that displays and lets you lock the current speaker (token/actor). The page reloads when this setting changes.",
+    "sch-customize.settings.enableSpeakerFavorites.name": "Enable Speaker Favorites",
+    "sch-customize.settings.enableSpeakerFavorites.hint": "Show a favorite-speakers chip row in the speaker bar. Click a chip to switch the lock to that speaker; use [+] to add the current speaker.",
     "sch-customize.settings.baseMessageMerge.name": "Merge Regular Messages",
     "sch-customize.settings.baseMessageMerge.hint": "Visually combine consecutive regular chat messages from the same player into a single group (applies top/middle/end styles). When disabled, regular messages are shown as individual bubbles. The page reloads when this setting changes.",
     "sch-customize.settings.privTalkMerge.name": "Merge Chitchat Messages",

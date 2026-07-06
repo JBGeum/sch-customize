@@ -15,6 +15,7 @@ import { MODULE_ID } from "../constants";
 import { ExportChatArchiveMenu, openChatArchiveWindow, ResetArchiveDirectoryMenu } from "../archive/dialog";
 import { isDirectoryPickerSupported } from "../archive/dir-target";
 import { updateCssProperty } from "../appearance";
+import { updateSpeakerBar } from "../speaker-bar";
 import { SETTINGS } from "./keys";
 
 export function registerAllSettings(): void {
@@ -30,6 +31,16 @@ export function registerAllSettings(): void {
     default: true,
     type: Boolean,
     onChange: () => window.location.reload(),
+  });
+
+  gs.register(MODULE_ID, SETTINGS.enableSpeakerFavorites, {
+    name: `${MODULE_ID}.settings.enableSpeakerFavorites.name`,
+    hint: `${MODULE_ID}.settings.enableSpeakerFavorites.hint`,
+    scope: "client",
+    config: true,
+    default: true,
+    type: Boolean,
+    onChange: () => updateSpeakerBar(),
   });
 
   // ─── Chat Archive 메뉴 ───

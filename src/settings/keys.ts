@@ -5,6 +5,7 @@
  */
 export const SETTINGS = {
   enableSpeakerBar: "enableSpeakerBar",
+  enableSpeakerFavorites: "enableSpeakerFavorites",
   includeWhisper: "includeWhisper",
   hideWhisper: "hideWhisper",
   lastExportMode: "lastExportMode",
