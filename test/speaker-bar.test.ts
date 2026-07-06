@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   resolveCurrentSpeaker, overrideSpeaker,
   getFavorites, addCurrentToFavorites, removeFavoriteAt, switchToFavorite, snapshotCurrentSpeaker,
+  createSpeakerBarElement, updateSpeakerBar,
 } from "../src/speaker-bar";
 import { MODULE_ID } from "../src/constants";
 
@@ -26,7 +27,10 @@ function setupFoundry(opts: any = {}) {
     scenes: { get: (id: string) => opts.scenes?.[id] ?? null },
     actors: { get: (id: string) => opts.actors?.[id] ?? null },
     modules: { get: () => (opts.cgmpActive ? { active: true } : undefined) },
-    settings: { get: () => opts.cgmpMode },
+    settings: {
+      get: (_m: string, key: string) =>
+        key === "enableSpeakerFavorites" ? (opts.favEnabled ?? true) : opts.cgmpMode,
+    },
   };
   (globalThis as any).canvas = { scene: opts.scene ?? { id: opts.sceneId ?? "scene1" }, tokens: { controlled: opts.controlled ?? [] } };
   (globalThis as any).ui = { notifications: { warn: opts.warn ?? vi.fn(), info: vi.fn() } };
@@ -183,5 +187,76 @@ describe("removeFavoriteAt", () => {
     const { setFlag } = setupFoundry({ favorites: favs });
     await removeFavoriteAt(0);
     expect(setFlag).toHaveBeenCalledWith(MODULE_ID, "favoriteSpeakers", [favs[1]]);
+  });
+});
+
+describe("칩 줄 렌더 (DOM 통합)", () => {
+  function mountBar() {
+    document.body.innerHTML = "";
+    const bar = createSpeakerBarElement();
+    document.body.appendChild(bar);
+    return bar;
+  }
+  afterEach(() => { document.body.innerHTML = ""; });
+
+  it("즐겨찾기 2개 → 칩 2개 + [+] 렌더", () => {
+    setupFoundry({
+      favorites: [
+        { sceneId: "sc1", tokenId: "t1", actorId: "a1", alias: "고블린" },
+        { sceneId: "sc1", tokenId: "t2", actorId: "a2", alias: "상인" },
+      ],
+      scenes: { sc1: { tokens: { get: (id: string) => ({ name: id, texture: { src: `${id}.png` } }) } } },
+    });
+    const bar = mountBar();
+    updateSpeakerBar();
+    expect(bar.querySelectorAll(".sch-fav-chip").length).toBe(2);
+    expect(bar.querySelector(".sch-fav-add")).not.toBeNull();
+  });
+
+  it("현재 lock 일치 칩에 .active", () => {
+    setupFoundry({
+      locked: { sceneId: "sc1", tokenId: "t1", actorId: "a1", alias: "고블린" },
+      favorites: [{ sceneId: "sc1", tokenId: "t1", actorId: "a1", alias: "고블린" }],
+      scenes: { sc1: { tokens: { get: () => ({ name: "고블린", texture: { src: "g.png" } }) } } },
+      actors: { a1: { name: "고블린", img: "g.png" } },
+    });
+    const bar = mountBar();
+    updateSpeakerBar();
+    expect(bar.querySelector(".sch-fav-chip")!.classList.contains("active")).toBe(true);
+  });
+
+  it("설정 off → 칩 줄 숨김(display:none), 칩 미렌더", () => {
+    setupFoundry({
+      favEnabled: false,
+      favorites: [{ sceneId: "sc1", tokenId: "t1", actorId: "a1", alias: "고블린" }],
+    });
+    const bar = mountBar();
+    updateSpeakerBar();
+    const strip = bar.querySelector(".sch-fav-strip") as HTMLElement;
+    expect(strip.style.display).toBe("none");
+    expect(bar.querySelectorAll(".sch-fav-chip").length).toBe(0);
+  });
+
+  it("칩 클릭 → 그 화자로 lock 전환(setFlag lockedSpeaker)", () => {
+    const { setFlag } = setupFoundry({
+      favorites: [{ sceneId: "sc1", tokenId: "t1", actorId: "a1", alias: "고블린" }],
+      scenes: { sc1: { tokens: { get: () => ({ name: "고블린", texture: { src: "g.png" } }) } } },
+    });
+    const bar = mountBar();
+    updateSpeakerBar();
+    (bar.querySelector(".sch-fav-chip") as HTMLElement).click();
+    expect(setFlag).toHaveBeenCalledWith(MODULE_ID, "lockedSpeaker", { sceneId: "sc1", tokenId: "t1", actorId: "a1", alias: "고블린" });
+  });
+
+  it("x 클릭 → 삭제(setFlag favoriteSpeakers []), 전환 미발생", () => {
+    const { setFlag } = setupFoundry({
+      favorites: [{ sceneId: "sc1", tokenId: "t1", actorId: "a1", alias: "고블린" }],
+      scenes: { sc1: { tokens: { get: () => ({ name: "고블린", texture: { src: "g.png" } }) } } },
+    });
+    const bar = mountBar();
+    updateSpeakerBar();
+    (bar.querySelector(".sch-fav-chip-remove") as HTMLElement).click();
+    expect(setFlag).toHaveBeenCalledWith(MODULE_ID, "favoriteSpeakers", []);
+    expect(setFlag).not.toHaveBeenCalledWith(MODULE_ID, "lockedSpeaker", expect.anything());
   });
 });
