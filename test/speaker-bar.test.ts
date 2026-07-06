@@ -29,7 +29,9 @@ function setupFoundry(opts: any = {}) {
     modules: { get: () => (opts.cgmpActive ? { active: true } : undefined) },
     settings: {
       get: (_m: string, key: string) =>
-        key === "enableSpeakerFavorites" ? (opts.favEnabled ?? true) : opts.cgmpMode,
+        key === "enableSpeakerFavorites" ? (opts.favEnabled ?? true)
+        : key === "favoriteChipMode" ? (opts.favChipMode ?? "portrait")
+        : opts.cgmpMode,
     },
   };
   (globalThis as any).canvas = { scene: opts.scene ?? { id: opts.sceneId ?? "scene1" }, tokens: { controlled: opts.controlled ?? [] } };
@@ -258,5 +260,34 @@ describe("칩 줄 렌더 (DOM 통합)", () => {
     (bar.querySelector(".sch-fav-chip-remove") as HTMLElement).click();
     expect(setFlag).toHaveBeenCalledWith(MODULE_ID, "favoriteSpeakers", []);
     expect(setFlag).not.toHaveBeenCalledWith(MODULE_ID, "lockedSpeaker", expect.anything());
+  });
+
+  it("portrait 모드(기본): 칩에 img, label 없음", () => {
+    setupFoundry({
+      favorites: [{ sceneId: "sc1", tokenId: "t1", actorId: "a1", alias: "고블린" }],
+      scenes: { sc1: { tokens: { get: () => ({ name: "고블린", texture: { src: "g.png" } }) } } },
+    });
+    const bar = mountBar();
+    updateSpeakerBar();
+    const chip = bar.querySelector(".sch-fav-chip")!;
+    expect(chip.querySelector(".sch-fav-chip-img")).not.toBeNull();
+    expect(chip.querySelector(".sch-fav-chip-label")).toBeNull();
+    expect(chip.classList.contains("mode-name")).toBe(false);
+  });
+
+  it("이름 모드: 칩에 .mode-name + label(텍스트), img 없음", () => {
+    setupFoundry({
+      favChipMode: "name",
+      favorites: [{ sceneId: "sc1", tokenId: "t1", actorId: "a1", alias: "고블린" }],
+      scenes: { sc1: { tokens: { get: () => ({ name: "고블린", texture: { src: "g.png" } }) } } },
+    });
+    const bar = mountBar();
+    updateSpeakerBar();
+    const chip = bar.querySelector(".sch-fav-chip")!;
+    expect(chip.classList.contains("mode-name")).toBe(true);
+    const label = chip.querySelector(".sch-fav-chip-label");
+    expect(label).not.toBeNull();
+    expect(label!.textContent).toBe("고블린");
+    expect(chip.querySelector(".sch-fav-chip-img")).toBeNull();
   });
 });

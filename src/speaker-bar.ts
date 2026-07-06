@@ -232,6 +232,15 @@ function readFavoritesEnabled(): boolean {
   }
 }
 
+/** 즐겨찾기 칩 표시 모드(미등록·오류 시 "portrait"). */
+function readFavoriteChipMode(): "portrait" | "name" {
+  try {
+    return (game.settings as any).get(MODULE_ID, SETTINGS.favoriteChipMode) === "name" ? "name" : "portrait";
+  } catch (_) {
+    return "portrait";
+  }
+}
+
 /** fav 항목의 scene/actor를 전역에서 조회(경계 read). */
 function readFavoriteLookups(fav: LockedSpeaker): FavoriteLookups {
   const scene = fav.sceneId ? game.scenes!.get(fav.sceneId) : null;
@@ -252,23 +261,36 @@ function renderFavStrip(strip: HTMLElement): void {
 
   const favs = getFavorites();
   const locked = getLockedSpeaker();
+  const mode = readFavoriteChipMode();
   favs.forEach((fav, index) => {
     const { img, name, stale } = resolveFavoriteDisplay(fav, readFavoriteLookups(fav));
     const chip = document.createElement("div");
     chip.className = "sch-fav-chip"
+      + (mode === "name" ? " mode-name" : "")
       + (matchesLocked(fav, locked) ? " active" : "")
       + (stale ? " stale" : "");
     chip.title = name;
     chip.dataset.index = String(index);
-    const chipImg = document.createElement("img");
-    chipImg.className = "sch-fav-chip-img";
-    chipImg.src = img;
-    chipImg.alt = "";
+
+    let content: HTMLElement;
+    if (mode === "name") {
+      const label = document.createElement("span");
+      label.className = "sch-fav-chip-label";
+      label.textContent = name;
+      content = label;
+    } else {
+      const chipImg = document.createElement("img");
+      chipImg.className = "sch-fav-chip-img";
+      chipImg.src = img;
+      chipImg.alt = "";
+      content = chipImg;
+    }
+
     const remove = document.createElement("span");
     remove.className = "sch-fav-chip-remove";
     remove.title = "삭제";
     remove.textContent = "×";
-    chip.append(chipImg, remove);
+    chip.append(content, remove);
     strip.appendChild(chip);
   });
 
