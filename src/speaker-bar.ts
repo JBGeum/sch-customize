@@ -5,8 +5,9 @@
 
 import { mountOnChatInput } from "./compat/chat-input-mount";
 import { MODULE_ID } from "./constants";
-import { resolveSpeaker, resolveOverrideSpeaker, DEFAULT_IMG, type LockedSpeaker, type SpeakerContext } from "./speaker-resolve";
+import { resolveSpeaker, resolveOverrideSpeaker, DEFAULT_IMG, addFavorite, removeFavorite, FAV_MAX, type LockedSpeaker, type SpeakerContext } from "./speaker-resolve";
 const LOCKED_FLAG_KEY = "lockedSpeaker";
+const FAVORITES_FLAG_KEY = "favoriteSpeakers";
 
 /**
  * Cautious Gamemaster's Pack (CGMP) 호환 상수.
@@ -58,6 +59,55 @@ async function setLockedSpeaker(speaker: LockedSpeaker | null): Promise<void> {
     await (game.user as any).setFlag(MODULE_ID, LOCKED_FLAG_KEY, speaker);
   }
   updateSpeakerBar();
+}
+
+/** 현재 사용자의 즐겨찾기 발화자 목록. 없으면 빈 배열. */
+export function getFavorites(): LockedSpeaker[] {
+  return ((game.user as any).getFlag(MODULE_ID, FAVORITES_FLAG_KEY) as LockedSpeaker[] | null) ?? [];
+}
+
+/** 즐겨찾기 목록 저장 후 바 갱신(best-effort). */
+async function setFavorites(list: LockedSpeaker[]): Promise<void> {
+  try {
+    await (game.user as any).setFlag(MODULE_ID, FAVORITES_FLAG_KEY, list);
+  } catch (_) {
+    // flag 쓰기 실패는 UI를 깨지 않는다.
+  }
+  updateSpeakerBar();
+}
+
+/** 현재 화자를 LockedSpeaker 스냅샷으로. (onLockToggle과 동일 패턴) */
+export function snapshotCurrentSpeaker(): LockedSpeaker {
+  const { name, token, actor } = resolveCurrentSpeaker();
+  return {
+    sceneId: (canvas as any)?.scene?.id ?? null,
+    tokenId: token?.id ?? null,
+    actorId: actor?.id ?? null,
+    alias: name,
+  };
+}
+
+/** [+] 현재 화자를 즐겨찾기에 추가(가드: empty/duplicate/full). */
+export async function addCurrentToFavorites(): Promise<void> {
+  const result = addFavorite(getFavorites(), snapshotCurrentSpeaker(), FAV_MAX);
+  if (!result.ok) {
+    const msg = result.reason === "full" ? "즐겨찾기가 가득 찼습니다."
+      : result.reason === "duplicate" ? "이미 즐겨찾기에 있는 발화자입니다."
+      : "즐겨찾기에 추가할 발화자가 없습니다.";
+    ui.notifications!.warn(msg);
+    return;
+  }
+  await setFavorites(result.next);
+}
+
+/** 즐겨찾기 칩 클릭 → 그 화자로 lock 전환(기존 인프라 재사용). */
+export async function switchToFavorite(fav: LockedSpeaker): Promise<void> {
+  await setLockedSpeaker(fav);
+}
+
+/** 즐겨찾기 항목 삭제. */
+export async function removeFavoriteAt(index: number): Promise<void> {
+  await setFavorites(removeFavorite(getFavorites(), index));
 }
 
 /**

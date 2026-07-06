@@ -1,13 +1,23 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { resolveCurrentSpeaker, overrideSpeaker } from "../src/speaker-bar";
+import {
+  resolveCurrentSpeaker, overrideSpeaker,
+  getFavorites, addCurrentToFavorites, removeFavoriteAt, switchToFavorite, snapshotCurrentSpeaker,
+} from "../src/speaker-bar";
 import { MODULE_ID } from "../src/constants";
 
 // jsdom엔 game/canvas가 없다. 각 테스트가 전역을 stub하고 afterEach에서 제거한다.
 // 모든 필드 기본 제공(optional-chaining/폴백 안전) → 잠금 시나리오도 reader의 eager-read에 안전.
 function setupFoundry(opts: any = {}) {
+  const setFlag = opts.setFlag ?? vi.fn();
+  const unsetFlag = opts.unsetFlag ?? vi.fn();
   (globalThis as any).game = {
     user: {
-      getFlag: (_s: string, key: string) => (key === "lockedSpeaker" ? (opts.locked ?? undefined) : undefined),
+      getFlag: (_s: string, key: string) =>
+        key === "lockedSpeaker" ? (opts.locked ?? undefined)
+        : key === "favoriteSpeakers" ? (opts.favorites ?? undefined)
+        : undefined,
+      setFlag,
+      unsetFlag,
       isGM: opts.isGM ?? false,
       character: opts.character ?? null,
       name: opts.userName ?? "User",
@@ -18,12 +28,15 @@ function setupFoundry(opts: any = {}) {
     modules: { get: () => (opts.cgmpActive ? { active: true } : undefined) },
     settings: { get: () => opts.cgmpMode },
   };
-  (globalThis as any).canvas = { tokens: { controlled: opts.controlled ?? [] } };
+  (globalThis as any).canvas = { scene: opts.scene ?? { id: opts.sceneId ?? "scene1" }, tokens: { controlled: opts.controlled ?? [] } };
+  (globalThis as any).ui = { notifications: { warn: opts.warn ?? vi.fn(), info: vi.fn() } };
+  return { setFlag, unsetFlag };
 }
 
 afterEach(() => {
   delete (globalThis as any).game;
   delete (globalThis as any).canvas;
+  delete (globalThis as any).ui;
 });
 
 describe("resolveCurrentSpeaker (characterization, global stubs)", () => {
@@ -98,5 +111,77 @@ describe("overrideSpeaker (characterization)", () => {
     expect(result).toBe(false);
     expect(data.speaker).toEqual({ alias: "x" });
     expect(updateSource).not.toHaveBeenCalled();
+  });
+});
+
+describe("snapshotCurrentSpeaker", () => {
+  it("선택 토큰 → sceneId/tokenId/actorId/alias 스냅샷", () => {
+    setupFoundry({
+      sceneId: "sc1",
+      controlled: [{ document: { id: "t1", name: "Tok", texture: { src: "t.png" } }, actor: { id: "a1", name: "Act", hasPlayerOwner: false } }],
+    });
+    expect(snapshotCurrentSpeaker()).toEqual({ sceneId: "sc1", tokenId: "t1", actorId: "a1", alias: "Tok" });
+  });
+});
+
+describe("getFavorites", () => {
+  it("flag 없음 → 빈 배열", () => {
+    setupFoundry({ favorites: undefined });
+    expect(getFavorites()).toEqual([]);
+  });
+  it("flag 값 반환", () => {
+    const favs = [{ sceneId: "s", tokenId: "t", actorId: "a", alias: "H" }];
+    setupFoundry({ favorites: favs });
+    expect(getFavorites()).toEqual(favs);
+  });
+});
+
+describe("addCurrentToFavorites", () => {
+  it("성공: setFlag로 스냅샷 append", async () => {
+    const { setFlag } = setupFoundry({
+      sceneId: "sc1", favorites: [],
+      controlled: [{ document: { id: "t1", name: "Tok", texture: { src: "t.png" } }, actor: { id: "a1", name: "Act" } }],
+    });
+    await addCurrentToFavorites();
+    expect(setFlag).toHaveBeenCalledWith(MODULE_ID, "favoriteSpeakers", [{ sceneId: "sc1", tokenId: "t1", actorId: "a1", alias: "Tok" }]);
+  });
+  it("빈 화자(무토큰/무캐릭터) → warn, setFlag 미호출", async () => {
+    const warn = vi.fn();
+    const { setFlag } = setupFoundry({ favorites: [], userName: "Solo", warn });
+    await addCurrentToFavorites();
+    expect(warn).toHaveBeenCalled();
+    expect(setFlag).not.toHaveBeenCalled();
+  });
+  it("중복 → warn, setFlag 미호출", async () => {
+    const warn = vi.fn();
+    const existing = { sceneId: "sc1", tokenId: "t1", actorId: "a1", alias: "Tok" };
+    const { setFlag } = setupFoundry({
+      sceneId: "sc1", favorites: [existing], warn,
+      controlled: [{ document: { id: "t1", name: "Tok", texture: { src: "t.png" } }, actor: { id: "a1", name: "Act" } }],
+    });
+    await addCurrentToFavorites();
+    expect(warn).toHaveBeenCalled();
+    expect(setFlag).not.toHaveBeenCalled();
+  });
+});
+
+describe("switchToFavorite", () => {
+  it("setLockedSpeaker 경유 → setFlag(lockedSpeaker) 호출", async () => {
+    const { setFlag } = setupFoundry({ favorites: [] });
+    const fav = { sceneId: "s", tokenId: "t", actorId: "a", alias: "H" };
+    await switchToFavorite(fav);
+    expect(setFlag).toHaveBeenCalledWith(MODULE_ID, "lockedSpeaker", fav);
+  });
+});
+
+describe("removeFavoriteAt", () => {
+  it("인덱스 제거 후 setFlag", async () => {
+    const favs = [
+      { sceneId: "s", tokenId: "t1", actorId: "a", alias: "1" },
+      { sceneId: "s", tokenId: "t2", actorId: "a", alias: "2" },
+    ];
+    const { setFlag } = setupFoundry({ favorites: favs });
+    await removeFavoriteAt(0);
+    expect(setFlag).toHaveBeenCalledWith(MODULE_ID, "favoriteSpeakers", [favs[1]]);
   });
 });
