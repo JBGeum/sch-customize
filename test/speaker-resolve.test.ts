@@ -3,6 +3,7 @@ import {
   resolveSpeaker, resolveCgmpForcedSpeaker, userSpeakerInfo, assignedCharacterSpeakerInfo,
   resolveOverrideSpeaker, CGMP_SPEAKER_MODE, DEFAULT_IMG, type SpeakerContext,
   resolveFavoriteDisplay, matchesLocked, addFavorite, removeFavorite, FAV_MAX,
+  speakerInfoToOverride,
 } from "../src/speaker-resolve";
 import { MODULE_ID } from "../src/constants";
 
@@ -11,6 +12,7 @@ function ctx(over: Partial<SpeakerContext> = {}): SpeakerContext {
     locked: null, lockedToken: null, lockedActor: null,
     cgmpMode: null, isGM: false, controlled: null,
     assignedCharacter: null, userName: "User", userAvatar: "user.png",
+    ignorePcToken: false,
     ...over,
   };
 }
@@ -182,5 +184,41 @@ describe("removeFavorite", () => {
   });
   it("범위 밖 인덱스 → 원본 그대로", () => {
     expect(removeFavorite(list, 5)).toBe(list);
+  });
+});
+
+describe("resolveSpeaker — ignorePcToken", () => {
+  const pcControlled = { token: { name: "PCTok", texture: { src: "pc.png" } }, actor: { name: "PCAct", img: "pca.png" }, isPc: true };
+  const npcControlled = { token: { name: "NPCTok", texture: { src: "npc.png" } }, actor: { name: "NPCAct", img: "npca.png" }, isPc: false };
+
+  it("옵션 off + PC 토큰 → 토큰 유지", () => {
+    expect(resolveSpeaker(ctx({ ignorePcToken: false, controlled: pcControlled }))).toMatchObject({ name: "PCTok", locked: false });
+  });
+  it("옵션 on + PC 토큰 + 배정캐릭터 → 배정캐릭터로 스킵", () => {
+    const character = { name: "Char", img: "c.png" };
+    expect(resolveSpeaker(ctx({ ignorePcToken: true, controlled: pcControlled, assignedCharacter: character })))
+      .toMatchObject({ name: "Char", locked: false, actor: character, token: null });
+  });
+  it("옵션 on + PC 토큰 + 배정캐릭터 없음 → user OOC", () => {
+    expect(resolveSpeaker(ctx({ ignorePcToken: true, controlled: pcControlled, userName: "GM" })))
+      .toMatchObject({ name: "GM", locked: false, actor: null, token: null });
+  });
+  it("옵션 on + NPC 토큰 → 토큰 유지(스킵 안 함)", () => {
+    expect(resolveSpeaker(ctx({ ignorePcToken: true, controlled: npcControlled }))).toMatchObject({ name: "NPCTok", locked: false });
+  });
+});
+
+describe("speakerInfoToOverride", () => {
+  it("배정 캐릭터: actor.id, token null, alias=name", () => {
+    expect(speakerInfoToOverride({ img: "c.png", name: "Char", locked: false, actor: { id: "a1", name: "Char" }, token: null }))
+      .toEqual({ scene: null, actor: "a1", token: null, alias: "Char" });
+  });
+  it("user: actor·token null, alias=name", () => {
+    expect(speakerInfoToOverride({ img: "u.png", name: "GM", locked: false, actor: null, token: null }))
+      .toEqual({ scene: null, actor: null, token: null, alias: "GM" });
+  });
+  it("토큰: actor.id + token.id", () => {
+    expect(speakerInfoToOverride({ img: "t.png", name: "Tok", locked: false, actor: { id: "a1" }, token: { id: "t1" } }))
+      .toEqual({ scene: null, actor: "a1", token: "t1", alias: "Tok" });
   });
 });

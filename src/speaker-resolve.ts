@@ -34,6 +34,8 @@ export interface SpeakerContext {
   assignedCharacter: any | null;
   userName: string;
   userAvatar: string;
+  /** true면 선택 토큰이 PC(hasPlayerOwner)일 때 그 토큰을 화자로 쓰지 않는다. */
+  ignorePcToken?: boolean;
 }
 
 export const CGMP_SPEAKER_MODE = {
@@ -84,7 +86,7 @@ export function resolveSpeaker(ctx: SpeakerContext): SpeakerInfo {
   const cgmpForced = resolveCgmpForcedSpeaker(ctx);
   if (cgmpForced) return cgmpForced;
 
-  if (ctx.controlled) {
+  if (ctx.controlled && !(ctx.ignorePcToken && ctx.controlled.isPc)) {
     const token = ctx.controlled.token;
     const actor = ctx.controlled.actor;
     return {
@@ -164,4 +166,14 @@ export function addFavorite(list: LockedSpeaker[], candidate: LockedSpeaker | nu
 export function removeFavorite(list: LockedSpeaker[], index: number): LockedSpeaker[] {
   if (index < 0 || index >= list.length) return list;
   return list.filter((_, i) => i !== index);
+}
+
+/** SpeakerInfo를 발신용 speaker 객체로 변환(actor/token은 id, alias는 표시명). */
+export function speakerInfoToOverride(info: SpeakerInfo): { scene: string | null; actor: string | null; token: string | null; alias: any } {
+  return {
+    scene: null,
+    actor: (info.actor as any)?.id ?? null,
+    token: (info.token as any)?.id ?? null,
+    alias: info.name,
+  };
 }
