@@ -224,3 +224,11 @@
     border-color: #d4a017;
     box-shadow: 0 0 0 1px #d4a017;
   }
+
+  /* 접힌 사이드바 간이 입력창(hover popout): speaker bar로 마우스를 옮기면 hover가
+     풀려 popout이 닫히므로, 클릭이 필요한 lock·즐겨찾기 줄만 숨긴다. 화자
+     표시(초상화·이름)는 클릭이 필요 없어 그대로 유지. */
+  .sch-speaker-bar.sch-collapsed .sch-speaker-lock,
+  .sch-speaker-bar.sch-collapsed .sch-fav-strip {
+    display: none;
+  }

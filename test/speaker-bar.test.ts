@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   resolveCurrentSpeaker, overrideSpeaker,
   getFavorites, addCurrentToFavorites, removeFavoriteAt, switchToFavorite, snapshotCurrentSpeaker,
-  createSpeakerBarElement, updateSpeakerBar,
+  createSpeakerBarElement, updateSpeakerBar, applyCollapsedState,
 } from "../src/speaker-bar";
 import { MODULE_ID } from "../src/constants";
 
@@ -358,5 +358,21 @@ describe("칩 줄 렌더 (DOM 통합)", () => {
     updateSpeakerBar();
     (bar.querySelector(".sch-fav-reset") as HTMLElement).click();
     expect(unsetFlag).toHaveBeenCalledWith(MODULE_ID, "lockedSpeaker");
+  });
+});
+
+describe("applyCollapsedState (접힌 사이드바 — lock·즐겨찾기 숨김 클래스)", () => {
+  afterEach(() => { document.body.innerHTML = ""; });
+  it("true → .sch-collapsed 부여, false → 제거", () => {
+    const bar = createSpeakerBarElement();
+    document.body.appendChild(bar);
+    applyCollapsedState(true);
+    expect(bar.classList.contains("sch-collapsed")).toBe(true);
+    applyCollapsedState(false);
+    expect(bar.classList.contains("sch-collapsed")).toBe(false);
+  });
+  it("바가 없으면 무시(no throw)", () => {
+    document.body.innerHTML = "";
+    expect(() => applyCollapsedState(true)).not.toThrow();
   });
 });
