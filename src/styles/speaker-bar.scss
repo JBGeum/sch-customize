@@ -171,3 +171,56 @@
     border-color: #ffaa00;
     color: #ffaa00;
   }
+
+  /* ── 기본 발화자 복귀 버튼 ── */
+  .sch-speaker-bar .sch-fav-reset {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+    cursor: pointer;
+    font-size: 11px;
+    opacity: 0.7;
+  }
+
+  .sch-speaker-bar .sch-fav-reset:hover {
+    opacity: 1;
+    border-color: #ffaa00;
+    color: #ffaa00;
+  }
+
+  .sch-speaker-bar .sch-fav-reset.active {
+    opacity: 1;
+    border-color: #d4a017;
+    color: #d4a017;
+  }
+
+  /* ── 이름(pill) 모드 칩 ── */
+  .sch-speaker-bar .sch-fav-chip.mode-name {
+    width: auto;
+    height: auto;
+  }
+
+  .sch-speaker-bar .sch-fav-chip-label {
+    display: block;
+    max-width: 84px;
+    padding: 1px 8px;
+    line-height: 16px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-sizing: border-box;
+  }
+
+  .sch-speaker-bar .sch-fav-chip.mode-name.active .sch-fav-chip-label {
+    border-color: #d4a017;
+    box-shadow: 0 0 0 1px #d4a017;
+  }
