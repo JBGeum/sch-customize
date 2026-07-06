@@ -1,6 +1,6 @@
 # sch-customize
 
-A small collection of quality-of-life tweaks for the Foundry VTT chat.
+A small collection of quality-of-life tweaks for using Foundry VTT.
 
 > Foundry VTT v13 · 🇰🇷 [한국어](./README.ko.md)
 

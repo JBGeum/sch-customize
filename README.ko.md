@@ -1,6 +1,6 @@
 # sch-customize
 
-Foundry VTT 채팅을 좀 더 편하게 쓰기 위한 작은 기능 모음입니다.
+Foundry VTT를 좀 더 편하게 사용하기 위한 작은 기능 모음입니다.
 
 > Foundry VTT v13 호환 · 🇬🇧 [English](./README.md)
 
