@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   resolveSpeaker, resolveCgmpForcedSpeaker, userSpeakerInfo, assignedCharacterSpeakerInfo,
   resolveOverrideSpeaker, CGMP_SPEAKER_MODE, DEFAULT_IMG, type SpeakerContext,
+  resolveFavoriteDisplay, matchesLocked,
 } from "../src/speaker-resolve";
 import { MODULE_ID } from "../src/constants";
 
@@ -120,4 +121,29 @@ describe("resolveOverrideSpeaker", () => {
   it("alias 없으면 data.speaker.alias 폴백, id null 폴백", () => {
     expect(resolveOverrideSpeaker({ sceneId: null, tokenId: null, actorId: null, alias: undefined as any }, { speaker: { alias: "fromData" } })).toEqual({ scene: null, actor: null, token: null, alias: "fromData" });
   });
+});
+
+describe("resolveFavoriteDisplay", () => {
+  const fav = { sceneId: "s", tokenId: "t", actorId: "a", alias: "Hero" };
+  it("토큰 우선: token.texture.src=img, alias=name, stale=false", () => {
+    expect(resolveFavoriteDisplay(fav, { token: { name: "Tok", texture: { src: "tok.png" } }, actor: { name: "Act", img: "act.png" } }))
+      .toEqual({ img: "tok.png", name: "Hero", stale: false });
+  });
+  it("토큰 없음 → 액터 img 폴백, stale=false", () => {
+    expect(resolveFavoriteDisplay(fav, { token: null, actor: { name: "Act", img: "act.png" } }))
+      .toEqual({ img: "act.png", name: "Hero", stale: false });
+  });
+  it("토큰·액터 모두 없음 → DEFAULT_IMG, stale=true", () => {
+    expect(resolveFavoriteDisplay(fav, { token: null, actor: null }))
+      .toEqual({ img: DEFAULT_IMG, name: "Hero", stale: true });
+  });
+});
+
+describe("matchesLocked", () => {
+  const fav = { sceneId: "s", tokenId: "t", actorId: "a", alias: "H" };
+  it("current null → false", () => expect(matchesLocked(fav, null)).toBe(false));
+  it("같은 (sceneId,tokenId,actorId) → true (alias 달라도)", () =>
+    expect(matchesLocked(fav, { sceneId: "s", tokenId: "t", actorId: "a", alias: "다른별칭" })).toBe(true));
+  it("일부 불일치 → false", () =>
+    expect(matchesLocked(fav, { sceneId: "s", tokenId: "other", actorId: "a", alias: "H" })).toBe(false));
 });
