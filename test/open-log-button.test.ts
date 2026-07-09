@@ -17,13 +17,16 @@ function controls(withChild = true): HTMLElement {
 }
 
 describe("placeOpenLogButton", () => {
-  it("control-buttons의 첫 자식으로 .sch-open-log 버튼 삽입(title/아이콘)", () => {
+  it("control-buttons의 첫 자식으로 .sch-open-log 버튼 삽입(Foundry ui-control 스타일 + FA 아이콘)", () => {
     const cb = controls();
     placeOpenLogButton(cb);
     const first = cb.firstElementChild as HTMLElement;
     expect(first.classList.contains("sch-open-log")).toBe(true);
-    expect(first.getAttribute("title")).toBe("sch-customize.chat.openLog.title");
-    expect(first.querySelector("i.fas")).not.toBeNull();
+    // 옆 Foundry 기본 버튼과 같은 불투명 스타일을 위해 ui-control 클래스를 공유
+    expect(first.classList.contains("ui-control")).toBe(true);
+    expect(first.getAttribute("aria-label")).toBe("sch-customize.chat.openLog.title");
+    // 아이콘은 버튼 자체 FontAwesome 클래스로 렌더(자식 <i> 없음)
+    expect(first.classList.contains("fa-solid")).toBe(true);
   });
   it("멱등: 두 번 호출해도 버튼 1개, 여전히 첫 자식", () => {
     const cb = controls();
