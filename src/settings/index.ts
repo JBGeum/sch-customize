@@ -140,6 +140,16 @@ export function registerAllSettings(): void {
     onChange: () => window.location.reload(),
   });
 
+  gs.register(MODULE_ID, SETTINGS.showEditedBadge, {
+    name: `${MODULE_ID}.settings.showEditedBadge.name`,
+    hint: `${MODULE_ID}.settings.showEditedBadge.hint`,
+    scope: "client",
+    config: true,
+    default: true,
+    type: Boolean,
+    onChange: () => window.location.reload(),
+  });
+
   gs.register(MODULE_ID, SETTINGS.privTalkAsOOC, {
     name: `${MODULE_ID}.settings.privTalkAsOOC.name`,
     hint: `${MODULE_ID}.settings.privTalkAsOOC.hint`,

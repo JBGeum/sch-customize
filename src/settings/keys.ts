@@ -13,6 +13,7 @@ export const SETTINGS = {
   lastExportMode: "lastExportMode",
   excludeGmWhisper: "excludeGmWhisper",
   customPrivTalkAlias: "customPrivTalkAlias",
+  showEditedBadge: "showEditedBadge",
   privTalkAsOOC: "privTalkAsOOC",
   privTalkSpeakerLineChange: "privTalkSpeakerLineChange",
   baseMessageMerge: "baseMessageMerge",
