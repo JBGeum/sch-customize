@@ -12,7 +12,8 @@
  */
 
 import JSZip from "jszip";
-import { TEMPLATE_BASE } from "../constants";
+import { MODULE_ID, TEMPLATE_BASE } from "../constants";
+import { SETTINGS } from "../settings/keys";
 import { readWhisperSettings } from "../settings/whisper";
 import { renderChatMessageElement, callRenderChatMessageHooks, isPrivTalkMessage } from "../compat/foundry";
 import { isEditedMessage } from "../chat-edit/predicate";
@@ -400,7 +401,7 @@ export async function appendChatContents(chat: any, chatMergeFlag: boolean, prev
 
   // 편집된 메시지에 "(수정됨)" 배지 — roll 경로는 renderChatMessageHTML 훅(getRollResultContent)이
   // 이미 배지를 태우므로, 중복 방지를 위해 plain/privtalk 경로에서만 직접 추가한다.
-  if (isEditedMessage(chat) && bodySource !== "roll") {
+  if (isEditedMessage(chat) && bodySource !== "roll" && (game.settings as any).get(MODULE_ID, SETTINGS.showEditedBadge)) {
     injectEditedBadge(textDiv, game.i18n!.localize("sch-customize.edit.editedBadge"));
   }
 

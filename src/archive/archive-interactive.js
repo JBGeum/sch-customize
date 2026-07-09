@@ -1,7 +1,6 @@
-// 아카이브 HTML(단독/누적/창열기 공통)에 런타임 주입되는 인터랙션 스크립트.
-// export.ts가 ?raw 문자열로 import해 각 문서 <head>에 <script>로 삽입한다.
-// 단일 출처 — 두 템플릿이 각자 복붙하던 것을 통합.
 window.addEventListener('load', function() {
+document.addEventListener('dragstart', function (event) { event.preventDefault(); });
+
   // Dice Roll 툴팁 토글
   const diceRollElements = document.querySelectorAll('.dice-roll');
   diceRollElements.forEach(function (diceRollElement) {

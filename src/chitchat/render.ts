@@ -15,6 +15,7 @@ import { MODULE_ID } from "../constants";
 import { toElement, getRenderChatMessageHook, isPrivTalkMessage } from "../compat/foundry";
 import { SETTINGS } from "../settings/keys";
 import { shouldMergeBaseMessage, decideRounding, resolveAuthorId, classForGrouping, type RoundingDecision } from "./grouping";
+import { htmlToPlainText } from "./plain-text";
 
 // 모듈 내부에서 직전 메시지 정보를 추적하기 위한 상태.
 // Foundry 렌더 hook은 동기적으로 메시지 순서대로 호출되므로 모듈 스코프 변수로 충분.
@@ -159,8 +160,13 @@ function applyPrivTalkMarkup(el: HTMLElement, message: any): void {
 
   const content = el.querySelector(".message-content");
   if (content) {
+    // 잡담 본문은 태그 없는 평문으로만 출력한다(v14 ProseMirror가 <p>로 감싸 생기는 여백 +
+    // "~" 등 문자를 리터럴로 보존). 본문은 textContent로 넣어 특수문자(<, & 등)까지 안전하게
+    // 이스케이프한다. (평문 v12/v13 content 는 htmlToPlainText 가 그대로 통과시킨다.)
     content.innerHTML =
-      `<div class="pt priv_user">${message.speaker.alias}</div> <div class="pt">${message.content}</div>`;
+      `<div class="pt priv_user">${message.speaker.alias}</div> <div class="pt"></div>`;
+    const body = content.querySelector("div.pt:not(.priv_user)");
+    if (body) (body as HTMLElement).textContent = htmlToPlainText(message.content);
   }
 
   if (!(game.settings as any).get(MODULE_ID, SETTINGS.privTalkSpeakerLineChange)) {

@@ -1,9 +1,9 @@
   {
   "id": "sch-customize",
   "name": "sch-customize",
-  "title": "sch-customize",
+  "title": "sch-Customize",
   "description": "A small collection of quality-of-life tweaks for using Foundry VTT.",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "compatibility": {
     "minimum": "13",
     "verified": "13"

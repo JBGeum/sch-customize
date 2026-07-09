@@ -18,9 +18,10 @@ export function placeOpenLogButton(controlButtons: Element): void {
 
   const button = document.createElement("button");
   button.type = "button";
-  button.className = BUTTON_CLASS;
-  button.title = game.i18n!.localize("sch-customize.chat.openLog.title");
-  button.innerHTML = `<i class="fas fa-arrow-up-right-from-square"></i>`;
+  button.className = `${BUTTON_CLASS} ui-control icon fa-solid fa-arrow-up-right-from-square`;
+  const label = game.i18n!.localize("sch-customize.chat.openLog.title");
+  button.setAttribute("aria-label", label);
+  button.setAttribute("data-tooltip", label);
   button.addEventListener("click", () => {
     openChatArchive([...game.messages!.contents]);
   });

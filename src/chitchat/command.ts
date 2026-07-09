@@ -22,11 +22,7 @@ export function registerChitchatCommand() {
     const matched = matchChitchatTrigger(message, getChitchatAliases());
     if (!matched) return; // 잡담 아님 → 통과(undefined 반환 = 취소 아님)
 
-    let body = matched.body;
-    // 마크다운 취소선 옵션이 꺼져 있으면 <del>을 ~로 환원해 일반 텍스트로 둠
-    if (!(game.settings as any).get(MODULE_ID, SETTINGS.markdownDelUse)) {
-      body = body.replace(/<\s*\/?\s*del\s*>/g, "~");
-    }
+    const body = matched.body;
 
     const speakUser = (chatData.user instanceof User)
       ? chatData.user

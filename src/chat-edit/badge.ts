@@ -10,16 +10,28 @@
  */
 import { isEditedMessage } from "./predicate";
 import { toElement } from "../compat/foundry";
+import { MODULE_ID } from "../constants";
+import { SETTINGS } from "../settings/keys";
 
 export const EDITED_BADGE_CLASS = "sch-edited-badge";
 
-/** el의 .message-content(없으면 el) 끝에 배지 span을 멱등 추가. */
+/** el의 .message-content(없으면 el)의 마지막 텍스트 블록 끝에 아이콘 배지를 멱등 추가. */
 export function injectEditedBadge(el: HTMLElement, label: string): void {
   if (el.querySelector(`.${EDITED_BADGE_CLASS}`)) return;
-  const badge = document.createElement("span");
-  badge.className = EDITED_BADGE_CLASS;
-  badge.textContent = label;
-  (el.querySelector(".message-content") ?? el).appendChild(badge);
+  const icon = document.createElement("i");
+  icon.className = `fas fa-pen ${EDITED_BADGE_CLASS}`;
+  icon.setAttribute("title", label);
+  icon.setAttribute("aria-label", label);
+  // 마지막 텍스트 줄 끝에 인라인으로 붙이려면, 마지막 블록(<p>/<div>) 안으로 계속 내려가
+  // 실제 텍스트를 담은 가장 안쪽 블록에 append한다. (블록 뒤 형제로 붙으면 줄바꿈이 생긴다 —
+  // v14는 .message-content > wrapper div > <p> 처럼 중첩될 수 있어 한 단계 진입으론 부족.)
+  let target = (el.querySelector(".message-content") ?? el) as HTMLElement;
+  let last = target.lastElementChild as HTMLElement | null;
+  while (last && (last.tagName === "P" || last.tagName === "DIV")) {
+    target = last;
+    last = target.lastElementChild as HTMLElement | null;
+  }
+  target.appendChild(icon);
 }
 
 /** renderChatMessageHTML hook 핸들러: edited 메시지에만 배지 주입. */
@@ -27,6 +39,7 @@ export function onRenderEditedBadge(message: any, htmlOrEl: HTMLElement | JQuery
   const el = toElement(htmlOrEl);
   if (!el) return;
   if (!isEditedMessage(message)) return;
+  if (!(game.settings as any).get(MODULE_ID, SETTINGS.showEditedBadge)) return;
   injectEditedBadge(el, game.i18n!.localize("sch-customize.edit.editedBadge"));
 }
 

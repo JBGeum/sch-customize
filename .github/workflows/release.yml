@@ -1,9 +1,5 @@
 name: Release
 
-# vX.Y.Z 형태의 태그를 푸시하면: 빌드 → dist/module.json에 버전·download URL 주입 →
-# sch-customize.zip 패키징 → GitHub Release(module.json + zip)를 자동 생성한다.
-# Foundry는 manifest(= releases/latest/download/module.json)로 업데이트를 확인하고,
-# 각 릴리스 module.json의 download는 그 태그의 zip을 가리킨다(버전 고정).
 on:
   push:
     tags:
@@ -24,8 +20,6 @@ jobs:
           cache: npm
 
       - run: npm ci
-      # macro pack을 packs/_source에서 재컴파일해 dist에 신선한 pack이 실리도록 한다
-      # (compile-packs.mjs가 매크로 개수 2개를 검증 — 깨진 pack이면 릴리스가 실패).
       - run: npm run packs
       - run: npm run build
 
@@ -55,3 +49,70 @@ jobs:
             dist/module.json
             sch-customize.zip
           generate_release_notes: true
+
+      # ── Foundry 패키지 저장소(마켓) 업데이트 ──
+      # 같은 릴리스 실행에서, GitHub Release 매니페스트가 실제로 도달 가능해진 뒤에만
+      # Foundry로 발행한다(타이밍 동기화). Foundry가 manifest URL을 서버에서 fetch하므로
+      # 에셋이 라이브가 되기 전에 호출하면 404로 실패하기 때문이다.
+
+      - name: Extract release metadata from module.json
+        id: meta
+        run: |
+          echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          echo "minimum=$(node -p "require('./dist/module.json').compatibility.minimum")" >> "$GITHUB_OUTPUT"
+          echo "verified=$(node -p "require('./dist/module.json').compatibility.verified")" >> "$GITHUB_OUTPUT"
+          echo "maximum=$(node -p "require('./dist/module.json').compatibility.maximum || ''")" >> "$GITHUB_OUTPUT"
+          echo "manifest=https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/module.json" >> "$GITHUB_OUTPUT"
+          echo "notes=https://github.com/${GITHUB_REPOSITORY}/releases/tag/${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for release manifest to be reachable
+        env:
+          MANIFEST_URL: ${{ steps.meta.outputs.manifest }}
+        run: |
+          for i in $(seq 1 30); do
+            code=$(curl -sSL -o /dev/null -w '%{http_code}' "$MANIFEST_URL" || true)
+            echo "attempt $i: HTTP $code"
+            if [ "$code" = "200" ]; then exit 0; fi
+            sleep 2
+          done
+          echo "::error::Release manifest not reachable after retries: $MANIFEST_URL"
+          exit 1
+
+      - name: Publish to Foundry package repository
+        env:
+          FVTT_TOKEN: ${{ secrets.FVTT_RELEASE_TOKEN }}
+          PKG_ID: sch-customize
+          VERSION: ${{ steps.meta.outputs.version }}
+          MANIFEST_URL: ${{ steps.meta.outputs.manifest }}
+          NOTES_URL: ${{ steps.meta.outputs.notes }}
+          MIN: ${{ steps.meta.outputs.minimum }}
+          VER: ${{ steps.meta.outputs.verified }}
+          MAX: ${{ steps.meta.outputs.maximum }}
+        run: |
+          # dry-run으로 검증 후 실제 발행. 값은 모두 env로 전달해 셸 인젝션을 피하고,
+          # 페이로드는 printf로 조립한다(heredoc 들여쓰기 함정 회피).
+          post_release() {
+            local dryrun="$1" payload resp code body
+            payload=$(printf '{"id":"%s","dry-run":%s,"release":{"version":"%s","manifest":"%s","notes":"%s","compatibility":{"minimum":"%s","verified":"%s","maximum":"%s"}}}' \
+              "$PKG_ID" "$dryrun" "$VERSION" "$MANIFEST_URL" "$NOTES_URL" "$MIN" "$VER" "$MAX")
+            resp=$(curl -sS -w $'\n%{http_code}' -X POST \
+              "https://foundryvtt.com/_api/packages/release_version/" \
+              -H "Content-Type: application/json" \
+              -H "Authorization: $FVTT_TOKEN" \
+              -d "$payload")
+            code=$(printf '%s' "$resp" | tail -n1)
+            body=$(printf '%s' "$resp" | sed '$d')
+            echo "dry-run=$dryrun → HTTP $code"
+            echo "$body"
+            # 이미 발행된 버전(태그 재푸시/재실행)은 실패가 아니라 스킵으로 처리한다.
+            if [ "$code" = "400" ] && printf '%s' "$body" | grep -qi "already exists"; then
+              echo "::notice::Foundry already has version $VERSION — skipping."
+              return 0
+            fi
+            if [ "$code" -ge 400 ]; then
+              echo "::error::Foundry release failed (dry-run=$dryrun, HTTP $code)"
+              return 1
+            fi
+          }
+          post_release true
+          post_release false

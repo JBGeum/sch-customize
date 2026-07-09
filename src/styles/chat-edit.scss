@@ -1,9 +1,10 @@
-// 편집된 메시지의 "(수정됨)" 배지 — 본문 끝에 작고 흐리게.
+// 편집된 메시지의 "수정됨" 배지 — 본문 끝 작은 아이콘.
 .sch-edited-badge {
-  margin-inline-start: 0.4em;
-  font-size: 0.75em;
-  font-style: italic;
-  opacity: 0.6;
+  margin-inline-start: 0.35em;
+  font-size: 0.7em;
+  opacity: 0.5;
+  vertical-align: baseline;
+  cursor: default;
 }
 
 // 편집 다이얼로그의 ProseMirror 에디터.
