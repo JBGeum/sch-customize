@@ -54,6 +54,37 @@ beforeEach(() => {
   settings.privTalkSpeakerLineChange = false; // false → speaker-inline 부착
 });
 
+describe("잡담 본문 평문 렌더(v14 ProseMirror)", () => {
+  function privWithContent(content: string): any {
+    return {
+      flags: { "sch-customize": { priv_talk: true } },
+      user: { id: "1" },
+      speaker: { alias: "U1" },
+      content,
+    };
+  }
+  function bodyOf(el: HTMLElement): HTMLElement {
+    return el.querySelector(".message-content div.pt:not(.priv_user)") as HTMLElement;
+  }
+
+  it("<p> 래퍼를 벗겨 평문으로 렌더(여백 방지 — 태그 없음)", () => {
+    const body = bodyOf(render(privWithContent("<p>안녕</p>")));
+    expect(body.textContent).toBe("안녕");
+    expect(body.innerHTML).toBe("안녕"); // <p> 없음
+  });
+
+  it("~ 문자는 리터럴 보존(취소선 안 됨)", () => {
+    const body = bodyOf(render(privWithContent("<p>A~ B~</p>")));
+    expect(body.textContent).toBe("A~ B~");
+  });
+
+  it("특수문자(<)도 textContent로 안전하게 이스케이프", () => {
+    const body = bodyOf(render(privWithContent("<p>a&lt;b</p>")));
+    expect(body.textContent).toBe("a<b");
+    expect(body.innerHTML).toBe("a&lt;b"); // 깨진 태그 없이 이스케이프
+  });
+});
+
 describe("잡담 연속 그룹화", () => {
   it("priv_talk user-{id} 는 author-first (v13 정답, .author 우선)", () => {
     const msg = {

@@ -13,7 +13,6 @@ export const SETTINGS = {
   lastExportMode: "lastExportMode",
   excludeGmWhisper: "excludeGmWhisper",
   customPrivTalkAlias: "customPrivTalkAlias",
-  markdownDelUse: "markdownDelUse",
   privTalkAsOOC: "privTalkAsOOC",
   privTalkSpeakerLineChange: "privTalkSpeakerLineChange",
   baseMessageMerge: "baseMessageMerge",

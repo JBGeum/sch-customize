@@ -140,16 +140,6 @@ export function registerAllSettings(): void {
     onChange: () => window.location.reload(),
   });
 
-  gs.register(MODULE_ID, SETTINGS.markdownDelUse, {
-    name: `${MODULE_ID}.settings.markdownDelUse.name`,
-    hint: `${MODULE_ID}.settings.markdownDelUse.hint`,
-    scope: "client",
-    config: true,
-    default: false,
-    type: Boolean,
-    onChange: () => window.location.reload(),
-  });
-
   gs.register(MODULE_ID, SETTINGS.privTalkAsOOC, {
     name: `${MODULE_ID}.settings.privTalkAsOOC.name`,
     hint: `${MODULE_ID}.settings.privTalkAsOOC.hint`,

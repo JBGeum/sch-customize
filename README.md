@@ -15,7 +15,7 @@ A small collection of quality-of-life tweaks for using Foundry VTT.
 
 Out-of-character asides that read apart from in-character speech and rolls. Consecutive chitchat from the same user is grouped automatically.
 - Triggers: `/pt`, `!`, `` ` ``, or a custom character (default `/p`); chitchat is treated as an OOC or Other message type.
-- Grouping of consecutive chitchat, per-user color, and markdown strikethrough (`~text~`).
+- Grouping of consecutive chitchat and per-user color.
 - Adjustable font size, opacity, margin, and brightness; optional line break after the name.
 
 ### Message grouping

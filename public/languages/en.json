@@ -46,8 +46,6 @@
     "sch-customize.settings.customPrivTalkAlias.name": "Custom Chitchat Trigger",
     "sch-customize.settings.customPrivTalkAlias.hint": "Register a custom character used at the start of a chitchat message. Some characters may not work due to conflicts with other modules or markdown options. The defaults ('/pt', '!', '`') are always preserved.",
     "sch-customize.chat.privTalkIndicator": "Chitchat",
-    "sch-customize.settings.markdownDelUse.name": "Apply Markdown Strikethrough in Chitchat",
-    "sch-customize.settings.markdownDelUse.hint": "When markdown is enabled in chat, text wrapped in ~ within chitchat messages is rendered with a strikethrough.",
     "sch-customize.settings.privTalkAsOOC.name": "Create Chitchat as OOC",
     "sch-customize.settings.privTalkAsOOC.hint": "Newly created chitchat messages are classified as OOC. The default is Other.",
     "sch-customize.settings.privTalkSpeakerLineChange.name": "Line Break After Chitchat Speaker Name",
