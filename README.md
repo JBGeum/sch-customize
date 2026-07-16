@@ -38,6 +38,8 @@ Shown above the chat input, indicating who you'll currently speak as.
 - **Show** — open the full log recorded so far in a new window; the content is the same as the download.
 - Whisper handling: include, or mask (click to reveal); an option to tidy GM-only content (mostly buttons like damage-apply).
 
+> Exports embed CSS from Foundry and your active system/modules so the archive renders on its own — if you share one publicly, their respective licenses apply.
+
 ### Message editing
 <img width="298" height="179" alt="Message edit dialog" src="https://raw.githubusercontent.com/JBGeum/sch-customize/master/docs/image/5.png" />
 
