@@ -40,7 +40,7 @@ jobs:
           "
 
       - name: Package sch-customize.zip
-        run: cd dist && zip -r ../sch-customize.zip .
+        run: cp LICENSE dist/ && cd dist && zip -r ../sch-customize.zip .
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
